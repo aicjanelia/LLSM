@@ -1,0 +1,62 @@
+\documentclass[letter,12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{sansmathfonts}
+\usepackage{listings}
+\usepackage[colorinlistoftodos,textwidth=20mm,shadow]{todonotes}
+
+\renewcommand{\familydefault}{lmss}
+% Use \qst command for questions that need answering
+\newcommand{\qst}[1]{\todo[color=magenta]{#1}}
+% Use \lookup for items that need further research
+\newcommand{\lookup}[1]{\todo[color=green]{#1}}
+% Use \tsk for tasks that still need to be completed
+\newcommand{\tsk}[1]{\todo[inline,color=yellow]{#1}}
+
+% Use ``\cite{NEEDED}'' to get Wikipedia-style ``citation needed'' in document
+\usepackage{ifthen}
+\let\oldcite=\cite
+\renewcommand\cite[1]{\ifthenelse{\equal{#1}{NEEDED}}{\textsuperscript{\texttt{\color{red}[citation~needed]}}\todo{citation needed}}{\oldcite{#1}}}
+
+\author{Eric Wait}
+\title{Notes for LLS reconstruction code}
+\date{\today}
+
+\begin{document}
+\maketitle
+\listoftodos
+\newpage
+
+\section*{Microscope Output}
+	Position data is stored in the root directory with format:\\
+	\texttt{Name,X (mm),Y (mm),Z (mm),Theta (deg)\\
+		Position \%d,\%f,\%f,\%f,\%f\\
+		\ldots}
+
+	There might be an error for positions 2-4 where there is a missing space between \texttt{Position} and \texttt{\%d}.
+	\begin{itemize}
+		\item A directory is created with the format:\\
+			\texttt{TimeLapse\%d\_Pos\%d\_581}
+
+		\item A 3D tif image is created for each channel and frame.
+			The file name contains the following in order:\\
+			\begin{enumerate}
+				\item Each laser wavelength and power (\texttt{\%d\_\%dmW\_}).
+				\item The frame number starting from zero (\texttt{Iter\_\%03d\_}).
+				\item The channel number (\texttt{ch\%d\_}).
+				\item The camera number which seems to be 1 always (\texttt{CAM\%d\_}).
+				\item A stack number for montage starting at zero? (\texttt{stack\%4d\_}).
+				\item The wavelength of the image's channel (\texttt{\%dnm\_}).
+				\item An unknown field (\texttt{\%07dmsec\_}).
+				\item A time field that is non-zero at start (\texttt{\%09dmsec}).
+					NOTE: there is no underscore after this field.
+				\item The next field seems to be a position, but is always zeros (\texttt{Abs\_\%03dx\_\%03dy\_\%03dz\_}).
+				\item There is a second frame field at the end (\texttt{\%04dt}).
+				\item An optional suffix (\texttt{\_\%s}).
+				\item Extension (\texttt{.tif}).
+			\end{enumerate}
+			The final filename has the format (example is for a three channel image):
+	\end{itemize}
+\hspace{-0.27\textwidth}{\texttt{\%d\_\%dmW\_\%d\_\%dmW\_\%d\_\%dmW\_Iter\_\%03d\_ch\%d\_CAM\%d\_stack\%4d\_\%dnm\_\%07dmsec\_\%09dmsecAbs\_\%03dx\_\%03dy\_\%03dz\_\%04dt.tif}}
+
+\end{document}
