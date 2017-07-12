@@ -126,19 +126,17 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
             curIm = squeeze(curIm);
             im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
 
-            if (s==1)
-                % get the time stamp
-                timeStampStr = regexp(curName,'(\d+)msecAbs','tokens');
-                imD.TimeStampDelta(1,c,t) = str2double(timeStampStr{1}) - startTimeStamp;
-                
-                % get stage position from orginal file
-                underscorePos = strfind(imList(i).name,'_');
-                orgFileName = imList(i).name;
-                orgFileName = [orgFileName(1:underscorePos(end)-1),'.tif'];
-                info = imfinfo(fullfile(root,orgFileName));
-                posTemp = info(1).UnknownTags;
-                imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
-            end
+            % get the time stamp
+            timeStampStr = regexp(curName,'(\d+)msecAbs','tokens');
+            imD.TimeStampDelta(1,c,t) = str2double(timeStampStr{1}) - startTimeStamp;
+            
+            % get stage position from orginal file
+            underscorePos = strfind(imList(i).name,'_');
+            orgFileName = imList(i).name;
+            orgFileName = [orgFileName(1:underscorePos(end)-1),'.tif'];
+            info = imfinfo(fullfile(root,orgFileName));
+            posTemp = info(1).UnknownTags;
+            imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
 
             prgs.PrintProgress(i);
         end
