@@ -1,5 +1,6 @@
-\documentclass[letter,12pt]{article}
+\documentclass[letter,11pt]{article}
 
+\usepackage[margin=0.75in]{geometry}
 \usepackage{amsmath}
 \usepackage{sansmathfonts}
 \usepackage{listings}
@@ -13,6 +14,8 @@
 % Use \tsk for tasks that still need to be completed
 \newcommand{\tsk}[1]{\todo[inline,color=yellow]{#1}}
 
+\newcommand{\regex}[1]{\textit{\small{\textbackslash}\!{#1}}}
+
 % Use ``\cite{NEEDED}'' to get Wikipedia-style ``citation needed'' in document
 \usepackage{ifthen}
 \let\oldcite=\cite
@@ -23,40 +26,55 @@
 \date{\today}
 
 \begin{document}
-\maketitle
-\listoftodos
-\newpage
+% \maketitle
+% \listoftodos
+% \newpage
 
 \section*{Microscope Output}
-	Position data is stored in the root directory with format:\\
-	\texttt{Name,X (mm),Y (mm),Z (mm),Theta (deg)\\
-		Position \%d,\%f,\%f,\%f,\%f\\
-		\ldots}
-
-	There might be an error for positions 2-4 where there is a missing space between \texttt{Position} and \texttt{\%d}.
 	\begin{itemize}
-		\item A directory is created with the format:\\
-			\texttt{TimeLapse\%d\_Pos\%d\_581}
+		\item A directory is created sometimes with the format:\\
+			\texttt{TimeLapse\regex{d}}
+
+		\item For each stack there is a settings text document.
+			\begin{itemize}
+				\item This document starts with a user settable string (\texttt{\regex{w+}\_}).
+				\item The file name ends with (\texttt{Settings.txt})
+			\end{itemize}
+			An example of two file names:
+
+			\footnotesize\texttt{642\_50mW\_488\_30mW\_Iter\_000\_Settings.txt}
+
+			\footnotesize\texttt{cell04\_Settings.txt}
+
+		\item Data of interest within this file:
+			\begin{itemize}
+				\item The start date time group (\texttt{Date : \regex{d+}/\regex{d+}/\regex{d+} \regex{d+}:\regex{d+}:\regex{d+} \regex{['AM','PM']}})
+				\item The z interval is in the second token (\texttt{S PZT Offset, Interval (um), \# of Pixels for Excitation (\regex{d}) :	\regex{d+}	\regex{d+}.\regex{d+}	\regex{d+}})
+				\item For each channel there will be an entry for the laser where the first token is the channel number and the second token is the excitation wavelength (\texttt{Excitation Filter, Laser, Power (\%), Exp(ms) (\regex{d}) :	N/A	\regex{d+}	\regex{d+}	\regex{d+}})
+			\end{itemize}
 
 		\item A 3D tif image is created for each channel and frame.
-			The file name contains the following in order:\\
+			The file name contains the following in order:
 			\begin{enumerate}
-				\item Each laser wavelength and power (\texttt{\%d\_\%dmW\_}).
-				\item The frame number starting from zero (\texttt{Iter\_\%03d\_}).
-				\item The channel number (\texttt{ch\%d\_}).
-				\item The camera number which seems to be 1 always (\texttt{CAM\%d\_}).
-				\item A stack number for montage starting at zero? (\texttt{stack\%4d\_}).
-				\item The wavelength of the image's channel (\texttt{\%dnm\_}).
-				\item An unknown field (\texttt{\%07dmsec\_}).
-				\item A time field that is non-zero at start (\texttt{\%09dmsec}).
+				\item User settable ( \texttt{\regex{w+}\_} ).
+				\item Optional iteration number (\texttt{Iter\_\regex{d+}\_}).
+				\item Camera number which is only present when there are multiple cameras (\texttt{Cam\regex{D}})
+				\item The channel number (\texttt{ch\regex{d}\_}).
+				\item The camera number \textit{unused}, always (\texttt{CAM1\_}).
+				\item This is the frame number (\texttt{stack\regex{d+}\_}).
+				\item The wavelength of the image's channel (\texttt{\regex{d+}nm\_}).
+				\item Delta time from start of stack acquisition (\texttt{\regex{d+}msec\_}).
+				\item A CPU relative time field (\texttt{\regex{d+}msec}).
 					NOTE: there is no underscore after this field.
-				\item The next field seems to be a position, but is always zeros (\texttt{Abs\_\%03dx\_\%03dy\_\%03dz\_}).
-				\item There is a second frame field at the end (\texttt{\%04dt}).
-				\item An optional suffix (\texttt{\_\%s}).
+				\item Position data when doing 3D tiling (\texttt{Abs\_\regex{d+}x\_\regex{d+}y\_\regex{d+}z\_}).
+				\item There is a second frame field at the end (\texttt{\regex{d+}t}).
 				\item Extension (\texttt{.tif}).
 			\end{enumerate}
-			The final filename has the format (example is for a three channel image):
-	\end{itemize}
-\hspace{-0.27\textwidth}{\texttt{\%d\_\%dmW\_\%d\_\%dmW\_\%d\_\%dmW\_Iter\_\%03d\_ch\%d\_CAM\%d\_stack\%4d\_\%dnm\_\%07dmsec\_\%09dmsecAbs\_\%03dx\_\%03dy\_\%03dz\_\%04dt.tif}}
+			An example of two different file names:
 
+			\scriptsize\texttt{642\_50mW\_488\_30mW\_Iter\_000\_CamA\_ch0\_CAM1\_stack0000\_642nm\_0000000msec\_0009004434msecAbs\_000x\_000y\_000z\_0000t.tif}
+
+			\scriptsize\texttt{cell04\_ch0\_CAM1\_stack0000\_488nm\_0000000msec\_0000266777msecAbs\_000x\_000y\_000z\_0000t.tif}
+
+	\end{itemize}
 \end{document}
