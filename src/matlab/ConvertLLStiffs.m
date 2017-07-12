@@ -2,83 +2,157 @@
 %% User Set
 % root = 'F:\LLS\Ehret\20170613_Ehret\TimeLapse1_Pos1_581\CPPdecon';
 % datasetName = 'TimeLapse1_Pos1_581_decon';
-% 
+%
 % outDir = root;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function ConvertLLStiffs(dirIn,datasetName,dirOut)
+    subfolders = {'Deskewed';'CPPdecon'};
 
     if (~exist('dirIn','var') || isempty(dirIn))
         root = uigetdir();
     else
         root = dirIn;
     end
-    
-    if (~exist('datasetName','var') || isempty(datasetName))
-        [~,datasetName] = fileparts(root);
-    end
 
     if (~exist('dirOut','var') || isempty(dirOut))
         dirOut = root;
+    else
+        dirs = regexpi(dirIn,'\\(\w+)','tokens');
+        dataDirPos = find(cellfun(@(x)(strcmp(x,'Data')),dirs));
+        dirOut = fullfile(dirOut,dirs{1,dataDirPos+1:end});
+        dirOut = dirOut{1};
     end
 
-    imList = dir(fullfile(root,'*.tif'));
-
-    % find the number of channels for memory pre-allocation
-    chansStr = regexp({imList.name},'ch(\d)_','tokens');
-    chans = cellfun(@(x)(str2double(x{1})),chansStr);
-    numChans = max(chans) +1;
-
-    % find the number of frames for memory pre-allocation
-    framesStr = regexp({imList.name},'z_(\d+)t','tokens');
-    frames = cellfun(@(x)(str2double(x{1})),framesStr);
-    numFrames = max(frames) +1;
-
-    % pre-allocate memory
-    im1 = squeeze(MicroscopeData.Original.ReadData(root,imList(1).name));
-    im = zeros([size(im1),numChans,numFrames],'like',im1);
-    clear im1
-
-    prgs = Utils.CmdlnProgress(length(imList),false,'Reading in orginals');
-    for i=1:length(imList)
-        curName = imList(i).name;
-
-        % get the frame number
-        tStr = regexp(curName,'_\d+t','match');
-        t = str2double(tStr{1}(2:5)) +1;
-
-        % get the time stamp
-        timeStampStr = regexp(curName,'\d+msecAbs','match');
-        timeStamp = str2double(timeStampStr{1}(1:10));
-
-        % get the channel number
-        chanWaveStr = regexp(curName,'\d+nm','match');
-        chanWave = str2double(chanWaveStr{1}(1:end-2));
-        chanWaves = regexp(curName,'(\d+)_(\d+)mW','tokens');
-        c = find(strcmpi(vertcat(chanWaves{:}),num2str(chanWave)));
-
-        curIm = MicroscopeData.Original.ReadData(root,imList(i).name);
-
-        curIm = squeeze(curIm);
-        im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
-
-        prgs.PrintProgress(i);
+    settingsList = dir(fullfile(root,'*_Settings.txt'));
+    if (length(settingsList)>1)
+        error('Multiple iterations is not implemented yet!');
     end
-    prgs.ClearProgress(true);
 
-    % make metadata for HDF5 file
-    deltaZ = 0.25;
     imD = MicroscopeData.GetEmptyMetadata();
-    sz = size(im);
-    imD.Dimensions = sz([2,1,3]);
-    imD.DatasetName = datasetName;
-    imD.NumberOfChannels = size(im,4);
-    imD.NumberOfFrames = size(im,5);
-    imD.ChannelNames = regexp(imList(1).name,'\d+_\d+mW','match')';
-    imD.PixelFormat = class(im);
-    imD.PixelPhysicalSize = [0.104,0.104,deltaZ*sin(31.8)];
-    imD = rmfield(imD,'ChannelColors');
 
-    % write out HDF5 file
-    MicroscopeData.WriterH5(im,'path',dirOut,'imageData',imD,'verbose',true);
+    metadataStr = fileread(fullfile(root,settingsList.name));
+    dateStr = regexp(metadataStr,'(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+) ([AP]M)','tokens');
+    month = str2double(dateStr{1,1}{1,1});
+    day = str2double(dateStr{1,1}{1,2});
+    year = str2double(dateStr{1,1}{1,3});
+    hour = str2double(dateStr{1,1}{1,4});
+    if (strcmpi(dateStr{1,1}{1,7},'PM'))
+        hour = hour +12;
+    end
+    minute = str2double(dateStr{1,1}{1,5});
+    second = str2double(dateStr{1,1}{1,6});
+
+    imD.StartCaptureDate = sprintf('%d-%d-%d %02d:%02d:%02d',year,month,day,hour,minute,second);
+
+    zOffsetStr = regexp(metadataStr,'S PZT.*Excitation \(0\) :\t\d+\t(\d+).(\d+)','tokens');
+    zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
+
+    laserWavelengthStr = regexp(metadataStr,'Excitation Filter, Laser, Power \(%\), Exp\(ms\) \((\d+)\) :\tN/A\t(\d+)','tokens');
+    laserWaveLengths = zeros(size(laserWavelengthStr,1),1);
+    for i=1:size(laserWavelengthStr,1)
+        laserWaveLengths(str2double(laserWavelengthStr{i,1}{1,1})+1) = str2double(laserWavelengthStr{i,1}{1,2});
+    end
+    imD.ChannelNames = arrayfun(@(x)(num2str(x)),laserWaveLengths,'uniformoutput',false);
+
+    if (size(laserWavelengthStr,1)==1)
+        imD.ChannelColors = [1,1,1];
+    else
+        colrs = jet(size(laserWavelengthStr,1));
+        colrs = colrs(end:-1:1,:);
+        imD.ChannelColors = colrs;
+    end
+    
+    for s = 1:length(subfolders)
+        if (~exist(fullfile(root,subfolders{s}),'dir'))
+            warning('Cannot find %s.\nSkipping\n',fullfile(root,subfolders{s}));
+            continue
+        end
+        imList = dir(fullfile(root,subfolders{s},'*.tif'));
+        
+        if (~exist('datasetName','var') || isempty(datasetName))
+            iterPos = strfind(imList(1).name,'_Iter_');
+            camPos = strfind(imList(1).name,'_Cam');
+            chanPos = strfind(imList(1).name,'_ch');
+            if (~isempty(iterPos))
+                imD.DatasetName = imList(i).name(1:iterPos-1);
+            elseif (~isempty(camPos))
+                imD.DatasetName = imList(i).name(1:camPos-1);
+            elseif (~isempty(chanPos))
+                imD.DatasetName = imList(i).name(1:chanPos-1);
+            end
+        else
+            [~,imD.DatasetName] = fileparts(root);
+        end
+        
+        imD.DatasetName = [imD.DatasetName, '_', subfolders{s}];
+
+        timeStampStr = regexp(imList(1).name,'(\d+)msecAbs','tokens');
+        startTimeStamp = str2double(timeStampStr{1});
+        imD.TimeStampDelta = 0;
+
+        % find the number of channels for memory pre-allocation
+        chansStr = regexp({imList.name},'_ch(\d)_','tokens');
+        chans = cellfun(@(x)(str2double(x{1})),chansStr);
+        numChans = max(chans) +1;
+
+        % find the number of frames for memory pre-allocation
+        framesStr = regexp({imList.name},'_stack(\d+)_','tokens');
+        frames = cellfun(@(x)(str2double(x{1})),framesStr);
+        numFrames = max(frames) +1;
+
+        % pre-allocate memory
+        im1 = loadtiff(fullfile(root,subfolders{s},imList(1).name));
+        im = zeros([size(im1),numChans,numFrames],'like',im1);
+        imD.TimeStampDelta = zeros(1,numChans,numFrames);
+        imD.Position = zeros(1,numChans,numFrames,3);
+
+        clear im1
+
+        prgs = Utils.CmdlnProgress(length(imList),true,sprintf('Reading in %s',subfolders{s}));
+        for i=1:length(imList)
+            curName = imList(i).name;
+
+            % get the frame number
+            tStr = regexp(curName,'_stack(\d+)_','tokens');
+            t = str2double(tStr{1}) +1;
+
+            % get the channel number
+            chanStr = regexp(curName,'_ch(\d)_','tokens');
+            c = str2double(chanStr{1}) +1;
+
+            curIm = loadtiff(fullfile(root,subfolders{s},imList(i).name));
+
+            curIm = squeeze(curIm);
+            im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
+
+            if (s==1)
+                % get the time stamp
+                timeStampStr = regexp(curName,'(\d+)msecAbs','tokens');
+                imD.TimeStampDelta(1,c,t) = str2double(timeStampStr{1}) - startTimeStamp;
+                
+                % get stage position from orginal file
+                underscorePos = strfind(imList(i).name,'_');
+                orgFileName = imList(i).name;
+                orgFileName = [orgFileName(1:underscorePos(end)-1),'.tif'];
+                info = imfinfo(fullfile(root,orgFileName));
+                posTemp = info(1).UnknownTags;
+                imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
+            end
+
+            prgs.PrintProgress(i);
+        end
+        prgs.ClearProgress(true);
+
+        % make metadata for HDF5 file
+        sz = size(im);
+        imD.Dimensions = sz([2,1,3]);
+        imD.NumberOfChannels = size(im,4);
+        imD.NumberOfFrames = size(im,5);
+        imD.PixelFormat = class(im);
+        imD.PixelPhysicalSize = [0.104,0.104,zOffset*sin(31.8)];
+
+        % write out HDF5 file
+        MicroscopeData.WriterH5(im,'path',dirOut,'imageData',imD,'verbose',true);
+    end
 end
