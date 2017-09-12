@@ -2,6 +2,7 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
 % ConvertLLStiffs(dirIn,datasetName,dirOut)
 % Convert tif files from the LLSM into the H5 format for Eric's utilities
 
+    llsmTic = tic;
     subfolders = {'Deskewed';'CPPdecon'};
 
     if (~exist('dirIn','var') || isempty(dirIn))
@@ -12,11 +13,6 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
 
     if (~exist('dirOut','var') || isempty(dirOut))
         dirOut = root;
-    else
-        dirs = regexpi(dirIn,'\\(\w+)','tokens');
-        dataDirPos = find(cellfun(@(x)(strcmp(x,'Data')),dirs));
-        dirOut = fullfile(dirOut,dirs{1,dataDirPos+1:end});
-        dirOut = dirOut{1};
     end
 
     settingsList = dir(fullfile(root,'*_Settings.txt'));
@@ -166,4 +162,6 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
         % write out KLB file
         MicroscopeData.WriterKLB(im,'path',dirOut,'imageData',imD,'verbose',true);
     end
+    
+    fprintf('Total conversion time was %s\n',Utils.PrintTime(toc(llsmTic)))
 end
