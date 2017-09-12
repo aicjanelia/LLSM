@@ -63,17 +63,20 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
             continue
         end
         imList = dir(fullfile(root,subfolders{s},'*.tif'));
+        if (isempty(imList))
+            imList = dir(fullfile(root,subfolders{s},'*.bz2'));
+        end
         
         if (~exist('datasetName','var') || isempty(datasetName))
             iterPos = strfind(imList(1).name,'_Iter_');
             camPos = strfind(imList(1).name,'_Cam');
             chanPos = strfind(imList(1).name,'_ch');
             if (~isempty(iterPos))
-                imD.DatasetName = imList(i).name(1:iterPos-1);
+                imD.DatasetName = imList(1).name(1:iterPos-1);
             elseif (~isempty(camPos))
-                imD.DatasetName = imList(i).name(1:camPos-1);
+                imD.DatasetName = imList(1).name(1:camPos-1);
             elseif (~isempty(chanPos))
-                imD.DatasetName = imList(i).name(1:chanPos-1);
+                imD.DatasetName = imList(1).name(1:chanPos-1);
             end
         else
             [~,imD.DatasetName] = fileparts(root);
@@ -96,7 +99,12 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
         numFrames = max(frames) +1;
 
         % pre-allocate memory
-        im1 = LLSM.loadtiff(fullfile(root,subfolders{s},imList(1).name));
+        [~,~,ext] = fileparts(imList(1).name);
+        if (strcmp(ext,'.tif'))
+            im1 = LLSM.loadtiff(fullfile(root,subfolders{s},imList(1).name));
+        else
+            im1 = LLSM.ReadCompressedIm(fullfile(root,subfolders{s},imList(1).name));
+        end
         im = zeros([size(im1),numChans,numFrames],'like',im1);
         imD.TimeStampDelta = zeros(1,numChans,numFrames);
         imD.Position = zeros(1,numChans,numFrames,3);
@@ -114,8 +122,12 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
             % get the channel number
             chanStr = regexp(curName,'_ch(\d)_','tokens');
             c = str2double(chanStr{1}) +1;
-
-            curIm = LLSM.loadtiff(fullfile(root,subfolders{s},imList(i).name));
+            
+            if (strcmp(ext,'.tif'))
+                curIm = LLSM.loadtiff(fullfile(root,subfolders{s},imList(i).name));
+            else
+                curIm = LLSM.ReadCompressedIm(fullfile(root,subfolders{s},imList(i).name));
+            end
 
             curIm = squeeze(curIm);
             im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
@@ -128,7 +140,14 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
             underscorePos = strfind(imList(i).name,'_');
             orgFileName = imList(i).name;
             orgFileName = [orgFileName(1:underscorePos(end)-1),'.tif'];
-            info = imfinfo(fullfile(root,orgFileName));
+            
+            if (strcmp(ext,'.tif'))
+                info = imfinfo(fullfile(root,orgFileName));
+            else
+                orgFileName = [orgFileName,'.bz2'];
+                info = LLSM.ReadCompressedImageInfo(fullfile(root,orgFileName));
+            end
+                
             posTemp = info(1).UnknownTags;
             imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
 
@@ -144,7 +163,7 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
         imD.PixelFormat = class(im);
         imD.PixelPhysicalSize = [0.104,0.104,zOffset*sin(31.8)];
 
-        % write out HDF5 file
-        MicroscopeData.WriterH5(im,'path',dirOut,'imageData',imD,'verbose',true);
+        % write out KLB file
+        MicroscopeData.WriterKLB(im,'path',dirOut,'imageData',imD,'verbose',true);
     end
 end
