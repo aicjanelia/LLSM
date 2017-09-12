@@ -1,12 +1,7 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% User Set
-% root = 'F:\LLS\Ehret\20170613_Ehret\TimeLapse1_Pos1_581\CPPdecon';
-% datasetName = 'TimeLapse1_Pos1_581_decon';
-%
-% outDir = root;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 function ConvertLLStiffs(dirIn,datasetName,dirOut)
+% ConvertLLStiffs(dirIn,datasetName,dirOut)
+% Convert tif files from the LLSM into the H5 format for Eric's utilities
+
     subfolders = {'Deskewed';'CPPdecon'};
 
     if (~exist('dirIn','var') || isempty(dirIn))
@@ -49,18 +44,17 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
     zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
 
     laserWavelengthStr = regexp(metadataStr,'Excitation Filter, Laser, Power \(%\), Exp\(ms\) \((\d+)\) :\tN/A\t(\d+)','tokens');
-    laserWaveLengths = zeros(size(laserWavelengthStr,1),1);
-    for i=1:size(laserWavelengthStr,1)
-        laserWaveLengths(str2double(laserWavelengthStr{i,1}{1,1})+1) = str2double(laserWavelengthStr{i,1}{1,2});
+    laserWaveLengths = zeros(length(laserWavelengthStr),1);
+    for i=1:length(laserWavelengthStr)
+        laserWaveLengths(str2double(laserWavelengthStr{1,i}{1,1})+1) = str2double(laserWavelengthStr{1,i}{1,2});
     end
     imD.ChannelNames = arrayfun(@(x)(num2str(x)),laserWaveLengths,'uniformoutput',false);
 
-    if (size(laserWavelengthStr,1)==1)
+    if (length(laserWavelengthStr)==1)
         imD.ChannelColors = [1,1,1];
     else
-        colrs = jet(size(laserWavelengthStr,1));
-        colrs = colrs(end:-1:1,:);
-        imD.ChannelColors = colrs;
+        colrs = jet(7);
+        imD.ChannelColors = colrs(round((laserWaveLengths-488)/300*7+1),:);
     end
     
     for s = 1:length(subfolders)
@@ -102,7 +96,7 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
         numFrames = max(frames) +1;
 
         % pre-allocate memory
-        im1 = loadtiff(fullfile(root,subfolders{s},imList(1).name));
+        im1 = LLSM.loadtiff(fullfile(root,subfolders{s},imList(1).name));
         im = zeros([size(im1),numChans,numFrames],'like',im1);
         imD.TimeStampDelta = zeros(1,numChans,numFrames);
         imD.Position = zeros(1,numChans,numFrames,3);
@@ -121,7 +115,7 @@ function ConvertLLStiffs(dirIn,datasetName,dirOut)
             chanStr = regexp(curName,'_ch(\d)_','tokens');
             c = str2double(chanStr{1}) +1;
 
-            curIm = loadtiff(fullfile(root,subfolders{s},imList(i).name));
+            curIm = LLSM.loadtiff(fullfile(root,subfolders{s},imList(i).name));
 
             curIm = squeeze(curIm);
             im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
