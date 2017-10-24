@@ -17,9 +17,9 @@ function ConvertDir(rootDir,outDir)
 end
 
 function recursiveConvertDir(rootDir,outDir,subDir,overwrite)
-    [isRoot,Name] = LLSM.IsRootLLSMDir(fullfile(rootDir,subDir));
+    isRoot = LLSM.IsRootLLSMDir(fullfile(rootDir,subDir));
     if (isRoot)
-        LLSM.ConvertLLStiffs(fullfile(rootDir,subDir),Name,fullfile(outDir,subDir));
+        LLSM.ConvertLLStiffs(fullfile(rootDir,subDir),fullfile(outDir,subDir));
         return
     end
     
