@@ -8,7 +8,16 @@ function [found,dataName] = IsRootLLSMDir(root)
         return
     end
     
-    dataName = regexpi(dList.name,'(.*)_Settings.txt','tokens');
+%     if (length(dList)>1)
+%         warning(['Too many settings files in ',root]);
+%         return
+%     end
+    
+    dataName = regexpi(dList(1).name,'(.*)_Settings.txt','tokens');
+    if (isempty(dataName{1,1}))
+        return
+    end
+    
     dataName = dataName{1,1}{1,1};
     dList = dir(fullfile(root,[dataName,'*.tif']));
     

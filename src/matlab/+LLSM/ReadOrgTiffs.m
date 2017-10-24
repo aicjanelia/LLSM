@@ -6,146 +6,98 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
     else
         root = dirIn;
     end
-
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % TODO: this is a hack until we have more than one camera
+    camNums = [1];
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    [datasetName,iterNumbers] = LLSM.ParseSettingsFileNames(root);
     settingsList = dir(fullfile(root,'*_Settings.txt'));
-    if (length(settingsList)>1)
-        error('Multiple iterations is not implemented yet!');
-    end
+    firstMetaSettings = LLSM.ParseSettingsFile(fullfile(root,settingsList(1).name));
+    tifList = dir(fullfile(root,subfolder,'*.tif'));
+    firstIm = LLSM.loadtiff(fullfile(root,subfolder,tifList(1).name));
+
+    im = zeros([size(firstIm),firstMetaSettings.numChan,max(iterNumbers+1)*max(firstMetaSettings.numStacks)],'uint16');
+    eachFileSize = size(im);
+    eachFileSize = eachFileSize(1:3);
+    clear firstIm
 
     imD = MicroscopeData.GetEmptyMetadata();
-
-    metadataStr = fileread(fullfile(root,settingsList.name));
-    dateStr = regexp(metadataStr,'(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+) ([AP]M)','tokens');
-    month = str2double(dateStr{1,1}{1,1});
-    day = str2double(dateStr{1,1}{1,2});
-    year = str2double(dateStr{1,1}{1,3});
-    hour = str2double(dateStr{1,1}{1,4});
-    if (strcmpi(dateStr{1,1}{1,7},'PM'))
-        hour = hour +12;
-    end
-    minute = str2double(dateStr{1,1}{1,5});
-    second = str2double(dateStr{1,1}{1,6});
-
-    imD.StartCaptureDate = sprintf('%d-%d-%d %02d:%02d:%02d',year,month,day,hour,minute,second);
-
-    zOffsetStr = regexp(metadataStr,'S PZT.*Excitation \(0\) :\t\d+\t(\d+).(\d+)','tokens');
-    zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
-
-    laserWavelengthStr = regexp(metadataStr,'Excitation Filter, Laser, Power \(%\), Exp\(ms\) \((\d+)\) :\tN/A\t(\d+)','tokens');
-    laserWaveLengths = zeros(length(laserWavelengthStr),1);
-    for i=1:length(laserWavelengthStr)
-        laserWaveLengths(str2double(laserWavelengthStr{1,i}{1,1})+1) = str2double(laserWavelengthStr{1,i}{1,2});
-    end
-    imD.ChannelNames = arrayfun(@(x)(num2str(x)),laserWaveLengths,'uniformoutput',false);
-
-    if (length(laserWavelengthStr)==1)
+    imD.DatasetName = [datasetName,'_',subfolder];
+    if (length(firstMetaSettings.laserWaveLengths)==1)
         imD.ChannelColors = [1,1,1];
     else
         colrs = jet(7);
-        imD.ChannelColors = colrs(round((laserWaveLengths-488)/300*7+1),:);
+        imD.ChannelColors = colrs(round((firstMetaSettings.laserWaveLengths-488)/300*7+1),:);
     end
-
-    imList = dir(fullfile(root,subfolder,'*.tif'));
-    if (isempty(imList))
-        imList = dir(fullfile(root,subfolder,'*.bz2'));
-    end
-
-    iterPos = strfind(imList(1).name,'_Iter_');
-    camPos = strfind(imList(1).name,'_Cam');
-    chanPos = strfind(imList(1).name,'_ch');
-    if (~isempty(iterPos))
-        imD.DatasetName = imList(1).name(1:iterPos-1);
-    elseif (~isempty(camPos))
-        imD.DatasetName = imList(1).name(1:camPos-1);
-    elseif (~isempty(chanPos))
-        imD.DatasetName = imList(1).name(1:chanPos-1);
-    end
-
-    imD.DatasetName = [imD.DatasetName, '_', subfolder];
-
-    timeStampStr = regexp(imList(1).name,'(\d+)msecAbs','tokens');
-    startTimeStamp = str2double(timeStampStr{1});
-    imD.TimeStampDelta = 0;
-
-    % find the number of channels for memory pre-allocation
-    chansStr = regexp({imList.name},'_ch(\d)_','tokens');
-    chans = cellfun(@(x)(str2double(x{1})),chansStr);
-    numChans = max(chans) +1;
-
-    % find the number of frames for memory pre-allocation
-    framesStr = regexp({imList.name},'_stack(\d+)_','tokens');
-    frames = cellfun(@(x)(str2double(x{1})),framesStr);
-    numFrames = max(frames) +1;
-
-    % pre-allocate memory
-    [~,~,ext] = fileparts(imList(1).name);
-    if (strcmp(ext,'.tif'))
-        im1 = LLSM.loadtiff(fullfile(root,subfolder,imList(1).name));
-    else
-        im1 = LLSM.ReadCompressedIm(fullfile(root,subfolder,imList(1).name));
-    end
-    im = zeros([size(im1),numChans,numFrames],'like',im1);
-    imD.TimeStampDelta = zeros(1,numChans,numFrames);
-    imD.Position = zeros(1,numChans,numFrames,3);
-
-    clear im1
-
-    [~,name] = fileparts(root);
-    prgs = Utils.CmdlnProgress(length(imList),true,sprintf('Reading in %s %s',name,subfolder));
-    for i=1:length(imList)
-        curName = imList(i).name;
-
-        % get the frame number
-        tStr = regexp(curName,'_stack(\d+)_','tokens');
-        t = str2double(tStr{1}) +1;
-
-        % get the channel number
-        chanStr = regexp(curName,'_ch(\d)_','tokens');
-        c = str2double(chanStr{1}) +1;
-
-        if (strcmp(ext,'.tif'))
-            curIm = LLSM.loadtiff(fullfile(root,subfolder,imList(i).name));
+    imD.ChannelNames = arrayfun(@(x)(num2str(x)),firstMetaSettings.laserWaveLengths,'uniformoutput',false);
+    imD.PixelPhysicalSize = [0.104, 0.104, firstMetaSettings.zOffset * sin(31.8)];
+    
+    prgs = Utils.CmdlnProgress(size(im,4)*size(im,5),true,sprintf('Reading %s',imD.DatasetName));
+    p = 0;
+    for itr = 1:length(iterNumbers)
+        % Get the settings file info for this image
+        if (length(iterNumbers)==1)
+            fileName = [datasetName,'.txt'];
+            searchStr = '*';
         else
-            curIm = LLSM.ReadCompressedIm(fullfile(root,subfolder,imList(i).name));
+            fileName = sprintf('%s_Iter_%04d_Settings.txt',datasetName,iterNumbers(itr));
+            searchStr = sprintf('*_Iter_%04d_*',iterNumbers(itr));
         end
-
-        curIm = squeeze(curIm);
-        im(1:size(curIm,1),1:size(curIm,2),1:size(curIm,3),c,t) = curIm;
-
-        % get the time stamp
-        timeStampStr = regexp(curName,'(\d+)msec','tokens');
-        imD.TimeStampDelta(1,c,t) = str2double(timeStampStr{1}) - startTimeStamp;
-
-        % get stage position from orginal file
-        orgFileName = imList(i).name;
-        underscorePos = strfind(orgFileName,'t_');
-        if (~isempty(underscorePos))
-            orgFileName = [orgFileName(1:underscorePos(end)),'.tif'];
+        metaSettings = LLSM.ParseSettingsFile(fullfile(root,fileName));
+        
+        % fill in metadata
+        if itr==1
+            imD.StartCaptureDate = metaSettings.startCaptureDate;
         end
-
-        if (strcmp(ext,'.tif'))
-            info = imfinfo(fullfile(root,orgFileName));
-        else
-            orgFileName = [orgFileName,'.bz2'];
-            info = LLSM.ReadCompressedImageInfo(fullfile(root,orgFileName));
+        
+        imList = dir(fullfile(root,subfolder,[searchStr,'.tif']));
+        if (isempty(imList))
+            imList = dir(fullfile(root,subfolder,[searchStr,'.bz2']));
         end
-
-        if (isfield(info,'UnknownTags'))
-            posTemp = info(1).UnknownTags;
-            imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
-        else
-            imD.Position = [0,0,0];
+        
+        for i = 1:length(imList)
+            fName = imList(i).name;
+            [~,~,ext] = fileparts(fName);
+            metaFile = LLSM.GetMetadataFromFileName(fName);
+            
+            chan = metaFile.Channel+1;
+            frame = (metaFile.Stack+1)+(itr-1)*metaSettings.numStacks(chan);
+            
+            orgFileTokens = regexpi(fName,'(.*)_(\d+)t.*\.(.*)','tokens');
+            orgFileName = [orgFileTokens{1,1}{1,1},'_',orgFileTokens{1,1}{1,2},'t.',orgFileTokens{1,1}{1,3}];
+            if (strcmp(ext,'.tif'))
+                tempIm = LLSM.loadtiff(fullfile(root,subfolder,fName));
+                if (any(size(tempIm)~=eachFileSize))
+                    warning(sprintf('Wrong image size chan:%d frame:%d',chan,frame));
+                    continue
+                end
+                im(:,:,:,chan,frame) = tempIm;
+                info = imfinfo(fullfile(root,orgFileName));
+            else
+                im(:,:,:,chan,frame) = LLSM.ReadCompressedIm(fullfile(root,subfolder,fName));
+                info = LLSM.ReadCompressedImageInfo(fullfile(root,orgFileName));                
+            end
+            
+            try
+                posTemp = info(1).UnknownTags;
+                imD.Position(chan,frame,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
+            catch err
+                imD.Position(chan,frame,:) = [0,0,0];
+            end
+            
+            imD.TimeStampDelta(chan,frame) = metaFile.DeltaMSec;
+            
+            p = p +1;
+            prgs.PrintProgress(p);
         end
-
-        prgs.PrintProgress(i);
     end
     prgs.ClearProgress(true);
 
-    % make metadata for HDF5 file
     sz = size(im);
     imD.Dimensions = sz([2,1,3]);
     imD.NumberOfChannels = size(im,4);
     imD.NumberOfFrames = size(im,5);
     imD.PixelFormat = class(im);
-    imD.PixelPhysicalSize = [0.104,0.104,zOffset*sin(31.8)];
 end
