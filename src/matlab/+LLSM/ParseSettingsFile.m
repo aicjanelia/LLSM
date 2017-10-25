@@ -21,11 +21,16 @@ function metadata = ParseSettingsFile(fullPathToFile)
     
     metadata.startCaptureDate = sprintf('%d-%d-%d %02d:%02d:%02d',year,month,day,hour,minute,second);
     
-    zOffsetStr = regexp(metadataStr,'S PZT.*Excitation \(0\) :\t\d+\t(\d+).(\d+)','tokens');
+    zOffsetStr = regexp(metadataStr,'S PZT.*Excitation \(0\) :\t\d+\t(\d+)\.(\d+)','tokens');
     if (isempty(zOffsetStr))
-        zOffsetStr = regexp(metadataStr,'S Piezo.*Excitation \(0\) :\t\d+\t(\d+).(\d+)','tokens');
+        zOffsetStr = regexp(metadataStr,'S Piezo.*Excitation \(0\) :\t\d+\t(\d+)\.(\d+)','tokens');
     end
-    metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
+    if (~isempty(zOffsetStr))
+        metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]) * sin(31.8);
+    else
+        zOffsetStr = regexp(metadataStr,'Z PZT.*Excitation \(0\) :\t\d+\t(\d+)\.(\d+)','tokens');
+        metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
+    end
     
     laserWavelengthStr = regexp(metadataStr,'Excitation Filter, Laser, Power \(%\), Exp\(ms\) \((\d+)\) :\tN/A\t(\d+)','tokens');
     laserWaveLengths = zeros(length(laserWavelengthStr),1);

@@ -32,7 +32,7 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
         imD.ChannelColors = colrs(round((firstMetaSettings.laserWaveLengths-488)/300*7+1),:);
     end
     imD.ChannelNames = arrayfun(@(x)(num2str(x)),firstMetaSettings.laserWaveLengths,'uniformoutput',false);
-    imD.PixelPhysicalSize = [0.104, 0.104, firstMetaSettings.zOffset * sin(31.8)];
+    imD.PixelPhysicalSize = [0.104, 0.104, firstMetaSettings.zOffset];
     
     prgs = Utils.CmdlnProgress(size(im,4)*size(im,5),true,sprintf('Reading %s',imD.DatasetName));
     p = 0;
