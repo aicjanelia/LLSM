@@ -14,4 +14,6 @@ function [datasetName,iterNumbers] = ParseSettingsFileNames(root)
         end
         datasetName = datasetName{1};
     end
+    
+    datasetName = strrep(datasetName,'_Settings','');
 end

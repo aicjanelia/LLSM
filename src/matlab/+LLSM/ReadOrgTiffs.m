@@ -1,4 +1,4 @@
-function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
+function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
 % ConvertLLStiffs(dirIn,datasetName,dirOut)
 % Convert tif files from the LLSM into the H5 format for Eric's utilities
     if (~exist('dirIn','var') || isempty(dirIn))
@@ -6,6 +6,16 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
     else
         root = dirIn;
     end
+    
+    if (~exist('dirOut','var'))
+        dirOut = [];
+    else
+        dirOut = fullfile(dirOut,[subfolder,'KLB']);
+    end
+    
+    if (~isempty(dirOut) && ~exist(dirOut,'dir'))
+        mkdir(dirOut);
+    end        
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % TODO: this is a hack until we have more than one camera
@@ -18,9 +28,10 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
     tifList = dir(fullfile(root,subfolder,'*.tif'));
     firstIm = LLSM.loadtiff(fullfile(root,subfolder,tifList(1).name));
 
-    im = zeros([size(firstIm),firstMetaSettings.numChan,max(iterNumbers+1)*max(firstMetaSettings.numStacks)],'uint16');
-    eachFileSize = size(im);
-    eachFileSize = eachFileSize(1:3);
+    fullImageSize = [size(firstIm),firstMetaSettings.numChan,max(iterNumbers+1)*max(firstMetaSettings.numStacks)];
+    if (nargout>0)
+        im = zeros(fullImageSize,'uint16');
+    end
     clear firstIm
 
     imD = MicroscopeData.GetEmptyMetadata();
@@ -34,12 +45,17 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
     imD.ChannelNames = arrayfun(@(x)(num2str(x)),firstMetaSettings.laserWaveLengths,'uniformoutput',false);
     imD.PixelPhysicalSize = [0.104, 0.104, firstMetaSettings.zOffset];
     
-    prgs = Utils.CmdlnProgress(size(im,4)*size(im,5),true,sprintf('Reading %s',imD.DatasetName));
+    prgs = Utils.CmdlnProgress(prod(fullImageSize(4:5)),true,sprintf('Reading %s',imD.DatasetName));
     p = 0;
+    %%%%%%%%%%%%%
+    % the metadata is the maximum possible frames not actual
+    %%%%%%%%%%%%%
+    maxT = 0;
+    maxC = 0;
     for itr = 1:length(iterNumbers)
         % Get the settings file info for this image
         if (length(iterNumbers)==1)
-            fileName = [datasetName,'.txt'];
+            fileName = [datasetName,'_Settings.txt'];
             searchStr = '*';
         else
             fileName = sprintf('%s_Iter_%04d_Settings.txt',datasetName,iterNumbers(itr));
@@ -63,21 +79,42 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
             metaFile = LLSM.GetMetadataFromFileName(fName);
             
             chan = metaFile.Channel+1;
+            if (maxC<chan)
+                maxC = chan;
+            end
+            
             frame = (metaFile.Stack+1)+(itr-1)*metaSettings.numStacks(chan);
+            if (maxT<frame)
+                maxT = frame;
+            end
             
             orgFileTokens = regexpi(fName,'(.*)_(\d+)t.*\.(.*)','tokens');
             orgFileName = [orgFileTokens{1,1}{1,1},'_',orgFileTokens{1,1}{1,2},'t.',orgFileTokens{1,1}{1,3}];
             if (strcmp(ext,'.tif'))
                 tempIm = LLSM.loadtiff(fullfile(root,subfolder,fName));
-                if (any(size(tempIm)~=eachFileSize))
+                if (any(size(tempIm)~=fullImageSize(1:3)))
                     warning(sprintf('Wrong image size chan:%d frame:%d',chan,frame));
                     continue
                 end
-                im(:,:,:,chan,frame) = tempIm;
+                if (nargout>0)
+                    im(:,:,:,chan,frame) = tempIm;
+                end
                 info = imfinfo(fullfile(root,orgFileName));
             else
-                im(:,:,:,chan,frame) = LLSM.ReadCompressedIm(fullfile(root,subfolder,fName));
+                tempIm = LLSM.ReadCompressedIm(fullfile(root,subfolder,fName));
+                if (nargout>0)
+                    im(:,:,:,chan,frame) = tempIm;
+                end
                 info = LLSM.ReadCompressedImageInfo(fullfile(root,orgFileName));                
+            end
+            
+            if (~isempty(dirOut))
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % Hack!
+                % This needs to be changed so that each frame can be
+                % written out to a single klb file (not each channel too!)
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                MicroscopeData.KLB_(tempIm,imD.DatasetName,dirOut,imD.PixelPhysicalSize,chan,[frame,frame],true,true,false);
             end
             
             try
@@ -95,9 +132,38 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder)
     end
     prgs.ClearProgress(true);
 
-    sz = size(im);
-    imD.Dimensions = sz([2,1,3]);
-    imD.NumberOfChannels = size(im,4);
-    imD.NumberOfFrames = size(im,5);
-    imD.PixelFormat = class(im);
+    imD.Dimensions = fullImageSize([2,1,3]);
+    %%%%%%%%%%%%%
+    % the metadata is the maximum possible frames not actual
+    %%%%%%%%%%%%%
+    imD.NumberOfChannels = maxC;
+    imD.NumberOfFrames = maxT;
+    if (nargout>0)
+        im = im(:,:,:,1:maxC,1:maxT);
+    end
+    
+    imD.PixelFormat = class(tempIm);
+    
+    if (~isempty(dirOut))
+        MicroscopeData.CreateMetadata(dirOut,imD);
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Hack!
+        % This needs to be changed so that each frame can be
+        % written out to a single klb file (not each channel too!)
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        chans = [1:imD.NumberOfChannels];
+        prgs = Utils.CmdlnProgress(imD.NumberOfFrames,true,'Combining channels');
+        for t=1:imD.NumberOfFrames
+            tempIm = MicroscopeData.Reader(dirOut,'timeRange',[t,t]);
+            MicroscopeData.KLB_(tempIm,imD.DatasetName,dirOut,imD.PixelPhysicalSize,chans,[t,t],true,false,false);
+            
+            prgs.PrintProgress(t);
+        end
+        prgs.ClearProgress(true);
+        
+        dList = dir(fullfile(dirOut,[imD.DatasetName,'_c*_t*.klb']));
+        for i=1:length(dList)
+            delete(fullfile(dirOut,dList(i).name));
+        end
+    end
 end
