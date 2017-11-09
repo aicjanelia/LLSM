@@ -154,9 +154,12 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
         chans = [1:imD.NumberOfChannels];
         prgs = Utils.CmdlnProgress(imD.NumberOfFrames,true,'Combining channels');
         for t=1:imD.NumberOfFrames
-            tempIm = MicroscopeData.Reader(dirOut,'timeRange',[t,t]);
-            MicroscopeData.KLB_(tempIm,imD.DatasetName,dirOut,imD.PixelPhysicalSize,chans,[t,t],true,false,false);
-            
+            try
+                tempIm = MicroscopeData.Reader(dirOut,'timeRange',[t,t]);
+                MicroscopeData.KLB_(tempIm,imD.DatasetName,dirOut,imD.PixelPhysicalSize,chans,[t,t],true,false,false);
+            catch err
+                warning(err.message);
+            end
             prgs.PrintProgress(t);
         end
         prgs.ClearProgress(true);
