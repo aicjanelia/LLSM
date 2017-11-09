@@ -1,6 +1,10 @@
-function ConvertLLStiffs(dirIn,dirOut,subfolders)
+function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite)
 % ConvertLLStiffs(dirIn,dirOut,subfolders)
 % Convert tif files from the LLSM into the H5 format for Eric's utilities
+
+    if (~exist('overwrite','var') || isempty(overwrite))
+        overwrite = false;
+    end
 
     llsmTic = tic;
 
@@ -23,16 +27,12 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders)
             warning('Cannot find %s.\nSkipping\n',fullfile(root,subfolders{s}));
             continue
         end
-%         hasJson = dir(fullfile(dirIn,['*',subfolders{s},'.json']));
-%         if (~isempty(hasJson))
-%             continue
-%         end
-        
-        %[im,imD] = LLSM.ReadOrgTiffs(dirIn,subfolders{s});
-        LLSM.ReadOrgTiffs(dirIn,subfolders{s},dirOut);
-       
-        % write out KLB file
-        %MicroscopeData.WriterKLB(im,'path',dirOut,'imageData',imD,'verbose',true);
+        datasetName = LLSM.ParseSettingsFileNames(dirIn);
+        if (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,'_',subfolders{s},'.json']),'file') || overwrite)
+            LLSM.ReadOrgTiffs(dirIn,subfolders{s},dirOut);
+        else
+            disp(['Skipping ',datasetName,'_',subfolders{s}]);
+        end
     end
     
     fprintf('Total conversion time was %s\n',Utils.PrintTime(toc(llsmTic)))
