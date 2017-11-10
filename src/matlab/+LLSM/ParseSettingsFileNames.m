@@ -5,6 +5,12 @@ function [datasetName,iterNumbers] = ParseSettingsFileNames(root)
         iterNumbers = 0;
     else
         vals = regexpi({settingsList.name},'(.*)_Iter_(\d+)_(.*).txt','tokens');
+        if (isempty(vals{3}))
+            warning(sprintf('%s does not have LLSM name scheme',root));
+            datasetName = '';
+            iterNumbers = [];
+            return
+        end
         datasetNames = cellfun(@(x)(x{1,1}{1,1}),vals,'uniformoutput',false);
         iterNumbers = cellfun(@(x)(str2double(x{1,1}{1,2})),vals);
         

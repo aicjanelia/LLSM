@@ -27,8 +27,11 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite)
             warning('Cannot find %s.\nSkipping\n',fullfile(root,subfolders{s}));
             continue
         end
+        
         datasetName = LLSM.ParseSettingsFileNames(dirIn);
-        if (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,'_',subfolders{s},'.json']),'file') || overwrite)
+        
+        if (~isempty(datasetName) && ...
+                (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,'_',subfolders{s},'.json']),'file') || overwrite))
             LLSM.ReadOrgTiffs(dirIn,subfolders{s},dirOut);
         else
             disp(['Skipping ',datasetName,'_',subfolders{s}]);
