@@ -1,6 +1,11 @@
-function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
+function [errorCode,errorStrings,im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
 % ConvertLLStiffs(dirIn,datasetName,dirOut)
-% Convert tif files from the LLSM into the H5 format for Eric's utilities
+% Convert tif files from the LLSM into the KLB format
+% ErrorCode is a binary array with flags:
+%   errorCode(1) = 'Found an image with wrong size'
+%   errorCode(2) = 'Missing position data'
+%   errorCode(3) = 'Unable to write KLB file'
+
     if (~exist('dirIn','var') || isempty(dirIn))
         root = uigetdir();
     else
@@ -17,6 +22,9 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
         mkdir(dirOut);
     end        
     
+    errorCode = false(1,3);
+    errorStrings = {};
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % TODO: this is a hack until we have more than one camera
     camNums = [1];
@@ -29,13 +37,18 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
     firstIm = LLSM.loadtiff(fullfile(root,subfolder,tifList(1).name));
 
     fullImageSize = [size(firstIm),firstMetaSettings.numChan,max(iterNumbers+1)*max(firstMetaSettings.numStacks)];
-    if (nargout>0)
+    if (nargout>2)
         im = zeros(fullImageSize,'uint16');
     end
     clear firstIm
 
     imD = MicroscopeData.GetEmptyMetadata();
-    imD.DatasetName = [datasetName,'_',subfolder];
+    if (isempty(subfolder))
+        imD.DatasetName = datasetName;
+    else
+        imD.DatasetName = [datasetName,'_',subfolder];
+    end
+    
     if (length(firstMetaSettings.laserWaveLengths)==1)
         imD.ChannelColors = [1,1,1];
     else
@@ -93,16 +106,19 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
             if (strcmp(ext,'.tif'))
                 tempIm = LLSM.loadtiff(fullfile(root,subfolder,fName));
                 if (any(size(tempIm)~=fullImageSize(1:3)))
-                    warning(sprintf('Wrong image size chan:%d frame:%d',chan,frame));
+                    msg = sprintf('Wrong image size chan:%d frame:%d',chan,frame);
+                    %warning(msg);
+                    errorCode(1) = true;
+                    errorStrings{end+1} = msg;
                     continue
                 end
-                if (nargout>0)
+                if (nargout>2)
                     im(:,:,:,chan,frame) = tempIm;
                 end
                 info = imfinfo(fullfile(root,orgFileName));
             else
                 tempIm = LLSM.ReadCompressedIm(fullfile(root,subfolder,fName));
-                if (nargout>0)
+                if (nargout>2)
                     im(:,:,:,chan,frame) = tempIm;
                 end
                 info = LLSM.ReadCompressedImageInfo(fullfile(root,orgFileName));                
@@ -122,6 +138,9 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
                 imD.Position(chan,frame,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
             catch err
                 imD.Position(chan,frame,:) = [0,0,0];
+                errorCode(2) = true;
+                msg = sprintf('Could not get position for chan:%d frame:%d',chan,frame);
+                errorStrings{end+1} = msg;
             end
             
             imD.TimeStampDelta(chan,frame) = metaFile.DeltaMSec;
@@ -138,7 +157,7 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
     %%%%%%%%%%%%%
     imD.NumberOfChannels = maxC;
     imD.NumberOfFrames = maxT;
-    if (nargout>0)
+    if (nargout>2)
         im = im(:,:,:,1:maxC,1:maxT);
     end
     
@@ -158,7 +177,15 @@ function [im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
                 tempIm = MicroscopeData.Reader(dirOut,'timeRange',[t,t]);
                 MicroscopeData.KLB_(tempIm,imD.DatasetName,dirOut,imD.PixelPhysicalSize,chans,[t,t],true,false,false);
             catch err
-                warning(err.message);
+%                 warning(err.message);
+                if (frame==imD.NumberOfFrames)
+                    imD.NumberOfFrames = imD.NumberOfFrames-1;
+                    MicroscopeData.CreateMetadata(dirOut,imD);
+                    continue
+                end
+                msg = sprintf('%s for chan:%d frame:%d',err.message,chan,frame);
+                errorStrings{end+1} = msg;
+                errorCode(3) = true;
             end
             prgs.PrintProgress(t);
         end

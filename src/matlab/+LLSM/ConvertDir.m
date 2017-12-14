@@ -1,4 +1,4 @@
-function ConvertDir(rootDir,outDir)
+function ConvertDir(rootDir,outDir,overwrite,deleteOrg)
     if (~exist('rootDir','var') || isempty(rootDir))
         rootDir = uigetdir('.','Choose source folder');
         if (rootDir==0), return, end
@@ -13,13 +13,13 @@ function ConvertDir(rootDir,outDir)
         overwrite = 0;
     end
 
-    recursiveConvertDir(rootDir,outDir,'',overwrite);
+    recursiveConvertDir(rootDir,outDir,'',overwrite,deleteOrg);
 end
 
-function recursiveConvertDir(rootDir,outDir,subDir,overwrite)
+function recursiveConvertDir(rootDir,outDir,subDir,overwrite,deleteOrg)
     isRoot = LLSM.IsRootLLSMDir(fullfile(rootDir,subDir));
     if (isRoot)
-        LLSM.ConvertLLStiffs(fullfile(rootDir,subDir),fullfile(outDir,subDir));
+        LLSM.ConvertLLStiffs(fullfile(rootDir,subDir),fullfile(outDir,subDir),[],overwrite,deleteOrg);
         return
     end
     
@@ -29,6 +29,6 @@ function recursiveConvertDir(rootDir,outDir,subDir,overwrite)
     dList = dList(~rm);
     
     for i=1:length(dList)
-        recursiveConvertDir(fullfile(rootDir,subDir),fullfile(outDir,subDir),dList(i).name);
+        recursiveConvertDir(fullfile(rootDir,subDir),fullfile(outDir,subDir),dList(i).name,overwrite,deleteOrg);
     end    
 end
