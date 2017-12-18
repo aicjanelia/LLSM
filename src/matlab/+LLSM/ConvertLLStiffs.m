@@ -21,6 +21,10 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite,deleteOrg)
     if (~exist('subfolders','var') || isempty(subfolders))
         subfolders = {'CPPdecon';'Deskewed';''};
     end
+    
+    if (~exist('deleteOrg','var') || isempty(deleteOrg))
+        deleteOrg = false;
+    end
 
     for s = 1:length(subfolders)
         if (~exist(fullfile(root,subfolders{s}),'dir'))
@@ -33,7 +37,7 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite,deleteOrg)
         if (~isempty(datasetName) && ...
                 (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,'_',subfolders{s},'.json']),'file') || overwrite))
             [errorCodes,errorMsg] = LLSM.ReadOrgTiffs(dirIn,subfolders{s},dirOut);
-            if (~errorCodes(3) && deleteOrg)
+            if ((isempty(errorCodes) || ~errorCodes(3)) && deleteOrg)
                 dList = dir(fullfile(dirIn,subfolders{s},'*.tif'));
                 for i=1:length(dList)
                     delete(fullfile(dirIn,subfolders{s},dList(i).name));
