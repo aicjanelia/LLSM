@@ -22,6 +22,10 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite,deleteOrg)
         subfolders = {'CPPdecon';'Deskewed';''};
     end
     
+    if (ischar(subfolders))
+        subfolders = {subfolders};
+    end
+    
     if (~exist('deleteOrg','var') || isempty(deleteOrg))
         deleteOrg = false;
     end
