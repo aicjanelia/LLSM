@@ -115,7 +115,13 @@ function [errorCode,errorStrings,im,imD] = ReadOrgTiffs(dirIn,subfolder,dirOut)
                 if (nargout>2)
                     im(:,:,:,chan,frame) = tempIm;
                 end
-                info = imfinfo(fullfile(root,orgFileName));
+                try
+                    info = imfinfo(fullfile(root,orgFileName));
+                catch err
+                    msg = sprintf('Cannot get info from original file chan:%d frame:%d err:%s',chan,frame,err.message);
+                    errorStrings{end+1} = msg;
+                    info = [];
+                end
             else
                 tempIm = LLSM.ReadCompressedIm(fullfile(root,subfolder,fName));
                 if (nargout>2)
