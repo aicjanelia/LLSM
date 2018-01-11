@@ -38,8 +38,13 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite,deleteOrg)
         
         datasetName = LLSM.ParseSettingsFileNames(dirIn);
         
+        tempSubfolderName = subfolders{s};
+        if (~isempty(tempSubfolderName))
+            tempSubfolderName = ['_',tempSubfolderName];
+        end
+        
         if (~isempty(datasetName) && ...
-                (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,'_',subfolders{s},'.json']),'file') || overwrite))
+                (~exist(fullfile(dirOut,[subfolders{s},'KLB'],[datasetName,tempSubfolderName,'.json']),'file') || overwrite))
             [errorCodes,errorMsg] = LLSM.ReadOrgTiffs(dirIn,subfolders{s},dirOut);
             if ((isempty(errorCodes) || ~errorCodes(3)) && deleteOrg)
                 dList = dir(fullfile(dirIn,subfolders{s},'*.tif'));
@@ -53,11 +58,15 @@ function ConvertLLStiffs(dirIn,dirOut,subfolders,overwrite,deleteOrg)
             end
             dList = dir(fullfile(dirIn,subfolders{s},'*.csv'));
             for i=1:length(dList)
-                copyfile(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name));
+                if (~strcmpi(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name)))
+                    copyfile(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name));
+                end
             end
             dList = dir(fullfile(dirIn,subfolders{s},'*.txt'));
             for i=1:length(dList)
-                copyfile(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name));
+                if (~strcmpi(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name)))
+                    copyfile(fullfile(dirIn,subfolders{s},dList(i).name),fullfile(dirOut,dList(i).name));
+                end
             end
         else
             disp(['Skipping ',datasetName,'_',subfolders{s}]);
