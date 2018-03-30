@@ -1,4 +1,11 @@
 function RenameKLBdirs(root)
+    if (~exist('root','var') || isempty(root))
+        root = uigetdir();
+        if (isempty(root))
+            return
+        end
+    end
+    
     dList = dir(root);
     settingsFile = cellfun(@(x)(~isempty(x)),regexpi({dList.name},'Settings.txt'));
     if (any(settingsFile))
