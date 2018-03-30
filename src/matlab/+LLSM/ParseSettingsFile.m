@@ -26,7 +26,7 @@ function metadata = ParseSettingsFile(fullPathToFile)
         zOffsetStr = regexp(metadataStr,'S Piezo.*Excitation \(0\) :\t\d+\t(\d+)\.(\d+)','tokens');
     end
     if (~isempty(zOffsetStr))
-        metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]) * sin(31.8);
+        metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]) * sind(31.8);
     else
         zOffsetStr = regexp(metadataStr,'Z PZT.*Excitation \(0\) :\t\d+\t(\d+)\.(\d+)','tokens');
         metadata.zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
