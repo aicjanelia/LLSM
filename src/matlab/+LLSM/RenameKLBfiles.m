@@ -10,7 +10,7 @@ function RenameKLBfiles(root)
         imD.ChannelColors = [1,1,1];
     else
         colrs = jet(7);
-        imD.ChannelColors = colrs(round((metadata.laserWaveLengths-488)/300*7+1),:);
+        imD.ChannelColors = colrs(round((metadata.laserWaveLengths-400)/300*7+1),:);
     end
     imD.ChannelNames = arrayfun(@(x)(num2str(x)),metadata.laserWaveLengths,'uniformoutput',false);
     imD.PixelPhysicalSize = [0.104, 0.104, metadata.zOffset];
