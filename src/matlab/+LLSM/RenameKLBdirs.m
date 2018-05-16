@@ -8,7 +8,8 @@ function RenameKLBdirs(root)
     
     dList = dir(root);
     settingsFile = cellfun(@(x)(~isempty(x)),regexpi({dList.name},'Settings.txt'));
-    if (any(settingsFile))
+    klbDirs = cellfun(@(x)(~isempty(x)),regexpi({dList.name},'.*KLB.*'));
+    if (any(settingsFile) && any(klbDirs))
         LLSM.RenameKLBfiles(root);
     else
         dList = dList([dList.isdir]==true);

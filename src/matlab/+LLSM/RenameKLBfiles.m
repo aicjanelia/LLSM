@@ -75,7 +75,7 @@ function RenameKLBfiles(root)
         tempD.DatasetName = [tempD.DatasetName,suffix];
         firstFile = dir(fullfile(root,subDir,'*.klb'));
         tempIm = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,firstFile(1).name));
-        tempD.Dimensions = tempIm.xyzct(1:3);
+        tempD.Dimensions = tempIm.xyzct([2,1,3]);
 
         prgs = Utils.CmdlnProgress(imD.NumberOfFrames,true,'Renaming');
         for t=1:imD.NumberOfFrames
