@@ -21,46 +21,10 @@ function RenameKLBfiles(root)
     klbDirMask = cellfun(@(x)(~isempty(x)),regexpi(dirNames,'KLB'));
     dirNames = dirNames(klbDirMask);
 
-    tifNames = {dirList.name};
-    tifMask = cellfun(@(x)(~isempty(x)),regexpi(tifNames,'\.tif'));
-    tifNames = {dirList(tifMask).name}';
-    tifNames = regexpi(tifNames,'(.*).tif','tokens');
-    tifNames = cellfun(@(x)(x{:}),tifNames);
-
-%     datasetNameSuffix = '_ch';
-    chanPrefix = 'ch';
-%     camsPrefix = 'CAM';
-    stacksPrefix = 'stack';
-%     wavelengthSuffix = 'nm';
-%     secsSuffix = 'msec';
-
-%     datasetName = regexpi(tifNames,['^(\w+)',datasetNameSuffix],'tokens');
-%     datasetName = vertcat(datasetName{:});
-
-    chans = regexpi(tifNames,[chanPrefix,'(\d)'],'tokens');
-    chans = cellfun(@(x)(str2double(x{:})),chans)';
-
-%     cams = regexpi(tifNames,[camsPrefix,'(\d)'],'tokens');
-%     cams = cellfun(@(x)(str2double(x{:})),cams)';
-
-    stacks = regexpi(tifNames,[stacksPrefix,'(\d+)'],'tokens');
-    stacks = cellfun(@(x)(str2double(x{:})),stacks)';
-
-%     wavelengths = regexpi(tifNames,['(\d+)',wavelengthSuffix],'tokens');
-%     wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
-
-%     secs = regexpi(tifNames,['(\d+)',secsSuffix,'_'],'tokens');
-%     secs = cellfun(@(x)(str2double(x{:})),secs)';
-
-%     fileSuffixs = regexpi(tifNames,'msec_(.*)','tokens');
-%     fileSuffixs = cellfun(@(x)(x{:}),fileSuffixs);
-
-    imD.NumberOfChannels = length(unique(chans));
-    imD.NumberOfFrames = length(unique(stacks));
-
-    im = LLSM.loadtiff(fullfile(root,[tifNames{1},'.tif']));
-    w = whos('im');
-    imD.PixelFormat = w.class;
+    imD.NumberOfChannels = metadata.numChan;
+    imD.NumberOfFrames = metadata.numStacks(1);
+    imD.StartCaptureDate = metadata.startCaptureDate;
+    imD = rmfield(imD,'PixelFormat');
 
     for i = 1:length(dirNames)
         subDir = dirNames{i};
@@ -73,16 +37,23 @@ function RenameKLBfiles(root)
         end
         tempD = imD;
         tempD.DatasetName = [tempD.DatasetName,suffix];
-        firstFile = dir(fullfile(root,subDir,'*.klb'));
-        tempIm = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,firstFile(1).name));
+        curFiles = dir(fullfile(root,subDir,'*.klb'));
+        tempIm = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,curFiles(1).name));
         tempD.Dimensions = tempIm.xyzct([2,1,3]);
+        
+        curFileNames = {curFiles.name};
+        curMask = cellfun(@(x)(~isempty(x)),regexpi(curFileNames,'\.klb'));
+        curFileNames = {curFiles(curMask).name}';
+        curFileNames = regexpi(curFileNames,'(.*).klb','tokens');
+        curFileNames = cellfun(@(x)(x{:}),curFileNames);
+        [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = LLSM.ParseFileNames(curFileNames);
 
         prgs = Utils.CmdlnProgress(imD.NumberOfFrames,true,'Renaming');
         for t=1:imD.NumberOfFrames
             timeMask = stacks==t-1;
             for c=1:imD.NumberOfChannels
                 chanMask = chans==c-1;
-                inName = [tifNames{timeMask & chanMask},suffix];
+                inName = [curFileNames{timeMask & chanMask}];
                 outName = sprintf('%s%s_c%d_t%04d',imD.DatasetName,suffix,c,t);
                 if (exist(fullfile(root,subDir,[inName,'.klb']),'file'))
                     movefile(fullfile(root,subDir,[inName,'.klb']),fullfile(root,subDir,[outName,'.klb']));
