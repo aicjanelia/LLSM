@@ -1,4 +1,16 @@
-function [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = ParseFileNames(fNames)
+function [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = ParseFileNames(fNames,ext)
+
+    if (isstruct(fNames))
+        if (~exist('ext','var')||isempty(ext))
+            ext = 'klb';
+        end
+        curFileNames = {fNames.name};
+        curMask = cellfun(@(x)(~isempty(x)),regexpi(curFileNames,['\.',ext]));
+        curFileNames = {fNames(curMask).name}';
+        curFileNames = regexpi(curFileNames,['(.*).',ext],'tokens');
+        curFileNames = cellfun(@(x)(x{:}),curFileNames);
+        fNames = curFileNames;
+    end
     datasetNameSuffix = '_ch';
     chanPrefix = 'ch';
     camsPrefix = 'CAM';
