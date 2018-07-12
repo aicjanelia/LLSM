@@ -1,4 +1,4 @@
-function [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = ParseFileNames(fNames,ext)
+function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = ParseFileNames(fNames,ext)
 
     if (isstruct(fNames))
         if (~exist('ext','var')||isempty(ext))
@@ -15,6 +15,7 @@ function [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = ParseFil
     chanPrefix = 'ch';
     camsPrefix = 'CAM';
     stacksPrefix = 'stack';
+    iterPrefix = 'Iter_';
     wavelengthSuffix = 'nm';
     secsSuffix = 'msec';
 
@@ -29,6 +30,13 @@ function [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = ParseFil
 
     stacks = regexpi(fNames,[stacksPrefix,'(\d+)'],'tokens');
     stacks = cellfun(@(x)(str2double(x{:})),stacks)';
+    
+    iter = regexpi(fNames,[iterPrefix,'(\d+)'],'tokens');
+    if (~isempty(iter{1}))
+        iter = cellfun(@(x)(str2double(x{:})),iter)';
+    else
+        iter = [];
+    end
 
     wavelengths = regexpi(fNames,['(\d+)',wavelengthSuffix],'tokens');
     wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';

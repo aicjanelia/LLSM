@@ -1,31 +1,62 @@
 function MakeMIPmovie(root,subPath)
     % root = 'D:\Images\LLSM\Pfisterer';
     % subPath = '20171108_Pfisterer\TimeLapse3\CPPdecon\MIPs';
-    seps = regexpi(subPath,'[/\\]');
     outName = subPath;
+    klbEnd = strfind(subPath,'KLB');
+    if (~isempty(klbEnd))
+        outName = outName(1:klbEnd-1);
+    end
+    mipEnd = strfind(subPath,'\MIPs');
+    if (~isempty(mipEnd))
+        outName = outName(1:mipEnd-1);
+    end
+    seps = regexpi(outName,'[/\\]');
     outName(seps) = '_';
     moviePathName = fullfile(root,[outName,'.mp4']);
     if (exist(moviePathName,'file'))
-        %return
+        return
     end
 
     colors = single([0,1,0;1,0,1;1,1,0;0,1,1]);
 
-    tiffList = dir(fullfile(root,subPath,'*.tif'));
-    if (isempty(tiffList))
-        warning('No tif files found in %s',fullfile(root,subPath));
-        return
+    extension = 'tif';
+    
+    imageList = dir(fullfile(root,subPath,['*.',extension]));
+    if (isempty(imageList))
+        imageList = dir(fullfile(root,subPath,'*.klb'));
+        if (isempty(imageList))
+%             warning('No files found in %s',fullfile(root,subPath));
+            return
+        end
+        extension = 'klb';
     end
     try
-    [~,chans,~,stacks] = LLSM.ParseFileNames(tiffList,'tif');
-    catch
-        warning('Could not parse names from %s',fullfile(root,subPath));
-        return
+        [~,chans,~,stacks,iter] = LLSM.ParseFileNames(imageList,extension);
+    catch err
+%         warning('Could not parse names from %s',fullfile(root,subPath));
+        imD = MicroscopeData.ReadMetadata(fullfile(root,subPath),false);
+        if (isempty(imD))
+            return
+        end
+        extension = 'json';
     end
-    numFrames = max(stacks(:))+1;
-    numChans = max(chans(:))+1;
     
-    if (numFrames < 30)
+    if (~strcmp(extension,'json'))
+        if (isempty(iter))
+            numFrames = max(stacks(:))+1;
+        else
+            numFrames = max(iter(:))+1;
+        end
+        numChans = max(chans(:))+1;
+    else
+        numFrames = imD.NumberOfFrames;
+        numChans = imD.NumberOfChannels;
+        stacks = [];
+        chans = [];
+        iter = [];
+    end
+    
+    if (numFrames < 50)
         return
     end
 
@@ -41,19 +72,39 @@ function MakeMIPmovie(root,subPath)
     mkdir(frameDir);
 
     prgs = Utils.CmdlnProgress(numFrames,true,outName);
-    for t=1:numFrames
-        timeMask = stacks==t-1;
+    for t=1:numFrames   
+        if (isempty(iter))
+            timeMask = stacks==t-1;
+        else
+            timeMask = iter==t-1;
+        end
         chanMask = chans==0;
         i = timeMask & chanMask;
         try
-            im = imread(fullfile(root,subPath,tiffList(i).name));
-
-            imColors = zeros(size(im,1),size(im,2),3,numChans,'single');
-            imIntensity = zeros(size(im,1),size(im,2),numChans,'single');
+            if (strcmp(extension,'json'))
+                imIntensity = squeeze(MicroscopeData.Reader(imD.imageDir,'timeRange',[t,t],'getMIP',true));
+            else
+                if (strcmp(extension,'tif'))
+                    im = imread(fullfile(root,subPath,imageList(i).name));
+                elseif (strcmp(extension,'klb'))
+                    im = max(MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),[],3);
+                end
+                imIntensity = zeros(size(im,1),size(im,2),numChans,'single');
+                for c=1:numChans
+                    chanMask = chans==c-1;
+                    i = timeMask & chanMask;
+                    if (strcmp(extension,'tif'))
+                        imIntensity(:,:,c) = imread(fullfile(root,subPath,imageList(i).name));
+                    elseif (strcmp(extension,'klb'))
+                        imIntensity(:,:,c) = max(MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),[],3);
+                    end
+                end
+            end
+            
+            imColors = zeros(size(imIntensity,1),size(imIntensity,2),3,numChans,'single');
+            imIntensity = double(imIntensity);
             for c=1:numChans
-                chanMask = chans==c-1;
-                i = timeMask & chanMask;
-                im = imread(fullfile(root,subPath,tiffList(i).name));
+                im = imIntensity(:,:,c);
                 im = mat2gray(im);
                 im = ImUtils.BrightenImages(im);
                 im = mat2gray(im);
@@ -61,7 +112,7 @@ function MakeMIPmovie(root,subPath)
                 color = repmat(colorMultiplier(1,1,:,c),size(im,1),size(im,2),1);
                 imColors(:,:,:,c) = repmat(im,1,1,3).*color;
             end
-
+            
             imMax = max(imIntensity,[],3);
             imIntSum = sum(imIntensity,3);
             imIntSum(imIntSum==0) = 1;
@@ -80,7 +131,8 @@ function MakeMIPmovie(root,subPath)
             end
 
             imwrite(imFinal,fullfile(frameDir,sprintf('%04d.tif',t)));
-        catch
+        catch err
+            warning(err.message);
         end
         prgs.PrintProgress(t);
     end
@@ -95,4 +147,3 @@ function MakeMIPmovie(root,subPath)
 
     prgs.ClearProgress(true);
 end
-
