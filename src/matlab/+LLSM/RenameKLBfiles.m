@@ -1,7 +1,7 @@
 function RenameKLBfiles(root)
     datasetName = LLSM.ParseSettingsFileNames(root);
     settingsName = dir(fullfile(root,'*.txt'));
-    metadata = LLSM.ParseSettingsFile(fullfile(root,settingsName.name));
+    metadata = LLSM.ParseSettingsFile(fullfile(root,settingsName(1).name));
 
     imD = MicroscopeData.GetEmptyMetadata();
     imD.DatasetName = datasetName;
@@ -29,6 +29,11 @@ function RenameKLBfiles(root)
     for i = 1:length(dirNames)
         subDir = dirNames{i};
         disp(subDir);
+        imDTemp = MicroscopeData.ReadMetadata(fullfile(root,subDir),false);
+        if (~isempty(imDTemp))
+            continue
+        end
+        
         suffix = '';
         if (~isempty(regexpi(subDir,'decon')))
             suffix = '_decon';
@@ -38,8 +43,9 @@ function RenameKLBfiles(root)
         tempD = imD;
         tempD.DatasetName = [tempD.DatasetName,suffix];
         curFiles = dir(fullfile(root,subDir,'*.klb'));
-        tempIm = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,curFiles(1).name));
-        tempD.Dimensions = tempIm.xyzct([2,1,3]);
+        tempDorg = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,curFiles(1).name));
+        tempD.Dimensions = tempDorg.xyzct([2,1,3]);
+        tempIm = MicroscopeData.KLB.readKLBslice(fullfile(root,subDir,curFiles(1).name),1,1,1);
         w = whos('tempIm');
         tempD.PixelFormat = w.class;
         
@@ -48,18 +54,32 @@ function RenameKLBfiles(root)
         curFileNames = {curFiles(curMask).name}';
         curFileNames = regexpi(curFileNames,'(.*).klb','tokens');
         curFileNames = cellfun(@(x)(x{:}),curFileNames);
-        [datasetName,chans,cams,stacks,wavelengths,secs,fileSuffixs] = LLSM.ParseFileNames(curFileNames);
+        [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = LLSM.ParseFileNames(curFileNames);
         
-        tempD.NumberOfFrames = max(stacks(:))+1;
+        if (max(stacks(:))>max(iter(:)))
+            useStacks = true;
+        else
+            useStacks = false;
+        end
+        
+        if (useStacks)
+            tempD.NumberOfFrames = max(stacks(:))+1;
+        else
+            tempD.NumberOfFrames = max(iter(:))+1;
+        end
         tempD.NumberOfChannels = max(chans(:))+1;
 
         prgs = Utils.CmdlnProgress(tempD.NumberOfFrames,true,'Renaming');
         for t=1:tempD.NumberOfFrames
-            timeMask = stacks==t-1;
+            if (useStacks)
+                timeMask = stacks==t-1;
+            else
+                timeMask = iter==t-1;
+            end
             for c=1:tempD.NumberOfChannels
                 chanMask = chans==c-1;
                 inName = [curFileNames{timeMask & chanMask}];
-                outName = sprintf('%s%s_c%d_t%04d',tempD.DatasetName,suffix,c,t);
+                outName = sprintf('%s_c%d_t%04d',tempD.DatasetName,c,t);
                 if (exist(fullfile(root,subDir,[inName,'.klb']),'file'))
                     movefile(fullfile(root,subDir,[inName,'.klb']),fullfile(root,subDir,[outName,'.klb']));
                 end

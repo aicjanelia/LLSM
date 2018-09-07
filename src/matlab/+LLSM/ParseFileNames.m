@@ -26,7 +26,11 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
     chans = cellfun(@(x)(str2double(x{:})),chans)';
 
     cams = regexpi(fNames,[camsPrefix,'(\d)'],'tokens');
-    cams = cellfun(@(x)(str2double(x{:})),cams)';
+    if (any(cellfun(@(x)(~isempty(x)),cams)))
+        cams = cellfun(@(x)(str2double(x{:})),cams)';
+    else
+        cams = [];
+    end
 
     stacks = regexpi(fNames,[stacksPrefix,'(\d+)'],'tokens');
     stacks = cellfun(@(x)(str2double(x{:})),stacks)';
@@ -38,7 +42,7 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
         iter = [];
     end
 
-    wavelengths = regexpi(fNames,['(\d+)',wavelengthSuffix],'tokens');
+    wavelengths = regexp(fNames,['(\d\d\d)',wavelengthSuffix],'tokens');
     wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
 
     secs = regexpi(fNames,['(\d+)',secsSuffix,'_'],'tokens');

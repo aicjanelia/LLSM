@@ -10,7 +10,11 @@ function ConvertDir(rootDir,outDir,overwrite,deleteOrg)
     end
 
     if (~exist('overwrite','var'))% || isempty(overwrite))
-        overwrite = 0;
+        overwrite = false;
+    end
+    
+    if (~exist('deleteOrg','var'))
+        deleteOrg = false;
     end
 
     recursiveConvertDir(rootDir,outDir,'',overwrite,deleteOrg);
