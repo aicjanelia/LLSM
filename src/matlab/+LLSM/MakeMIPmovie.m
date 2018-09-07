@@ -56,7 +56,7 @@ function MakeMIPmovie(root,subPath)
         iter = [];
     end
     
-    if (numFrames < 50)
+    if (numFrames < 20)
         return
     end
 
@@ -87,7 +87,7 @@ function MakeMIPmovie(root,subPath)
                 if (strcmp(extension,'tif'))
                     im = imread(fullfile(root,subPath,imageList(i).name));
                 elseif (strcmp(extension,'klb'))
-                    im = max(MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),[],3);
+                    im = max(MicroscopeData.KLB.readKLBstack(['"',fullfile(root,subPath,imageList(i).name),'"']),[],3);
                 end
                 imIntensity = zeros(size(im,1),size(im,2),numChans,'single');
                 for c=1:numChans
@@ -96,7 +96,7 @@ function MakeMIPmovie(root,subPath)
                     if (strcmp(extension,'tif'))
                         imIntensity(:,:,c) = imread(fullfile(root,subPath,imageList(i).name));
                     elseif (strcmp(extension,'klb'))
-                        imIntensity(:,:,c) = max(MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),[],3);
+                        imIntensity(:,:,c) = max(['"',MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),'"'],[],3);
                     end
                 end
             end
@@ -133,6 +133,9 @@ function MakeMIPmovie(root,subPath)
             imwrite(imFinal,fullfile(frameDir,sprintf('%04d.tif',t)));
         catch err
             warning(err.message);
+            prgs.ClearProgress(false);
+            return
+            prgs.StopUsingBackspaces();
         end
         prgs.PrintProgress(t);
     end

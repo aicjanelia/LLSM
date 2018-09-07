@@ -8,7 +8,7 @@ function MakeMIPmoviesFromRoot(root,subPath)
     if (~exist('subPath','var'))
         subPath = '';
     end
-    
+
     dList = dir(fullfile(root,subPath));
     dList = dList([dList.isdir]);
     subDirs = {dList.name};
@@ -16,8 +16,8 @@ function MakeMIPmoviesFromRoot(root,subPath)
     if (isempty(subDirs))
         return
     end
-    
-    mipSubsMask = cellfun(@(x)(strcmpi(x,'MIPs')),subDirs);    
+
+    mipSubsMask = cellfun(@(x)(strcmpi(x,'MIPs')),subDirs);
     otherDirs = subDirs(~mipSubsMask);
     mipSubs = subDirs(mipSubsMask);
     if (isempty(mipSubs))
@@ -26,16 +26,27 @@ function MakeMIPmoviesFromRoot(root,subPath)
         mipSubsMask = mipSubsMask & ~deskewMask;
         mipSubs = subDirs(mipSubsMask);
     end
-    
-    parfor i=1:length(otherDirs)
-        subSub = fullfile(subPath,otherDirs{i});
-        try
-            LLSM.MakeMIPmoviesFromRoot(root,subSub);
-        catch err
-            warning('Could not process %s\n%s',fullfile(root,subSub),err.message);
+
+    if (~isempty(subPath))
+        parfor i=1:length(otherDirs)
+            subSub = fullfile(subPath,otherDirs{i});
+            try
+                LLSM.MakeMIPmoviesFromRoot(root,subSub);
+            catch err
+                warning('Could not process %s\n%s',fullfile(root,subSub),err.message);
+            end
+        end
+    else
+        for i=1:length(otherDirs)
+            subSub = fullfile(subPath,otherDirs{i});
+            try
+                LLSM.MakeMIPmoviesFromRoot(root,subSub);
+            catch err
+                warning('Could not process %s\n%s',fullfile(root,subSub),err.message);
+            end
         end
     end
-    
+
     for i=1:length(mipSubs)
         subSub = fullfile(subPath,mipSubs{i});
         LLSM.MakeMIPmovie(root,subSub);
