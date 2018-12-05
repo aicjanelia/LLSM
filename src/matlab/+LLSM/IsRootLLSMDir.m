@@ -21,9 +21,9 @@ function [found,dataName] = IsRootLLSMDir(root)
     dataName = dataName{1,1}{1,1};
     dList = dir(fullfile(root,[dataName,'*.tif']));
     
-    if (isempty(dList))
-        return
-    else
+%     if (isempty(dList))
+%         return
+%     else
         found = true;
-    end
+%     end
 end

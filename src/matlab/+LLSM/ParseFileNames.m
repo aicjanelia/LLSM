@@ -11,26 +11,32 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
         curFileNames = cellfun(@(x)(x{:}),curFileNames);
         fNames = curFileNames;
     end
-    datasetNameSuffix = '_ch';
+    
     chanPrefix = 'ch';
     camsPrefix = 'CAM';
     stacksPrefix = 'stack';
     iterPrefix = 'Iter_';
     wavelengthSuffix = 'nm';
     secsSuffix = 'msec';
+    
+    filePrefix = Utils.GetDirListPrefixSuffix(fNames);
 
-    datasetName = regexpi(fNames,['^(\w+)',datasetNameSuffix],'tokens');
+    cams = regexpi(fNames,[camsPrefix,'(.)'],'tokens');
+    if (any(cellfun(@(x)(~isempty(x)),cams)))
+        cams = cellfun(@(x)(x{:}),cams)';
+    else
+        cams = [];
+    end
+    
+    if (isempty(cams))
+        datasetName = regexpi(filePrefix,['^(\w+)','_',chanPrefix],'tokens');
+    else
+        datasetName = regexpi(filePrefix,['^(\w+)','_',camsPrefix],'tokens');
+    end
     datasetName = vertcat(datasetName{:});
 
     chans = regexpi(fNames,[chanPrefix,'(\d)'],'tokens');
     chans = cellfun(@(x)(str2double(x{:})),chans)';
-
-    cams = regexpi(fNames,[camsPrefix,'(\d)'],'tokens');
-    if (any(cellfun(@(x)(~isempty(x)),cams)))
-        cams = cellfun(@(x)(str2double(x{:})),cams)';
-    else
-        cams = [];
-    end
 
     stacks = regexpi(fNames,[stacksPrefix,'(\d+)'],'tokens');
     stacks = cellfun(@(x)(str2double(x{:})),stacks)';

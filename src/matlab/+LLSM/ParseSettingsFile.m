@@ -5,6 +5,7 @@ function metadata = ParseSettingsFile(fullPathToFile)
 %   laserWaveLengths
 %   numChan
 %   numStacks
+%   numCameras
 
     metadataStr = fileread(fullPathToFile);
         
