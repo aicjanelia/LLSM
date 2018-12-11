@@ -36,10 +36,18 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
     datasetName = vertcat(datasetName{:});
 
     chans = regexpi(fNames,[chanPrefix,'(\d)'],'tokens');
-    chans = cellfun(@(x)(str2double(x{:})),chans)';
+    if (~isempty(chans{1}))
+        chans = cellfun(@(x)(str2double(x{:})),chans)';
+    else
+        chans = [];
+    end
 
     stacks = regexpi(fNames,[stacksPrefix,'(\d+)'],'tokens');
-    stacks = cellfun(@(x)(str2double(x{:})),stacks)';
+    if (~isempty(stacks{1}))
+        stacks = cellfun(@(x)(str2double(x{:})),stacks)';
+    else
+        stacks = [];
+    end
     
     iter = regexpi(fNames,[iterPrefix,'(\d+)'],'tokens');
     if (~isempty(iter{1}))
@@ -49,11 +57,23 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
     end
 
     wavelengths = regexp(fNames,['(\d\d\d)',wavelengthSuffix],'tokens');
-    wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
+    if (~isempty(wavelengths{1}))
+        wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
+    else
+        wavelengths = [];
+    end
 
     secs = regexpi(fNames,['(\d+)',secsSuffix,'_'],'tokens');
-    secs = cellfun(@(x)(str2double(x{:})),secs)';
+    if (~isempty(secs{1}))
+        secs = cellfun(@(x)(str2double(x{:})),secs)';
+    else
+        secs = [];
+    end
 
     fileSuffixs = regexpi(fNames,'msec_(.*)','tokens');
-    fileSuffixs = cellfun(@(x)(x{:}),fileSuffixs);
+    if (~isempty(fileSuffixs{1}))
+        fileSuffixs = cellfun(@(x)(x{:}),fileSuffixs);
+    else
+        fileSuffixs = [];
+    end
 end
