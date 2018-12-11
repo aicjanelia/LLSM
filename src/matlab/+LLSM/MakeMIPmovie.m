@@ -22,6 +22,7 @@ function MakeMIPmovie(root,subPath)
     extension = 'tif';
     
     imageList = dir(fullfile(root,subPath,['*.',extension]));
+    
     if (isempty(imageList))
         imageList = dir(fullfile(root,subPath,'*.klb'));
         if (isempty(imageList))
@@ -31,7 +32,7 @@ function MakeMIPmovie(root,subPath)
         extension = 'klb';
     end
     try
-        [~,chans,~,stacks,iter] = LLSM.ParseFileNames(imageList,extension);
+        [~,chans,cams,stacks,iter] = LLSM.ParseFileNames(imageList,extension);
     catch err
 %         warning('Could not parse names from %s',fullfile(root,subPath));
         imD = MicroscopeData.ReadMetadata(fullfile(root,subPath),false);
@@ -41,13 +42,42 @@ function MakeMIPmovie(root,subPath)
         extension = 'json';
     end
     
+    if (isempty(chans) || (isempty(stacks) && isempty(iter)))
+        return
+    end
+    
+    channels = struct('cam',[],'chan',[]);
     if (~strcmp(extension,'json'))
         if (isempty(iter))
             numFrames = max(stacks(:))+1;
         else
             numFrames = max(iter(:))+1;
         end
-        numChans = max(chans(:))+1;
+        
+        if (~isempty(cams))
+            useCams = true;
+            unqCams = unique(cams);
+            unqChns = unique(chans);
+            c = 1;
+            for cm = 1:length(unqCams)
+                for ch = 1:length(unqChns)
+                    camChanMask = cellfun(@(x)(x==unqCams{cm}),cams) & chans==unqChns(ch);
+                    if (any(camChanMask))
+                        channels(c).cam = unqCams{cm};
+                        channels(c).chan = unqChns(ch) +1;
+                        c = c +1;
+                    end
+                end
+            end
+            numChans = c-1;
+        else
+            useCams = false;
+            numChans = max(chans(:))+1;
+            for i=1:numChans
+                channels(i).cam = '';
+                channels(i).chan = i;
+            end
+        end
     else
         numFrames = imD.NumberOfFrames;
         numChans = imD.NumberOfChannels;
@@ -56,7 +86,7 @@ function MakeMIPmovie(root,subPath)
         iter = [];
     end
     
-    if (numFrames < 20)
+    if (numFrames < 10)
         return
     end
 
@@ -73,30 +103,31 @@ function MakeMIPmovie(root,subPath)
 
     prgs = Utils.CmdlnProgress(numFrames,true,outName);
     for t=1:numFrames   
-        if (isempty(iter))
-            timeMask = stacks==t-1;
-        else
-            timeMask = iter==t-1;
-        end
-        chanMask = chans==0;
-        i = timeMask & chanMask;
+%         if (isempty(iter))
+%             timeMask = stacks==t-1;
+%         else
+%             timeMask = iter==t-1;
+%         end
+%         chanMask = chans==0;
+%         i = timeMask & chanMask;
         try
             if (strcmp(extension,'json'))
                 imIntensity = squeeze(MicroscopeData.Reader(imD.imageDir,'timeRange',[t,t],'getMIP',true));
             else
+                fName = LLSM.GetFileName(fullfile(root,subPath),channels(1).cam,t,channels(1).chan);
                 if (strcmp(extension,'tif'))
-                    im = imread(fullfile(root,subPath,imageList(i).name));
+                    im = imread(fName);
                 elseif (strcmp(extension,'klb'))
-                    im = max(MicroscopeData.KLB.readKLBstack(['"',fullfile(root,subPath,imageList(i).name),'"']),[],3);
+                    im = max(MicroscopeData.KLB.readKLBstack(fName),[],3);
                 end
                 imIntensity = zeros(size(im,1),size(im,2),numChans,'single');
+                clear im
                 for c=1:numChans
-                    chanMask = chans==c-1;
-                    i = timeMask & chanMask;
+                    fName = LLSM.GetFileName(fullfile(root,subPath),channels(c).cam,t,channels(c).chan);
                     if (strcmp(extension,'tif'))
-                        imIntensity(:,:,c) = imread(fullfile(root,subPath,imageList(i).name));
+                        imIntensity(:,:,c) = imread(fName);
                     elseif (strcmp(extension,'klb'))
-                        imIntensity(:,:,c) = max(['"',MicroscopeData.KLB.readKLBstack(fullfile(root,subPath,imageList(i).name)),'"'],[],3);
+                        imIntensity(:,:,c) = max(['"',MicroscopeData.KLB.readKLBstack(fName),'"'],[],3);
                     end
                 end
             end
