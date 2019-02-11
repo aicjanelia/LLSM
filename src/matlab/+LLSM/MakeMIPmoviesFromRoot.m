@@ -1,4 +1,8 @@
-function MakeMIPmoviesFromRoot(root,subPath)
+function MakeMIPmoviesFromRoot(root,subPath,overwrite)
+    if (~exist('overwrite','var') || isempty(overwrite))
+        overwrite = false;
+    end
+
     if (~exist('root','var') || isempty(root))
         root = uigetdir();
         if (root==0)
@@ -17,38 +21,26 @@ function MakeMIPmoviesFromRoot(root,subPath)
         return
     end
 
-    mipSubsMask = cellfun(@(x)(strcmpi(x,'MIPs')),subDirs);
-    otherDirs = subDirs(~mipSubsMask);
-    mipSubs = subDirs(mipSubsMask);
-    if (isempty(mipSubs))
-        mipSubsMask = cellfun(@(x)(~isempty(x)),regexp(subDirs,'KLB'));
-        deskewMask = cellfun(@(x)(~isempty(x)),regexp(subDirs,'Deskewed'));
-        mipSubsMask = mipSubsMask & ~deskewMask;
-        mipSubs = subDirs(mipSubsMask);
-    end
+    klbMask = cellfun(@(x)(~isempty(x)),regexp(subDirs,'KLB'));
 
-    if (~isempty(subPath))
-        parfor i=1:length(otherDirs)
-            subSub = fullfile(subPath,otherDirs{i});
-            try
-                LLSM.MakeMIPmoviesFromRoot(root,subSub);
-            catch err
-                warning('Could not process %s\n%s',fullfile(root,subSub),err.message);
+    if (~any(klbMask))
+        if (isempty(subPath))
+            for i=1:length(subDirs)
+                subSub = fullfile(subPath,subDirs{i});
+                LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
+            end
+        else
+            parfor i=1:length(subDirs)
+            %for i=1:length(subDirs)
+                subSub = fullfile(subPath,subDirs{i});
+                LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
             end
         end
     else
-        for i=1:length(otherDirs)
-            subSub = fullfile(subPath,otherDirs{i});
-            try
-                LLSM.MakeMIPmoviesFromRoot(root,subSub);
-            catch err
-                warning('Could not process %s\n%s',fullfile(root,subSub),err.message);
-            end
+        try
+            LLSM.MakeMIPmovie(root,subPath,overwrite);
+        catch err
+            warning(err.message)
         end
-    end
-
-    for i=1:length(mipSubs)
-        subSub = fullfile(subPath,mipSubs{i});
-        LLSM.MakeMIPmovie(root,subSub);
     end
 end
