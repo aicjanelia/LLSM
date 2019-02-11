@@ -13,15 +13,15 @@ function im = RemoveSkewArtifacts(im,shrinkDist,minVal)
     fprintf('Removing Artifacts...');
 
     boundBW = im>minVal;
-    boundBW = ImProc.Closure(boundBW,ones(5,5,5),[],[]);
+    boundBW = HIP.Closure(boundBW,ones(5,5,5),[],[]);
     boundBW(1,:,:,:,:) = false;
     boundBW(:,1,:,:,:) = false;
     boundBW(:,:,1,:,:) = false;
     boundBW(end,:,:,:,:) = false;
     boundBW(:,end,:,:,:) = false;
     boundBW(:,:,end,:,:) = false;
-    se = ImProc.MakeEllipsoidMask([shrinkDist,1,3]);
-    boundBW = ImProc.MinFilter(boundBW,se,[],[]);
+    se = HIP.MakeEllipsoidMask([shrinkDist,1,3]);
+    boundBW = HIP.MinFilter(boundBW,se,[],[]);
     im(~boundBW) = 0;
     
     fprintf('done. %s\n',Utils.PrintTime(toc(artT)));
