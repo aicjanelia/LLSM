@@ -1,30 +1,5 @@
 function RenameKLBfiles(root)
-    datasetName = LLSM.ParseSettingsFileNames(root);
-    settingsName = dir(fullfile(root,'*.txt'));
-    metadata = LLSM.ParseSettingsFile(fullfile(root,settingsName(1).name));
-
-    imD = MicroscopeData.GetEmptyMetadata();
-    imD.DatasetName = datasetName;
-
-    if (length(metadata.laserWaveLengths)==1)
-        imD.ChannelColors = [1,1,1];
-    else
-        colrs = jet(7);
-        imD.ChannelColors = colrs(round((metadata.laserWaveLengths-400)/300*7+1),:);
-    end
-    imD.ChannelNames = arrayfun(@(x)(num2str(x)),metadata.laserWaveLengths,'uniformoutput',false);
-    imD.PixelPhysicalSize = [0.104, 0.104, metadata.zOffset];
-
-    dirList = dir(fullfile(root));
-    dirMask = [dirList.isdir];
-    dirNames = {dirList(dirMask).name};
-    klbDirMask = cellfun(@(x)(~isempty(x)),regexpi(dirNames,'KLB'));
-    dirNames = dirNames(klbDirMask);
-
-    imD.NumberOfChannels = metadata.numChan;
-    imD.NumberOfFrames = metadata.numStacks(1);
-    imD.StartCaptureDate = metadata.startCaptureDate;
-    imD = rmfield(imD,'PixelFormat');
+    [imD,dirNames] = LLSM.GetRAWmetadata(root);
 
     for i = 1:length(dirNames)
         subDir = dirNames{i};
@@ -43,9 +18,9 @@ function RenameKLBfiles(root)
         tempD = imD;
         tempD.DatasetName = [tempD.DatasetName,suffix];
         curFiles = dir(fullfile(root,subDir,'*.klb'));
-        tempDorg = MicroscopeData.KLB.readKLBheader(fullfile(root,subDir,curFiles(1).name));
-        tempD.Dimensions = tempDorg.xyzct([2,1,3]);
-        tempIm = MicroscopeData.KLB.readKLBslice(fullfile(root,subDir,curFiles(1).name),1,1,1);
+        tempIm = MicroscopeData.KLB.readKLBstack(fullfile(root,subDir,curFiles(1).name));
+        sz = size(tempIm);
+        tempD.Dimensions = sz([2,1,3]);
         w = whos('tempIm');
         tempD.PixelFormat = w.class;
         
@@ -57,7 +32,7 @@ function RenameKLBfiles(root)
         [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = LLSM.ParseFileNames(curFileNames);
         
         if (~strcmp(datasetName,imD.DatasetName))
-            warning('Dataset name missmatch: %s -> %s',imD.DatasetName,datasetName);
+%             warning('Dataset name missmatch: %s -> %s',imD.DatasetName,datasetName{1});
         end
         
         if (isempty(iter) || max(stacks(:))>max(iter(:)))
@@ -78,12 +53,13 @@ function RenameKLBfiles(root)
             unqChns = unique(chans);
             c = 0;
             for cm = 1:length(unqCams)
+                camMask = strcmpi(unqCams(cm),cams);
                 for ch = 1:length(unqChns)
-                    camChanMask = cellfun(@(x)(x==unqCams{cm}),cams) & chans==unqChns(ch);
+                    camChanMask = camMask & chans==unqChns(ch);
                     if (any(camChanMask))
                         wvlgth = unique(wavelengths(camChanMask));
                         c = c +1;
-                        tempD.ChannelNames{c} = [num2str(wvlgth),' ', unqCams{cm}];
+                        tempD.ChannelNames{c} = [num2str(wvlgth),' ', unqCams(cm)];
                         if (size(tempD.ChannelColors,1)<c)
                             tempD.ChannelColors(c,:) = colrs(c,:);
                         end
@@ -117,8 +93,9 @@ function RenameKLBfiles(root)
             if (useCams)
                 curChan = 1;
                 for ch = 1:length(unqChns)
+                    camMask = strcmpi(unqCams(cm),cams);
                     for cm = 1:length(unqCams)
-                        camChanMask = cellfun(@(x)(x==unqCams{cm}),cams) & chans==unqChns(ch);
+                        camChanMask = camMask & chans==unqChns(ch);
                         if (any(camChanMask))
                             inName = [curFileNames{timeMask & camChanMask}];
                             outName = sprintf('%s_c%d_t%04d',tempD.DatasetName,curChan,t);

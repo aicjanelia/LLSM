@@ -11,8 +11,12 @@ function metadata = GetMetadataFromFileName(fName)
     iter = regexpi(fName,'.*_Iter_(\d+)_.*','tokens');
     
     if (isempty(iter))
-        searchStr = '^(.*)_ch(\d)_CAM(\d)_stack(\d+)_(\d+)nm_(\d+)msec_(\d+).*';
-        
+        iter = regexpi(fName,'.*_Iter_ch(\d+)_.*','tokens');
+        if (isempty(iter))
+            searchStr = '^(.*)_ch(\d)_CAM(\d)_stack(\d+)_(\d+)nm_(\d+)msec_(\d+).*';
+        else
+            searchStr = '^(.*)_Iter_ch(\d)_CAM(\d)_stack(\d+)_(\d+)nm_(\d+)msec_(\d+).*';
+        end
     else
         searchStr = '^(.*)_Iter_\d+_ch(\d)_CAM(\d)_stack(\d+)_(\d+)nm_(\d+)msec_(\d+).*';
     end

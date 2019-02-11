@@ -27,12 +27,21 @@ function fullPath = GetFileName(rootDir,camera,frame,channel)
     curFileNames = {curFiles(curMask).name}';
     curFileNames = regexpi(curFileNames,['(.*).',extension],'tokens');
     curFileNames = cellfun(@(x)(x{:}),curFileNames);
-    [~,chans,cams,stacks,iter] = LLSM.ParseFileNames(curFileNames);
+    [datsetNames,chans,cams,stacks,iter] = LLSM.ParseFileNames(curFileNames);
 
-    if (isempty(iter) || max(stacks(:))>max(iter(:)))
+    if (~isempty(stacks))
         useStacks = true;
+        numStacks = max(stacks)+1;
     else
         useStacks = false;
+        numStacks = [];
+    end
+    if (~isempty(iter))
+        numIter = max(iter)+1;
+        useIter = true;
+    else
+        useIter = false;
+        numIter = [];
     end
 
     if (~isempty(cams))
@@ -40,7 +49,7 @@ function fullPath = GetFileName(rootDir,camera,frame,channel)
         if (length(unqCams)>1)
             useCams = true;
         else
-            if (~isempty(camera) && ~strcmp(unqCams,camera))
+            if (~isempty(camera) && all(unqCams~=camera))
                 fullPath = '';
                 return
             end
@@ -54,38 +63,36 @@ function fullPath = GetFileName(rootDir,camera,frame,channel)
         useCams = false;
     end
     
-    if (useStacks)
-        if (isempty(frame))
-            timeMask = true(size(stacks));
+    if (useIter)
+        if (useStacks)
+            iterIdx = floor((frame-1)/numStacks);
+            stackIdx = frame -1 - iterIdx*numStacks;
+            timeMask = stacks==stackIdx & iter==iterIdx;
         else
-            timeMask = stacks==frame-1;
+            timeMask = iter==(frame-1);
         end
     else
-        if (isempty(frame))
-            timeMask = true(size(stacks));
-        else
-            timeMask = iter==frame-1;
-        end
+        timeMask = stacks==(frame-1);
     end
     
     name = [];
     if (~isempty(camera) && useCams)
         camChanMask = cellfun(@(x)(x==camera),cams) & chans==channel-1;
         if (any(camChanMask))
-            name = vertcat(curFileNames{timeMask & camChanMask});
+            name = {curFileNames{timeMask' & camChanMask'}}';
         end
     elseif (~isempty(channel))
         chanMask = chans==channel-1;
         if (any(chanMask))
-            name = [curFileNames{timeMask & chanMask}];
+            name = {curFileNames{timeMask & chanMask}}';
         end
     else
-        name = vertcat(curFileNames{timeMask});
+        name ={curFileNames{timeMask}}';
     end
     
     if (isempty(name))
         fullPath = '';
     else
-        fullPath = [repmat([rootDir,filesep],size(name,1),1),[name,repmat(['.',extension],size(name,1),1)]];
+        fullPath = cellfun(@(x)(fullfile(rootDir,[x,'.',extension])),name,'uniformOutput',false);
     end
 end
