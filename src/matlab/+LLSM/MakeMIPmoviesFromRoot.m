@@ -24,17 +24,9 @@ function MakeMIPmoviesFromRoot(root,subPath,overwrite)
     klbMask = cellfun(@(x)(~isempty(x)),regexp(subDirs,'KLB'));
 
     if (~any(klbMask))
-        if (isempty(subPath))
-            for i=1:length(subDirs)
-                subSub = fullfile(subPath,subDirs{i});
-                LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
-            end
-        else
-            parfor i=1:length(subDirs)
-            %for i=1:length(subDirs)
-                subSub = fullfile(subPath,subDirs{i});
-                LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
-            end
+        for i=1:length(subDirs)
+            subSub = fullfile(subPath,subDirs{i});
+            LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
         end
     else
         try

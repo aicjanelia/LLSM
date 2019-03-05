@@ -118,13 +118,12 @@ function MakeMIPmovie(root,subPath,overwrite)
     mkdir(frameDir);
 
     prgs = Utils.CmdlnProgress(numFrames,true,outName);
-    for t=1:numFrames   
+    parfor t=1:numFrames   
         try
             fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(1).cam,t,channels(1).chan);
             im = MicroscopeData.KLB.readKLBstack(fName{1});
             
             imIntensity = zeros(size(im,1),size(im,2),size(im,3),numChans,'single');
-            clear im
             for c=1:numChans
                 fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(c).cam,t,channels(c).chan);
                 imIntensity(:,:,:,c) = MicroscopeData.KLB.readKLBstack(fName{end});
@@ -144,7 +143,6 @@ function MakeMIPmovie(root,subPath,overwrite)
             warning(err.message);
             prgs.ClearProgress(false);
             numFrames = t-1;
-            break
         end
         prgs.PrintProgress(t);
     end
