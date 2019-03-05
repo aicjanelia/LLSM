@@ -23,7 +23,7 @@ function fullPath = GetFileName(rootDir,camera,frame,channel)
     end
 
     curFileNames = {curFiles.name};
-    curMask = cellfun(@(x)(~isempty(x)),regexpi(curFileNames,[filesep,'.',extension]));
+    curMask = cellfun(@(x)(~isempty(x)),regexpi(curFileNames,[filesep,'*.',extension]));
     curFileNames = {curFiles(curMask).name}';
     curFileNames = regexpi(curFileNames,['(.*).',extension],'tokens');
     curFileNames = cellfun(@(x)(x{:}),curFileNames);
