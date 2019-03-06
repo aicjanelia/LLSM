@@ -118,6 +118,7 @@ function MakeMIPmovie(root,subPath,overwrite)
     mkdir(frameDir);
 
     prgs = Utils.CmdlnProgress(numFrames,true,outName);
+    prgs.PrintProgress(0);
     parfor t=1:numFrames   
         try
             fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(1).cam,t,channels(1).chan);
