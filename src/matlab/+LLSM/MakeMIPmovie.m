@@ -28,7 +28,7 @@ function MakeMIPmovie(root,subPath,overwrite)
     
     klbDir = dList(dirMask).name;
     imageList = dir(fullfile(root,subPath,klbDir,'*.klb'));
-    if (length(imageList) < minFrames)
+    if (isempty(imageList))
         return
     end
     
@@ -102,10 +102,6 @@ function MakeMIPmovie(root,subPath,overwrite)
             channels(i).chan = i;
         end
     end
-    
-    if (numFrames < minFrames)
-        return
-    end
 
     colors = single([0,1,0;1,0,1;1,1,0;0,1,1]);
     if (numChans==1)
@@ -122,6 +118,9 @@ function MakeMIPmovie(root,subPath,overwrite)
     parfor t=1:numFrames   
         try
             fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(1).cam,t,channels(1).chan);
+            if (isempty(fName))
+                continue
+            end
             im = MicroscopeData.KLB.readKLBstack(fName{1});
             
             imIntensity = zeros(size(im,1),size(im,2),size(im,3),numChans,'single');
@@ -152,6 +151,10 @@ function MakeMIPmovie(root,subPath,overwrite)
     fps = max(fps,7);
     fps = round(fps);
     
+    if (numFrames < minFrames)
+        prgs.ClearProgress(true);
+        return
+    end
     
     MovieUtils.MakeMP4_ffmpeg(1,numFrames,frameDir,fps,[outName,'_']);
     
