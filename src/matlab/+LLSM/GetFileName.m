@@ -49,7 +49,7 @@ function fullPath = GetFileName(rootDir,camera,frame,channel)
         if (length(unqCams)>1)
             useCams = true;
         else
-            if (~isempty(camera) && all(unqCams~=camera))
+            if (~isempty(camera) && ~strcmpi(unqCams,camera))
                 fullPath = '';
                 return
             end
