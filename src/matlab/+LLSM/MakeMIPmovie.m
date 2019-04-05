@@ -103,7 +103,7 @@ function MakeMIPmovie(root,subPath,overwrite)
         end
     end
 
-    colors = single([0,1,0;1,0,1;1,1,0;0,1,1]);
+    colors = single([0,1,0;1,0,1;0,0.75,1;0,1,1]);
     if (numChans==1)
         colors = [1,1,1];
     end
