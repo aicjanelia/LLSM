@@ -12,12 +12,12 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
         fNames = curFileNames;
     end
     
-    chanPrefix = 'ch';
-    camsPrefix = 'Cam';
-    stacksPrefix = 'stack';
-    iterPrefix = 'Iter_';
-    wavelengthSuffix = 'nm';
-    secsSuffix = 'msec';
+    chanPrefix = '_ch';
+    camsPrefix = '_Cam';
+    stacksPrefix = '_stack';
+    iterPrefix = '_Iter_';
+    wavelengthSuffix = 'nm_';
+    secsSuffix = 'msec_';
     
     filePrefix = Utils.GetDirListPrefixSuffix(fNames);
 
