@@ -55,6 +55,9 @@ function MakeMIPmovie(root,subPath,overwrite)
     end
     
     settingsName = dir(fullfile(root,subPath,'*.txt'));
+    names = {settingsName.name};
+    maskHidden = cellfun(@(x)(isempty(x)),regexp(names,'^\..*','match'));
+    settingsName = settingsName(maskHidden);
     if (isempty(settingsName))
         settingsName = dir(fullfile(root,subPath,'..','..','*.txt'));
         if (isempty(settingsName))
