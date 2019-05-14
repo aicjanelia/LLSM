@@ -105,11 +105,13 @@ function MakeMIPmovie(root,subPath,overwrite)
             channels(i).chan = i;
         end
     end
-
-    colors = single([0,1,0;1,0,1;0,0.75,1;0,1,1]);
-    if (numChans==1)
-        colors = [1,1,1];
+    
+    wavelengths = zeros(length(channels),1);
+    for c=1:length(channels)
+        wavelengths(c) = metadata.laserWaveLengths(chans(c)+1);
     end
+
+    colors = Utils.GetColorByWavelength(wavelengths);
     
     if (exist(frameDir,'dir'))
         rmdir(frameDir,'s');
