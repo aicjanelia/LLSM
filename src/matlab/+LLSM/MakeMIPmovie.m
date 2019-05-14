@@ -134,6 +134,8 @@ function MakeMIPmovie(root,subPath,overwrite)
                 imIntensity(:,:,:,c) = MicroscopeData.KLB.readKLBstack(fName{end});
             end
             
+            imIntensity = LLSM.RemoveSkewArtifacts(imIntensity);
+            
             imFinal = ImUtils.MakeOrthoSliceProjections(imIntensity,colors(1:numChans,:),xyPhysicalSize,zPhysicalSize);
             
             sz = size(imFinal);
