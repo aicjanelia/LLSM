@@ -1,6 +1,10 @@
-function im = RemoveSkewArtifacts(im,shrinkDist,minVal)
+function im = RemoveSkewArtifacts(im,shrinkDist,minVal,verbose)
 % RemoveBoarderArtifacts attempts to take the edge of the real data and
 % shrinks in by shrinkDist
+
+    if (~exist('verbose','var') || isempty(verbose))
+        verbose = false;
+    end
 
     if (~exist('shrinkDist','var') || isempty(shrinkDist))
         shrinkDist = 5;
@@ -10,7 +14,10 @@ function im = RemoveSkewArtifacts(im,shrinkDist,minVal)
     end
     
     artT = tic;
-    fprintf('Removing Artifacts...');
+    
+    if (verbose)
+        fprintf('Removing Artifacts...');
+    end
 
     boundBW = im>minVal;
     boundBW = HIP.Closure(boundBW,ones(5,5,5),[],[]);
@@ -24,5 +31,7 @@ function im = RemoveSkewArtifacts(im,shrinkDist,minVal)
     boundBW = HIP.MinFilter(boundBW,se,[],[]);
     im(~boundBW) = 0;
     
-    fprintf('done. %s\n',Utils.PrintTime(toc(artT)));
+    if (verbose)
+        fprintf('done. %s\n',Utils.PrintTime(toc(artT)));
+    end
 end
