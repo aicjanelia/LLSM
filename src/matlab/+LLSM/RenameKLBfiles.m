@@ -47,6 +47,7 @@ function RenameKLBfiles(root)
             tempD.NumberOfFrames = max(iter(:));
         end
         
+        wavelengthList = [];
         if (~isempty(cams))
             useCams = true;
             unqCams = unique(cams);
@@ -59,10 +60,8 @@ function RenameKLBfiles(root)
                     if (any(camChanMask))
                         wvlgth = unique(wavelengths(camChanMask));
                         c = c +1;
+                        wavelengthList(c) = wvlgth;
                         tempD.ChannelNames{c} = [num2str(wvlgth),' ', unqCams(cm)];
-                        if (size(tempD.ChannelColors,1)<c)
-                            tempD.ChannelColors(c,:) = colrs(c,:);
-                        end
                     end
                 end
             end
@@ -71,6 +70,13 @@ function RenameKLBfiles(root)
             useCams = false;
             tempD.NumberOfChannels = max(chans(:))+1;
         end
+        
+        wavelengths = zeros(tempD.NumberOfChannels,1);
+        for c=1:tempD.NumberOfChannels
+            wavelengths(c) = wavelengthList(c);
+        end
+        
+        tempD.ChannelColors = Utils.GetColorByWavelength(wavelengths);
         
         secOrdered = sort(secs);
         tempD.TimeStampDelta = [];
@@ -93,9 +99,10 @@ function RenameKLBfiles(root)
             if (useCams)
                 curChan = 1;
                 for ch = 1:length(unqChns)
-                    camMask = strcmpi(unqCams(cm),cams);
+                    chanMask = chans==unqChns(ch);
                     for cm = 1:length(unqCams)
-                        camChanMask = camMask & chans==unqChns(ch);
+                        camMask = strcmpi(unqCams(cm),cams);
+                        camChanMask = camMask & chanMask;
                         if (any(camChanMask))
                             inName = [curFileNames{timeMask & camChanMask}];
                             outName = sprintf('%s_c%d_t%04d',tempD.DatasetName,curChan,t);
