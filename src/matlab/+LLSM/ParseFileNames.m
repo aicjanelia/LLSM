@@ -64,7 +64,7 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
         wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
     end
 
-    secs = regexpi(fNames,['(\d+)',secsSuffix,'_'],'tokens');
+    secs = regexpi(fNames,['(\d+)',secsSuffix],'tokens');
     secs = secs(cellfun(@(x)(~isempty(x)),secs));
     if (~isempty(secs))
         secs = cellfun(@(x)(str2double(x{:})),secs)';
