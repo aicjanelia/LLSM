@@ -18,6 +18,7 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
     iterPrefix = '_Iter_';
     wavelengthSuffix = 'nm_';
     secsSuffix = 'msec_';
+    timeSuffix = 'msecAbs_';
     
     filePrefix = Utils.GetDirListPrefixSuffix(fNames);
 
@@ -64,10 +65,19 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
         wavelengths = cellfun(@(x)(str2double(x{:})),wavelengths)';
     end
 
-    secs = regexpi(fNames,['(\d+)',secsSuffix],'tokens');
-    secs = secs(cellfun(@(x)(~isempty(x)),secs));
-    if (~isempty(secs))
-        secs = cellfun(@(x)(str2double(x{:})),secs)';
+    if (max(stacks)>0)
+        secs = regexpi(fNames,['(\d+)',secsSuffix],'tokens');
+        secs = secs(cellfun(@(x)(~isempty(x)),secs));
+        if (~isempty(secs))
+            secs = cellfun(@(x)(str2double(x{:})),secs)';
+        end
+    else
+        timeStamps = regexpi(fNames,['(\d+)',timeSuffix],'tokens');
+        timeStamps = timeStamps(cellfun(@(x)(~isempty(x)),timeStamps));
+        if (~isempty(timeStamps))
+            timeStamps = cellfun(@(x)(str2double(x{:})),timeStamps)';
+        end
+        secs = timeStamps-timeStamps(1);
     end
 
     fileSuffixs = regexpi(fNames,'msec_(.*)','tokens');
