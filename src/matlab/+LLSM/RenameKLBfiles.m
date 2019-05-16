@@ -15,8 +15,11 @@ function RenameKLBfiles(root)
         elseif (~isempty(regexpi(subDir,'deskewed')))
             suffix = '_deskewed';
         end
-        tempD = imD;
-        tempD.DatasetName = [tempD.DatasetName,suffix];
+        
+        tempD = MicroscopeData.GetEmptyMetadata;
+        tempD.DatasetName = [imD.DatasetName,suffix];
+        tempD.PixelPhysicalSize = imD.PixelPhysicalSize;
+        
         curFiles = dir(fullfile(root,subDir,'*.klb'));
         tempIm = MicroscopeData.KLB.readKLBstack(fullfile(root,subDir,curFiles(1).name));
         sz = size(tempIm);
@@ -53,15 +56,16 @@ function RenameKLBfiles(root)
             unqCams = unique(cams);
             unqChns = unique(chans);
             c = 0;
-            for cm = 1:length(unqCams)
-                camMask = strcmpi(unqCams(cm),cams);
-                for ch = 1:length(unqChns)
-                    camChanMask = camMask & chans==unqChns(ch);
+            for ch = 1:length(unqChns)
+                chanMask = chans==unqChns(ch);
+                for cm = 1:length(unqCams)
+                    camMask = strcmpi(unqCams(cm),cams);
+                    camChanMask = camMask & chanMask;
                     if (any(camChanMask))
                         wvlgth = unique(wavelengths(camChanMask));
                         c = c +1;
                         wavelengthList(c) = wvlgth;
-                        tempD.ChannelNames{c} = [num2str(wvlgth),' ', unqCams(cm)];
+                        tempD.ChannelNames{c} = sprintf('%d Cam%s',wvlgth,unqCams{cm});
                     end
                 end
             end
