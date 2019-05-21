@@ -131,6 +131,9 @@ function MakeMIPmovie(root,subPath,overwrite)
             imIntensity = zeros(size(im,1),size(im,2),size(im,3),numChans,'single');
             for c=1:numChans
                 fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(c).cam,t,channels(c).chan);
+                if (isempty(fName))
+                    continue
+                end
                 imIntensity(:,:,:,c) = MicroscopeData.KLB.readKLBstack(fName{end});
             end
             
