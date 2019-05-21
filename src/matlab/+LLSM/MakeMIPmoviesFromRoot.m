@@ -29,10 +29,10 @@ function MakeMIPmoviesFromRoot(root,subPath,overwrite)
             LLSM.MakeMIPmoviesFromRoot(root,subSub,overwrite);
         end
     else
-        try
+%         try
             LLSM.MakeMIPmovie(root,subPath,overwrite);
-        catch err
-            warning(err.message)
-        end
+%         catch err
+%             warning(err.message)
+%         end
     end
 end
