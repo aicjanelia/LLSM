@@ -11,10 +11,13 @@ function RenameKLBfiles(root)
         end
         
         suffix = '';
-        if (~isempty(regexpi(subDir,'decon')))
+        if (~isempty(regexpi(subDir,'deconKLB$')))
             suffix = '_decon';
-        elseif (~isempty(regexpi(subDir,'deskewed')))
+        elseif (~isempty(regexpi(subDir,'deskewedKLB$')))
             suffix = '_deskewed';
+        else
+            fprintf('\n');
+            continue
         end
         
         tempD = MicroscopeData.GetEmptyMetadata;
