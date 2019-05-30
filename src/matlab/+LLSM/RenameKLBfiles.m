@@ -6,6 +6,7 @@ function RenameKLBfiles(root)
         fprintf('%s...',fullfile(root,subDir));
         imDTemp = MicroscopeData.ReadMetadata(fullfile(root,subDir),false);
         if (~isempty(imDTemp))
+            fprintf('\n');
             continue
         end
         
