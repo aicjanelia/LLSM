@@ -122,7 +122,7 @@ function MakeMIPmovie(root,subPath,overwrite)
     prgs.PrintProgress(0);
 %     parfor t=1:numFrames   
     for t=1:numFrames
-%         try
+        try
             fName = LLSM.GetFileName(fullfile(root,subPath,klbDir),channels(1).cam,t,channels(1).chan);
             if (isempty(fName))
                 continue
@@ -150,11 +150,11 @@ function MakeMIPmovie(root,subPath,overwrite)
             imFinal = ImUtils.MakeImageXYDimEven(imFinal);
 
             imwrite(imFinal,fullfile(frameDir,sprintf('%s_%04d.tif',outName,t)));
-%         catch err
-%             warning(err.message);
-%             prgs.ClearProgress(false);
-%             numFrames = t-1;
-%         end
+        catch err
+            warning(err.message);
+            prgs.StopUsingBackspaces();
+            numFrames = t-1;
+        end
         prgs.PrintProgress(t);
     end
 
