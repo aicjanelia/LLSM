@@ -22,36 +22,17 @@ function [im,imD] = ReadTiffs(dirIn,datasetName)
     end
 
     imD = MicroscopeData.GetEmptyMetadata();
+    
+    metadata = LLSM.ParseSettingsFile(fullfile(settingsListDir,settingsListName));
+    
+    imD.StartCaptureDate = metadata.startCaptureDate;
+    imD.ChannelNames = arrayfun(@(x)(num2str(x)),metadata.laserWaveLengths,'uniformoutput',false);
 
-    metadataStr = fileread(fullfile(settingsListDir,settingsListName));
-    dateStr = regexp(metadataStr,'(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+) ([AP]M)','tokens');
-    month = str2double(dateStr{1,1}{1,1});
-    day = str2double(dateStr{1,1}{1,2});
-    year = str2double(dateStr{1,1}{1,3});
-    hour = str2double(dateStr{1,1}{1,4});
-    if (strcmpi(dateStr{1,1}{1,7},'PM'))
-        hour = hour +12;
-    end
-    minute = str2double(dateStr{1,1}{1,5});
-    second = str2double(dateStr{1,1}{1,6});
-
-    imD.StartCaptureDate = sprintf('%d-%d-%d %02d:%02d:%02d',year,month,day,hour,minute,second);
-
-    zOffsetStr = regexp(metadataStr,'S PZT.*Excitation \(0\) :\t\d+\t(\d+).(\d+)','tokens');
-    zOffset = str2double([zOffsetStr{1,1}{1,1}, '.', zOffsetStr{1,1}{1,2}]);
-
-    laserWavelengthStr = regexp(metadataStr,'Excitation Filter, Laser, Power \(%\), Exp\(ms\) \((\d+)\) :\tN/A\t(\d+)','tokens');
-    laserWaveLengths = zeros(length(laserWavelengthStr),1);
-    for i=1:length(laserWavelengthStr)
-        laserWaveLengths(str2double(laserWavelengthStr{1,i}{1,1})+1) = str2double(laserWavelengthStr{1,i}{1,2});
-    end
-    imD.ChannelNames = arrayfun(@(x)(num2str(x)),laserWaveLengths,'uniformoutput',false);
-
-    if (length(laserWavelengthStr)==1)
+    if (length(imD.ChannelNames)==1)
         imD.ChannelColors = [1,1,1];
     else
         colrs = jet(7);
-        imD.ChannelColors = colrs(round((laserWaveLengths-488)/300*7+1),:);
+        imD.ChannelColors = colrs(round((metadata.laserWaveLengths-488)/300*7+1),:);
     end
     
     imList = dir(fullfile(root,'*.tif'));
@@ -115,10 +96,10 @@ function [im,imD] = ReadTiffs(dirIn,datasetName)
         timeStampStr = regexp(curName,'(\d+)msecAbs','tokens');
         imD.TimeStampDelta(1,c,t) = str2double(timeStampStr{1}) - startTimeStamp;
 
-        % get stage position from orginal file
-        info = imfinfo(fullfile(root,imList(i).name));
-        posTemp = info(1).UnknownTags;
-        imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
+%         % get stage position from orginal file
+%         info = imfinfo(fullfile(root,imList(i).name));
+%         posTemp = info(1).UnknownTags;
+%         imD.Position(1,c,t,:) = [posTemp(1).Value, posTemp(2).Value, posTemp(3).Value];
 
         prgs.PrintProgress(i);
     end
@@ -130,5 +111,5 @@ function [im,imD] = ReadTiffs(dirIn,datasetName)
     imD.NumberOfChannels = size(im,4);
     imD.NumberOfFrames = size(im,5);
     imD.PixelFormat = class(im);
-    imD.PixelPhysicalSize = [0.104,0.104,zOffset*sin(31.8)];
+    imD.PixelPhysicalSize = [0.104,0.104,metadata.zOffset*sin(31.8)];
 end
