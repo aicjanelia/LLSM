@@ -92,7 +92,9 @@ function RenameKLBfiles(root)
             startIdx = t*tempD.NumberOfChannels+1;
             deltaT = 0;
             for c=0:tempD.NumberOfChannels-1
-                deltaT = deltaT + secOrdered(startIdx+c);
+                if (length(secOrdered)>=startIdx+c)
+                    deltaT = deltaT + secOrdered(startIdx+c);
+                end
             end
             tempD.TimeStampDelta(end+1) = (deltaT./tempD.NumberOfChannels)*1e-3;
         end
