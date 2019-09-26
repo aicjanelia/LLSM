@@ -42,62 +42,13 @@ function RenameKLBfiles(root)
 %             warning('Dataset name missmatch: %s -> %s',imD.DatasetName,datasetName{1});
         end
         
-        if (isempty(iter) || max(stacks(:))>max(iter(:)))
-            useStacks = true;
-        else
-            useStacks = false;
-        end
+        [tempD.NumberOfFrames, useStacks] = LLSM.GetNumberOfFrames(iter,stacks);
         
-        if (useStacks)
-            tempD.NumberOfFrames = max(stacks(:));
-        else
-            tempD.NumberOfFrames = max(iter(:));
-        end
-        
-        wavelengthList = [];
-        if (~isempty(cams))
-            useCams = true;
-            unqCams = unique(cams);
-            unqChns = unique(chans);
-            c = 0;
-            for ch = 1:length(unqChns)
-                chanMask = chans==unqChns(ch);
-                for cm = 1:length(unqCams)
-                    camMask = strcmpi(unqCams(cm),cams);
-                    camChanMask = camMask & chanMask;
-                    if (any(camChanMask))
-                        wvlgth = unique(wavelengths(camChanMask));
-                        c = c +1;
-                        wavelengthList(c) = wvlgth;
-                        tempD.ChannelNames{c} = sprintf('%d Cam%s',wvlgth,unqCams{cm});
-                    end
-                end
-            end
-            tempD.NumberOfChannels = c;
-        else
-            useCams = false;
-            tempD.NumberOfChannels = max(chans(:))+1;
-        end
-        
-        wavelengths = zeros(tempD.NumberOfChannels,1);
-        for c=1:tempD.NumberOfChannels
-            wavelengths(c) = wavelengthList(c);
-        end
+        [tempD.NumberOfChannels, tempD.ChannelNames, wavelengths, useCams] = LLSM.GetChannelData(cams,chans);
         
         tempD.ChannelColors = Utils.GetColorByWavelength(wavelengths);
         
-        secOrdered = sort(secs);
-        tempD.TimeStampDelta = [];
-        for t=0:tempD.NumberOfFrames-1
-            startIdx = t*tempD.NumberOfChannels+1;
-            deltaT = 0;
-            for c=0:tempD.NumberOfChannels-1
-                if (length(secOrdered)>=startIdx+c)
-                    deltaT = deltaT + secOrdered(startIdx+c);
-                end
-            end
-            tempD.TimeStampDelta(end+1) = (deltaT./tempD.NumberOfChannels)*1e-3;
-        end
+        tempD.TimeStampDeta = MicroscopeData.GetOrderedTimeStamps(secs,tempD.NumberOfFrames,tempD.NumberOfChannels);
 
         prgs = Utils.CmdlnProgress(tempD.NumberOfFrames,true,'Renaming');
         for t=1:tempD.NumberOfFrames
