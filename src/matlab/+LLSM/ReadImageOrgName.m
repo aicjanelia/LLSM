@@ -55,12 +55,14 @@ function im = TimeLoop(metadata,names,frame,channels)
         end
 
         if (~any(fMask))
+            warning('Cannot find file for frame: %d channel: %d name: %s',frame,channels(c),metadata.imageDir);
             im = [];
             return
         end
 
         fName = names.fileNames{fMask};
         if (~exist(fullfile(metadata.imageDir,fName),'file'))
+            warning('Cannot find file for frame: %d channel: %d name: %s',frame,channels(c),metadata.imageDir);
             im = [];
             return
         end
