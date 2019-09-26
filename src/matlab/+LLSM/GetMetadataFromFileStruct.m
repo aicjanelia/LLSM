@@ -11,8 +11,9 @@ function [metadata, names] = GetMetadataFromFileStruct(imageDir,imageExt,textPat
             if (isempty(metadata))
                 error('Cannot find metadata file, json or text!');
             end
+        else
+            metadata = LLSM.GetRAWmetadata(textPath);
         end
-        metadata = LLSM.GetRAWmetadata(textPath);
         writeJson = true;
     end
 
@@ -39,7 +40,7 @@ function [metadata, names] = GetMetadataFromFileStruct(imageDir,imageExt,textPat
     names.useCams = useCams;
     
     if (writeJson)
-        im = LLSM.ReadImage(metadata, names, 1, 1);
+        im = LLSM.ReadImageOrgName(metadata, names, 1, 1);
         metadata.Dimensions = Utils.SwapXY_RC(size(im));
         
         MicroscopeData.CreateMetadata(imageDir,metadata);
