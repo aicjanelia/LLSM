@@ -15,7 +15,9 @@ function im = ReadImageOrgName(metadata, names, frames, channels)
         return
     end
     
-    im = zeros([size(im),length(channels),length(frames)],'like',im);
+    im = zeros([size(im),length(frames)],'like',im);
+    
+    [~,~,ext] = fileparts(names.fileNames{1});
     
     if (strcmp(ext,'.tif'))
         parfor t=1:length(frames)
