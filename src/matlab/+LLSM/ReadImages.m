@@ -26,7 +26,7 @@ function [im,metadata] = ReadImages(imageDir,frames, channels, optionalTxtPath)
         end
     end  
 
-    [metadata, names] = LLSM.GetFileReadingMetadata(imageDir,ext,optionalTxtPath);
+    [metadata, names] = LLSM.GetMetadataFromFileStruct(imageDir,ext,optionalTxtPath);
 
     im = LLSM.ReadImageOrgName(metadata,names,frames,channels);
 end
