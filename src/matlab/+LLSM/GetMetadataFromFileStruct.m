@@ -1,6 +1,17 @@
 function [metadata, names] = GetMetadataFromFileStruct(imageDir,imageExt,textPath)
     if (~exist('imageExt','var') || isempty(imageExt))
+        fileList = dir(imageDir);
+        klb = false(length(fileList),1);
+        tif = false(length(fileList),1);
+        for i=1:length(fileList)
+            klb(i) = ~isempty(strfind(fileList(i).name,'.klb'));
+            tif(i) = ~isempty(strfind(fileList(i).name,'.tif'));
+        end
+        if (nnz(klb)>nnz(tif))
+            imageExt = 'klb';
+        else
         imageExt = 'tif';
+        end
     end
 
     metadata = MicroscopeData.ReadMetadata(imageDir,false);
