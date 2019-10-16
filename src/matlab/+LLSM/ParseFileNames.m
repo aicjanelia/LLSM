@@ -51,9 +51,9 @@ function [datasetName,chans,cams,stacks,iter,wavelengths,secs,fileSuffixs] = Par
     if (~contains(filePrefix,'_'))
         datasetName = filePrefix;
     elseif (isempty(iter))
-        datasetName = regexpi(filePrefix,['^(\w+)','_',chanPrefix],'tokens');
+        datasetName = regexpi(filePrefix,['^(\w+)',chanPrefix],'tokens');
     else
-        datasetName = regexpi(filePrefix,['^(\w+)','_',iterPrefix],'tokens');
+        datasetName = regexpi(filePrefix,['^(\w+)',iterPrefix],'tokens');
     end
     if (iscell(datasetName))
         datasetName = vertcat(datasetName{:});

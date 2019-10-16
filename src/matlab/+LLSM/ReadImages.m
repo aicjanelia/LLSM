@@ -1,4 +1,4 @@
-function [im,metadata] = ReadImages(imageDir,frames, channels, optionalTxtPath)
+function [im,metadata] = ReadImages(imageDir, frames, channels, optionalTxtPath)
     if (~exist('frames','var'))
         frames = [];
     end
@@ -29,4 +29,7 @@ function [im,metadata] = ReadImages(imageDir,frames, channels, optionalTxtPath)
     [metadata, names] = LLSM.GetMetadataFromFileStruct(imageDir,ext,optionalTxtPath);
 
     im = LLSM.ReadImageOrgName(metadata,names,frames,channels);
+    
+    metadata.NumberOfFrames = size(im,5);
+    metadata.NumberOfChannels = size(im,4);
 end

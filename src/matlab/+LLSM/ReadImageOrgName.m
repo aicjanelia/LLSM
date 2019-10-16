@@ -15,20 +15,21 @@ function im = ReadImageOrgName(metadata, names, frames, channels)
         return
     end
     
-    sz = size(im);
+    sz = ImUtils.Size(im);
+    sz(5) = length(frames);
     cl = class(im);
-    im = zeros([sz,length(frames)],'like',im);
+    im = zeros(sz,'like',im);
     
     [~,~,ext] = fileparts(names.fileNames{1});
     
     if (strcmp(ext,'.tif'))
         parfor t=1:length(frames)
-            curIm = TimeLoop(metadata,names,sz,cl,frames(t),channels);
+            curIm = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
             im(:,:,:,:,t) = curIm;
         end
     else
         for t=1:length(frames)
-            curIm = TimeLoop(metadata,names,sz,cl,frames(t),channels);
+            curIm = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
             im(:,:,:,:,t) = curIm;
         end
     end
@@ -44,12 +45,12 @@ function im = TimeLoop(metadata,names,sz,cl,frame,channels)
     im = zeros(sz,cl);
 
     for c=1:length(channels)
-        channel = channels(c);
+        channel = channels(c) -1;
 
         if (names.useCams)
             % cameras are itterated first and then the channel field
-            cameraInd = mod(channel-1,length(names.uniqueCams)) +1;
-            chnInd = floor((channel-1)/length(names.uniqueCams)) +1;
+            cameraInd = mod(channel,length(names.uniqueCams)) +1;
+            chnInd = floor((channel)/length(names.uniqueCams)) +1;
 
             chanMask = names.chans==names.uniqueChans(chnInd);
             camMask = strcmpi(names.uniqueCams{cameraInd},names.cams);
