@@ -25,7 +25,19 @@ function [numChannels, channelNames, wavelengths, useCamField, uniqueCams, uniqu
         numChannels = c;
     else
         useCamField = false;
-        numChannels = max(chans(:))+1;
+        
+        uniqueChans = unique(chans);
+        c = 0;
+        for ch = 1:length(uniqueChans)
+            chanMask = chans==uniqueChans(ch);
+            if (any(chanMask))
+                wvlgth = unique(wavelengths(chanMask));
+                c = c +1;
+                wavelengthList(c) = wvlgth;
+                channelNames{c} = sprintf('%d',wvlgth);
+            end
+        end
+        numChannels = c;
     end
 
     wavelengths = zeros(numChannels,1);
