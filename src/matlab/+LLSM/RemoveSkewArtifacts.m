@@ -1,4 +1,4 @@
-function im = RemoveSkewArtifacts(im,shrinkDist,minVal,verbose)
+function [im,boundBW] = RemoveSkewArtifacts(im,shrinkDist,minVal,verbose)
 % RemoveBoarderArtifacts attempts to take the edge of the real data and
 % shrinks in by shrinkDist
 
@@ -29,6 +29,7 @@ function im = RemoveSkewArtifacts(im,shrinkDist,minVal,verbose)
     boundBW(:,:,end,:,:) = false;
     se = HIP.MakeEllipsoidMask([shrinkDist,1,3]);
     boundBW = HIP.MinFilter(boundBW,se,[],[]);
+    
     im(~boundBW) = 0;
     
     if (verbose)
