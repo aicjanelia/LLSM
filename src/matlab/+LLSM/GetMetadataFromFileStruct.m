@@ -18,12 +18,12 @@ function [metadata, names] = GetMetadataFromFileStruct(imageDir,imageExt,textPat
     writeJson = false;
     if (isempty(metadata))
         if (~exist('textPath','var') || isempty(textPath))
-            metadata = LLSM.GetRAWmetadata(fullfile(imageDir,'..'));
+            metadata = LLSM.GetMetadata(imageDir);
             if (isempty(metadata))
                 error('Cannot find metadata file, json or text!');
             end
         else
-            metadata = LLSM.GetRAWmetadata(textPath);
+            metadata = LLSM.GetMetadata(imageDir,textPath);
         end
         writeJson = true;
     end
