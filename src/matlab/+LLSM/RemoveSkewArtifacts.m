@@ -9,7 +9,7 @@ function [im,boundBW] = RemoveSkewArtifacts(im,shrinkDist,minVal,verbose)
     if (~exist('shrinkDist','var') || isempty(shrinkDist))
         shrinkDist = 5;
     end
-    if (~exist('minVal','var') || ispempty(minVal))
+    if (~exist('minVal','var') || isempty(minVal))
         minVal = 0;
     end
     
