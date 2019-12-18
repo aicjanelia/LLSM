@@ -25,22 +25,20 @@ function im = ReadImageOrgName(metadata, names, frames, channels)
     if (strcmp(ext,'.tif'))
         parfor t=1:length(frames)
             try
-                curIm = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
+                im(:,:,:,:,t) = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
             catch err
                 warning(err.message)
                 continue
             end
-            im(:,:,:,:,t) = curIm;
         end
     else
         for t=1:length(frames)
             try
-                curIm = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
+                im(:,:,:,:,t) = TimeLoop(metadata,names,sz(1:4),cl,frames(t),channels);
             catch err
                 warning(err.message)
                 continue
             end
-            im(:,:,:,:,t) = curIm;
         end
     end
 end
