@@ -59,6 +59,8 @@ function RenameKLBfiles(root)
             end
             if (useCams)
                 curChan = 1;
+                unqChns = unique(chans);
+                unqCams = unique(cams);
                 for ch = 1:length(unqChns)
                     chanMask = chans==unqChns(ch);
                     for cm = 1:length(unqCams)
