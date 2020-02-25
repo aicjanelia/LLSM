@@ -44,7 +44,7 @@ function RenameKLBfiles(root)
         
         [tempD.NumberOfFrames, useStacks] = LLSM.GetNumberOfFrames(iter,stacks);
         
-        [tempD.NumberOfChannels, tempD.ChannelNames, wavelengths, useCams] = LLSM.GetChannelData(cams,chans);
+        [tempD.NumberOfChannels, tempD.ChannelNames, wavelengths, useCams] = LLSM.GetChannelData(cams,chans,wavelengths);
         
         tempD.ChannelColors = Utils.GetColorByWavelength(wavelengths);
         
