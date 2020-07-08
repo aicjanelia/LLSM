@@ -1,4 +1,8 @@
-function [imMetadata,dirNamesKLB] = GetRAWmetadata(root)
+function [imMetadata,dirNamesKLB] = GetRAWmetadata(root,klbOnly)
+    if (~exist('klbOnly','var') || isempty(klbOnly))
+        klbOnly = true; % this is true for legecy compatiblity
+    end
+    
     datasetName = LLSM.ParseSettingsFileNames(root);
     settingsName = dir(fullfile(root,'*.txt'));
     metadata = LLSM.ParseSettingsFile(fullfile(root,settingsName(1).name));
@@ -18,8 +22,11 @@ function [imMetadata,dirNamesKLB] = GetRAWmetadata(root)
     dirList = dir(fullfile(root));
     dirMask = [dirList.isdir];
     dirNamesKLB = {dirList(dirMask).name};
-    klbDirMask = cellfun(@(x)(~isempty(x)),regexpi(dirNamesKLB,'KLB'));
-    dirNamesKLB = dirNamesKLB(klbDirMask);
+    
+    if (klbOnly)
+        klbDirMask = cellfun(@(x)(~isempty(x)),regexpi(dirNamesKLB,'KLB'));
+        dirNamesKLB = dirNamesKLB(klbDirMask);
+    end
 
     imMetadata.NumberOfChannels = metadata.numChan;
     imMetadata.NumberOfFrames = metadata.numStacks(1);
