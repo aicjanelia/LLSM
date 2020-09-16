@@ -11,7 +11,7 @@ WAR_FLAGS := -Wall -g
 OPT_FLAGS := -O2
 INC_DIR_FLAGS := -I${VCPKG_INC_DIR} -I${X11_INC_DIR}
 LIB_DIR_FLAGS := -L${VCPKG_LIB_DIR} -L${X11_LIB_DIR}
-LIB_FLAGS := -lm -pthread -lX11 -lboost_program_options -lboost_filesystem
+LIB_FLAGS := -lm -pthread -lX11 -lboost_program_options -lboost_filesystem -ltiff -ljpeg -llzma -lz
 
 override CPPFLAGS += ${OPT_FLAGS} ${WAR_FLAGS} ${STD_FLAGS} ${INC_DIR_FLAGS} ${LIB_DIR_FLAGS} ${LIB_FLAGS} 
 
