@@ -1,6 +1,7 @@
 #define VERSION "AIC Deskew version 0.1.0"
 #define UNSET_FLOAT -1.0f
 #define UNSET_INT -1
+#define UNSET_UNSIGNED_SHORT 0
 #define UNSET_BOOL false
 #define cimg_use_tiff
 
@@ -10,20 +11,26 @@
 #include <exception>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <tiffio.hxx>
 #include <CImg.h>
 
 namespace cil = cimg_library;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-cil::CImg<> LoadImage(std::string path);
+bool IsFileTIFF(const char* path);
+
+unsigned short GetTIFFBitDepth(const char* path);
+
+template <typename T>
+void LoadTIFF(const char* path, cil::CImg<T>& img);
 
 // int SaveImage(cil::CImg img, std::string path);
 
 // template <typename T>
 // cil::CImg Deskew(cil::CImg<T> img, float xy_rez, float z_rez, float angle, int nthreads);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char** argv) {
   // parameters
   float xy = UNSET_FLOAT;
   float z = UNSET_FLOAT;
@@ -74,7 +81,7 @@ int main(int argc, char *argv[]) {
     // check options
     po::notify(varsmap);
 
-  } catch (po::error &e) {
+  } catch (po::error& e) {
     std::cerr << "deskew: " << e.what() << "\n\n";
     std::cerr << visible_opts << std::endl;
     return EXIT_FAILURE;
@@ -84,52 +91,71 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  // load image
-  cil::CImg<> img = LoadImage(varsmap["input"].as<std::string>());
+  // check files
+  const char* in_path = varsmap["input"].as<std::string>().c_str();
+  if (!IsFileTIFF(in_path)) {
+    std::cerr << "deskew: not a TIFF file" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  const char* out_path = varsmap["output"].as<std::string>().c_str();
+
+  // get bit depth
+  unsigned short bits = GetTIFFBitDepth(in_path);
 
   // deskew
-
+  if (bits <= 8) {
+    cil::CImg<unsigned char> img;
+    img.load_tiff(in_path);
+    img.save_tiff(out_path, 0, 0, "description", false);
+  } else if (bits == 16) {
+    cil::CImg<unsigned short> img;
+    img.load_tiff(in_path);
+    img.save_tiff(out_path, 0, 0, "description", false);
+  } else if (bits == 32) {
+    cil::CImg<float> img;
+    img.load_tiff(in_path);
+    img.save_tiff(out_path, 0, 0, "description", false);
+  } else {
+    std::cerr << "deskew: unknown bit depth" << std::endl;
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }
 
-cil::CImg<> LoadImage(std::string path) {
-  // check input path
+bool IsFileTIFF(const char* path) {
   fs::path p(path);
   if (fs::exists(p)) {
     if (fs::is_regular_file(p)){
-      std::cout << "Loading " << p << std::endl;
+      //TODO: Check if file is a tiff and not just a file
+      return true;
     }
-  } else {
-    std::cerr << "LoadImage: " << p << " does not exist" << std::endl;
   }
-
-  // load image
-  cil::CImg<> img;
-  try {
-    img.load(p.c_str());
-  } catch (cil::CImgException &e) {
-    std::cerr << "CImg Library: " << e.what() << std::endl;
-    throw e;
-  } catch (...) {
-    std::cerr << "LoadImage: unknown error during image loading" << std::endl;
-  }
-
-  return img;
+  return false;
 }
 
-// int SaveImage(cil::CImg img, std::string path) {
-//   // check input path
-//   fs::path p(path);
-//   if (fs::exists(p)) {
-//     if (fs::is_regular_file(p)){
-//       std::cout << "Saving " << p << std::endl;
-//     }
-//   } else {
-//     std::cerr << "SaveImage: " << p << " does not exist" << std::endl;
-//   }
+unsigned short GetTIFFBitDepth(const char* path) {
+  // read bit depth from file
+  unsigned short bps = UNSET_UNSIGNED_SHORT;
+  TIFF* tif = TIFFOpen(path, "r");
+  int defined = TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &bps);
+  TIFFClose(tif);
+  if (!defined) {
+    std::cerr << "GetTIFFBitDepth: no BITPERSAMPLE tag found" << std::endl;
+  }
+  return bps;
+}
 
-//   return EXIT_SUCCESS;
+// template <typename T>
+// void LoadTIFF(const char* path, cil::CImg<T>& img) {
+//   // load TIFF image
+//   try {
+//     img.load_tiff(path);
+//   } catch (cil::CImgException& e) {
+//     std::cerr << "CImg Library: " << e.what() << std::endl;
+//     throw e;
+//   }
 // }
 
 // template <typename T>
