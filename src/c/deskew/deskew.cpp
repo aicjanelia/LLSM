@@ -105,19 +105,19 @@ int main(int argc, char** argv) {
 
   // deskew
   float voxel_size[3] = {UNSET_FLOAT};
-  cil::CImg<char>* tiff_desc;
+  cil::CImg<char> tiff_desc;
   if (bits <= 8) {
     cil::CImg<unsigned char> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, tiff_desc);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc->value_string(), false);
+    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 16) {
     cil::CImg<unsigned short> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, tiff_desc);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc->value_string(), false);
+    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 32) {
     cil::CImg<float> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, tiff_desc);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc->value_string(), false);
+    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else {
     std::cerr << "deskew: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
