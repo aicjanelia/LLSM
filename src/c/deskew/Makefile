@@ -5,7 +5,7 @@ VCPKG_LIB_DIR := /usr/local/var/vcpkg/installed/x64-osx/lib
 X11_LIB_DIR := /usr/X11R6/lib
 
 # Compiler settings
-CC := g++
+CC := clang++
 STD_FLAGS := -std=c++11
 WAR_FLAGS := -Wall -g
 OPT_FLAGS := -O2
