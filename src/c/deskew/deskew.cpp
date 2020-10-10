@@ -23,30 +23,27 @@ bool IsFileTIFF(const char* path);
 unsigned short GetTIFFBitDepth(const char* path);
 
 template <typename T>
-void LoadTIFF(const char* path, cil::CImg<T>& img);
-
-// int SaveImage(cil::CImg img, std::string path);
-
-// template <typename T>
-// cil::CImg Deskew(cil::CImg<T> img, float xy_rez, float z_rez, float angle, int nthreads);
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, int nthreads, bool verbose);
 
 int main(int argc, char** argv) {
   // parameters
-  float xy = UNSET_FLOAT;
-  float z = UNSET_FLOAT;
+  float xy_res = UNSET_FLOAT;
+  float step = UNSET_FLOAT;
   float angle = UNSET_FLOAT;
   int nthreads = UNSET_INT;
+  bool verbose = false;
 
   // declare the supported options
   po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
-      ("xy-rez,x", po::value<float>(&xy)->default_value(0.104f), "x/y resolution (um/px)")
-      ("z-rez,z", po::value<float>(&z)->default_value(0.25f), "z resolution (um/px)")
-      ("angle,a", po::value<float>(&angle)->default_value(32.8f), "deskewing angle (degrees)")
+      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
+      ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
+      ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
       ("nthreads,n", po::value<int>(&nthreads)->default_value(4),"number of threads")
       ("output,o", po::value<std::string>()->required(),"output file path")
-      ("version,v", "display the version number")
+      ("verbose,v", po::value<bool>(&verbose)->implicit_value(true), "display progress and debug information")
+      ("version", "display the version number")
   ;
 
   po::options_description hidden_opts;
@@ -98,10 +95,30 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  // check angle
+  if (fabs(angle) > 360.0) {
+    std::cerr << "deskew: angle must be within [-360,360]" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
 
   // get bit depth
   unsigned short bits = GetTIFFBitDepth(in_path);
+
+  // print parameters
+  if (verbose) {
+    std::cout << "Input Parameters:\n";
+    std::cout << "X/Y Resolution (um/px) = " << xy_res << "\n";
+    std::cout << "Step Size (um) = " << step << "\n";
+    std::cout << "Objective Angle (degrees) = " << angle <<"\n";
+    std::cout << "Number of Threads = " << nthreads << "\n";
+    std::cout << "Input Path = " << in_path << "\n";
+    std::cout << "Output Path = " << out_path << "\n\n";
+    std::cout << "Checking Bit Depth...\n";
+    std::cout << "Bit Depth = " << bits << std::endl;
+  }
 
   // deskew
   float voxel_size[3] = {UNSET_FLOAT};
@@ -109,14 +126,17 @@ int main(int argc, char** argv) {
   if (bits <= 8) {
     cil::CImg<unsigned char> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
     img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 16) {
     cil::CImg<unsigned short> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
     img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 32) {
     cil::CImg<float> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
+    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
     img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else {
     std::cerr << "deskew: unknown bit depth" << std::endl;
@@ -149,41 +169,44 @@ unsigned short GetTIFFBitDepth(const char* path) {
   return bps;
 }
 
-// template <typename T>
-// void LoadTIFF(const char* path, cil::CImg<T>& img) {
-//   // load TIFF image
-//   try {
-//     img.load_tiff(path);
-//   } catch (cil::CImgException& e) {
-//     std::cerr << "CImg Library: " << e.what() << std::endl;
-//     throw e;
+template <typename T>
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, int nthreads, bool verbose) {
+  int width = img.width();
+  int height = img.height();
+  int nslices = img.depth();
+
+  // calculate shift from angle, step, and xy-resolution
+  float shift = step * cos(angle * M_PI/180.0) / xy_res;
+  int deskewed_width = ceil(width + (fabs(shift) * (nslices - 1)));
+  
+  if (verbose) {
+    
+  }
+
+  // deskew by shifting each slice using 1-D linear interpolation
+
+//   int deskew(const CImg<> &inBuf, double deskewFactor, CImg<> &outBuf, int extraShift)
+// {
+//   auto nz = inBuf.depth();
+//   auto ny = inBuf.height();
+//   auto nx = inBuf.width();
+//   auto nxOut = outBuf.width();
+// #pragma omp parallel for
+//   for (auto zout=0; zout < nz; zout++)
+//     for (auto yout=0; yout < ny; yout++)
+//       for (auto xout=0; xout < nxOut; xout++) {
+//         const double xin = (xout - nxOut/2. + extraShift) - deskewFactor*(zout-nz/2.) + nx/2.;
+
+//         if (xin >= 0 && floor(xin) <= nx-1) {
+//           const double offset = xin - floor(xin);
+//           const int floor_xin = floor(xin);
+//           outBuf(xout, yout, zout) = (1.0 - offset) * inBuf(floor_xin, yout, zout)
+//             + offset * inBuf(floor_xin+1, yout, zout);
+//         }
+//         else
+//           outBuf(xout, yout, zout) = 100.f;
 //   }
 // }
 
-// template <typename T>
-// cil::CImg Deskew(cil::CImg<T> img, float xy_rez, float z_rez, float angle, int nthreads) {
-//   // int deskew(const CImg<> &inBuf, double deskewFactor, CImg<> &outBuf, int extraShift)
-// // {
-// //   auto nz = inBuf.depth();
-// //   auto ny = inBuf.height();
-// //   auto nx = inBuf.width();
-// //   auto nxOut = outBuf.width();
-// // #pragma omp parallel for
-// //   for (auto zout=0; zout < nz; zout++)
-// //     for (auto yout=0; yout < ny; yout++)
-// //       for (auto xout=0; xout < nxOut; xout++) {
-// //         const double xin = (xout - nxOut/2. + extraShift) - deskewFactor*(zout-nz/2.) + nx/2.;
-
-// //         if (xin >= 0 && floor(xin) <= nx-1) {
-// //           const double offset = xin - floor(xin);
-// //           const int floor_xin = floor(xin);
-// //           outBuf(xout, yout, zout) = (1.0 - offset) * inBuf(floor_xin, yout, zout)
-// //             + offset * inBuf(floor_xin+1, yout, zout);
-// //         }
-// //         else
-// //           outBuf(xout, yout, zout) = 100.f;
-// //   }
-// // }
-
-//   return img;
-// }
+  return img;
+}
