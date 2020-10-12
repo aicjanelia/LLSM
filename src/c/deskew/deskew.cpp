@@ -109,14 +109,14 @@ int main(int argc, char** argv) {
 
   // print parameters
   if (verbose) {
-    std::cout << "Input Parameters:\n";
+    std::cout << "\nInput Parameters:\n";
     std::cout << "X/Y Resolution (um/px) = " << xy_res << "\n";
     std::cout << "Step Size (um) = " << step << "\n";
     std::cout << "Objective Angle (degrees) = " << angle <<"\n";
     std::cout << "Number of Threads = " << nthreads << "\n";
     std::cout << "Input Path = " << in_path << "\n";
-    std::cout << "Output Path = " << out_path << "\n\n";
-    std::cout << "Checking Bit Depth...\n";
+    std::cout << "Output Path = " << out_path << "\n";
+    std::cout << "\nImage Parameters\n";
     std::cout << "Bit Depth = " << bits << std::endl;
   }
 
@@ -179,8 +179,11 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, int
   float shift = step * cos(angle * M_PI/180.0) / xy_res;
   int deskewed_width = ceil(width + (fabs(shift) * (nslices - 1)));
   
+  // print parameters
   if (verbose) {
-    
+    std::cout << "\nDeskew Parameters:\n";
+    std::cout << "Shift (px) = " << shift << "\n";
+    std::cout << "Deskewed Image Width (px) = " << deskewed_width << std::endl; 
   }
 
   // deskew by shifting each slice using 1-D linear interpolation
