@@ -5,12 +5,14 @@
 #define UNSET_BOOL false
 #define cimg_display 0
 #define cimg_use_tiff
+#define cimg_use_openmp 1
 
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <exception>
 #include <math.h>
+#include <omp.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <tiffio.hxx>
@@ -201,7 +203,7 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
   const double origin_x = (width-1)/2.0;
   const double origin_z = (nslices-1)/2.0;
 
-  // #pragma omp parallel for
+  #pragma omp parallel for
     for (int zidx=0; zidx < nslices; ++zidx) {
       for (int yidx=0; yidx < height; ++yidx) {
         for (int xidx=0; xidx < deskewed_width; ++xidx) {
