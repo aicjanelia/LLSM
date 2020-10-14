@@ -24,7 +24,7 @@ namespace cil = cimg_library;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-bool IsFileTIFF(const char* path);
+bool IsFile(const char* path);
 
 unsigned short GetTIFFBitDepth(const char* path);
 
@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
   float angle = UNSET_FLOAT;
   float fill_value = UNSET_FLOAT;
   int nthreads = UNSET_INT;
-  bool verbose = false;
+  bool overwrite = UNSET_BOOL;
+  bool verbose = UNSET_BOOL;
 
   // declare the supported options
   po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
@@ -50,7 +51,8 @@ int main(int argc, char** argv) {
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
       ("nthreads,n", po::value<int>(&nthreads)->default_value(omp_get_num_procs()),"number of threads")
       ("output,o", po::value<std::string>()->required(),"output file path")
-      ("verbose,v", po::value<bool>(&verbose)->implicit_value(true), "display progress and debug information")
+      ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
+      ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
   ;
 
@@ -98,8 +100,8 @@ int main(int argc, char** argv) {
 
   // check files
   const char* in_path = varsmap["input"].as<std::string>().c_str();
-  if (!IsFileTIFF(in_path)) {
-    std::cerr << "deskew: not a TIFF file" << std::endl;
+  if (!IsFile(in_path)) {
+    std::cerr << "deskew: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -114,6 +116,15 @@ int main(int argc, char** argv) {
 
   // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
+  if (IsFile(out_path)) {
+    if (!overwrite) {
+      std::cerr << "deskew: output path already exists" << std::endl;
+      return EXIT_FAILURE;
+    } else if (verbose) {
+        std::cout << "overwriting: " << out_path << std::endl;
+    }
+
+  }
 
   // get bit depth
   unsigned short bits = GetTIFFBitDepth(in_path);
@@ -128,6 +139,7 @@ int main(int argc, char** argv) {
     std::cout << "Number of Threads = " << nthreads << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
+    std::cout << "Overwrite = " << overwrite << "\n";
     std::cout << "\nTIFF Properties\n";
     std::cout << "Bit Depth = " << bits << std::endl;
   }
@@ -158,11 +170,10 @@ int main(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
-bool IsFileTIFF(const char* path) {
+bool IsFile(const char* path) {
   fs::path p(path);
   if (fs::exists(p)) {
-    if (fs::is_regular_file(p)){
-      //TODO: Check if file is a tiff and not just a file
+    if (fs::is_regular_file(p)) {
       return true;
     }
   }
