@@ -1,4 +1,5 @@
 #define VERSION "AIC Deskew version 0.1.0"
+#define UNSET_DOUBLE -1.0
 #define UNSET_FLOAT -1.0f
 #define UNSET_INT -1
 #define UNSET_UNSIGNED_SHORT 0
@@ -28,7 +29,7 @@ bool IsFileTIFF(const char* path);
 unsigned short GetTIFFBitDepth(const char* path);
 
 template <typename T>
-cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, int nthreads, bool verbose);
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, bool verbose);
 
 int main(int argc, char** argv) {
   // parameters
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
       ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
       ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
-      ("nthreads,n", po::value<int>(&nthreads)->default_value(4),"number of threads")
+      ("nthreads,n", po::value<int>(&nthreads)->default_value(omp_get_num_procs()),"number of threads")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("verbose,v", po::value<bool>(&verbose)->implicit_value(true), "display progress and debug information")
       ("version", "display the version number")
@@ -108,6 +109,9 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  // set global openmp thread number
+  omp_set_num_threads(nthreads);
+
   // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
 
@@ -134,17 +138,17 @@ int main(int argc, char** argv) {
   if (bits <= 8) {
     cil::CImg<unsigned char> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, nthreads, verbose);
+    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, verbose);
     deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 16) {
     cil::CImg<unsigned short> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned short) fill_value, nthreads, verbose);
+    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned short) fill_value, verbose);
     deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 32) {
     cil::CImg<float> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, fill_value, nthreads, verbose);
+    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, fill_value, verbose);
     deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else {
     std::cerr << "deskew: unknown bit depth" << std::endl;
@@ -178,7 +182,7 @@ unsigned short GetTIFFBitDepth(const char* path) {
 }
 
 template <typename T>
-cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, int nthreads, bool verbose) {
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, bool verbose) {
   int width = img.width();
   int height = img.height();
   int nslices = img.depth();
@@ -204,6 +208,12 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
   const double origin_x = (width-1)/2.0;
   const double origin_z = (nslices-1)/2.0;
 
+  double start = UNSET_DOUBLE;
+  double end = UNSET_DOUBLE;
+  if (verbose) {
+    start = omp_get_wtime();
+  }
+
   #pragma omp parallel for
     for (int zidx=0; zidx < nslices; ++zidx) {
       for (int yidx=0; yidx < height; ++yidx) {
@@ -222,6 +232,11 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
         }
       }
     }
+  
+  if (verbose) {
+    end = omp_get_wtime();
+    std::cout << "\nElapsed Deskew Time (sec) = " << end - start << std::endl;
+  }
 
   return deskewed_img;
 }
