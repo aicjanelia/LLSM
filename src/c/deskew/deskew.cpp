@@ -3,6 +3,7 @@
 #define UNSET_INT -1
 #define UNSET_UNSIGNED_SHORT 0
 #define UNSET_BOOL false
+#define cimg_display 0
 #define cimg_use_tiff
 
 #include <cstdlib>
