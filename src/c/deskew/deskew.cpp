@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <exception>
+#include <math.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <tiffio.hxx>
@@ -23,13 +24,14 @@ bool IsFileTIFF(const char* path);
 unsigned short GetTIFFBitDepth(const char* path);
 
 template <typename T>
-cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, int nthreads, bool verbose);
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, int nthreads, bool verbose);
 
 int main(int argc, char** argv) {
   // parameters
   float xy_res = UNSET_FLOAT;
   float step = UNSET_FLOAT;
   float angle = UNSET_FLOAT;
+  float fill_value = UNSET_FLOAT;
   int nthreads = UNSET_INT;
   bool verbose = false;
 
@@ -40,6 +42,7 @@ int main(int argc, char** argv) {
       ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
       ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
       ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
+      ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
       ("nthreads,n", po::value<int>(&nthreads)->default_value(4),"number of threads")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("verbose,v", po::value<bool>(&verbose)->implicit_value(true), "display progress and debug information")
@@ -109,14 +112,15 @@ int main(int argc, char** argv) {
 
   // print parameters
   if (verbose) {
-    std::cout << "\nInput Parameters:\n";
+    std::cout << "\nInput Parameters\n";
     std::cout << "X/Y Resolution (um/px) = " << xy_res << "\n";
     std::cout << "Step Size (um) = " << step << "\n";
     std::cout << "Objective Angle (degrees) = " << angle <<"\n";
+    std::cout << "Fill Value = " << fill_value << "\n";
     std::cout << "Number of Threads = " << nthreads << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
-    std::cout << "\nImage Parameters\n";
+    std::cout << "\nTIFF Properties\n";
     std::cout << "Bit Depth = " << bits << std::endl;
   }
 
@@ -126,18 +130,18 @@ int main(int argc, char** argv) {
   if (bits <= 8) {
     cil::CImg<unsigned char> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
+    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, nthreads, verbose);
+    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 16) {
     cil::CImg<unsigned short> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
+    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned short) fill_value, nthreads, verbose);
+    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else if (bits == 32) {
     cil::CImg<float> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, nthreads, verbose);
-    img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
+    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, fill_value, nthreads, verbose);
+    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
   } else {
     std::cerr << "deskew: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
@@ -170,46 +174,50 @@ unsigned short GetTIFFBitDepth(const char* path) {
 }
 
 template <typename T>
-cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, int nthreads, bool verbose) {
+cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, int nthreads, bool verbose) {
   int width = img.width();
   int height = img.height();
   int nslices = img.depth();
 
   // calculate shift from angle, step, and xy-resolution
-  float shift = step * cos(angle * M_PI/180.0) / xy_res;
-  int deskewed_width = ceil(width + (fabs(shift) * (nslices - 1)));
+  const float shift = step * cos(angle * M_PI/180.0) / xy_res;
+  const int deskewed_width = ceil(width + (fabs(shift) * (nslices-1)));
   
   // print parameters
   if (verbose) {
-    std::cout << "\nDeskew Parameters:\n";
+    std::cout << "\nImage Properties\n";
+    std::cout << "Width (px) = " << width << "\n";
+    std::cout << "Height (px) = " << height << "\n";
+    std::cout << "Depth (slices) = " << nslices << "\n";
+    std::cout << "\nDeskew Parameters\n";
     std::cout << "Shift (px) = " << shift << "\n";
     std::cout << "Deskewed Image Width (px) = " << deskewed_width << std::endl; 
   }
 
   // deskew by shifting each slice using 1-D linear interpolation
+  cil::CImg<T> deskewed_img(deskewed_width, height, nslices, 1, fill_value);
+  const double deskew_origin_x = (deskewed_width-1)/2.0;
+  const double origin_x = (width-1)/2.0;
+  const double origin_z = (nslices-1)/2.0;
 
-//   int deskew(const CImg<> &inBuf, double deskewFactor, CImg<> &outBuf, int extraShift)
-// {
-//   auto nz = inBuf.depth();
-//   auto ny = inBuf.height();
-//   auto nx = inBuf.width();
-//   auto nxOut = outBuf.width();
-// #pragma omp parallel for
-//   for (auto zout=0; zout < nz; zout++)
-//     for (auto yout=0; yout < ny; yout++)
-//       for (auto xout=0; xout < nxOut; xout++) {
-//         const double xin = (xout - nxOut/2. + extraShift) - deskewFactor*(zout-nz/2.) + nx/2.;
+  // #pragma omp parallel for
+    for (int zidx=0; zidx < nslices; ++zidx) {
+      for (int yidx=0; yidx < height; ++yidx) {
+        for (int xidx=0; xidx < deskewed_width; ++xidx) {
+          // map position in deskewed image (xidx) to corresponding position in original image (X)
+          // using the image center as the origin
+          const double X = (xidx - deskew_origin_x) - shift*(zidx - origin_z) + origin_x;
+          const int Xidx = floor(X);
 
-//         if (xin >= 0 && floor(xin) <= nx-1) {
-//           const double offset = xin - floor(xin);
-//           const int floor_xin = floor(xin);
-//           outBuf(xout, yout, zout) = (1.0 - offset) * inBuf(floor_xin, yout, zout)
-//             + offset * inBuf(floor_xin+1, yout, zout);
-//         }
-//         else
-//           outBuf(xout, yout, zout) = 100.f;
-//   }
-// }
+          // perform interpolation if mapped position (X) is within the original image bounds
+          if (X >= 0 && Xidx < width) {
+            const double weight = X - Xidx;
+            deskewed_img(xidx, yidx, zidx) = ((1.0 - weight) * img(Xidx, yidx, zidx))
+              + (weight * img(Xidx+1, yidx, zidx));
+          }
+        }
+      }
+    }
 
-  return img;
+  return deskewed_img;
 }
