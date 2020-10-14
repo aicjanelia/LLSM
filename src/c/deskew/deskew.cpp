@@ -4,6 +4,7 @@
 #define UNSET_UNSIGNED_SHORT 0
 #define UNSET_BOOL false
 #define cimg_display 0
+#define cimg_verbosity 1
 #define cimg_use_tiff
 #define cimg_use_openmp 1
 
