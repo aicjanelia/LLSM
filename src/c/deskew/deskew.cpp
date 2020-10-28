@@ -235,7 +235,7 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
           const int Xidx = floor(X);
 
           // perform interpolation if mapped position (X) is within the original image bounds
-          if (X >= 0 && Xidx < width) {
+          if (X >= 0 && Xidx < (width - 1)) {
             const double weight = X - Xidx;
             deskewed_img(xidx, yidx, zidx) = ((1.0 - weight) * img(Xidx, yidx, zidx))
               + (weight * img(Xidx+1, yidx, zidx));
