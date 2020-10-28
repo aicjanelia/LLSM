@@ -6,7 +6,7 @@ LLVM_LIB_DIR := /usr/local/opt/llvm/lib
 
 # Compiler settings
 CC := /usr/local/opt/llvm/bin/clang++
-STD_FLAGS := -std=c++11
+STD_FLAGS := -std=c++20
 WAR_FLAGS := -Wall -g
 OPT_FLAGS := -O2
 INC_DIR_FLAGS := -I${VCPKG_INC_DIR} -I${LLVM_INC_DIR}
