@@ -7,6 +7,7 @@ Deskew is a preprocessing function that shift-corrects LLSM images acquired in S
 * Cimg >= 2.6.2
 * boost-program-options >= 1.73.0
 * boost-filesystem >= 1.73.0
+* OpenMP
 
 ### Installing dependencies with vcpkg
 
