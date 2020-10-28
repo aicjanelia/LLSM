@@ -4,6 +4,7 @@
 #define UNSET_INT -1
 #define UNSET_UNSIGNED_SHORT 0
 #define UNSET_BOOL false
+#define EPSILON 1e-5
 #define cimg_display 0
 #define cimg_verbosity 1
 #define cimg_use_tiff
@@ -11,9 +12,9 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <iostream>
 #include <exception>
-#include <math.h>
 #include <omp.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -233,12 +234,15 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
           // using the image center as the origin
           const double X = (xidx - deskew_origin_x) - shift*(zidx - origin_z) + origin_x;
           const int Xidx = floor(X);
+          const double weight = X - Xidx;
 
           // perform interpolation if mapped position (X) is within the original image bounds
-          if (X >= 0 && Xidx < (width - 1)) {
-            const double weight = X - Xidx;
-            deskewed_img(xidx, yidx, zidx) = ((1.0 - weight) * img(Xidx, yidx, zidx))
-              + (weight * img(Xidx+1, yidx, zidx));
+          if (X >= 0.0 && Xidx < (width - 1)) {
+            deskewed_img(xidx, yidx, zidx) = std::lerp((double) img(Xidx, yidx, zidx),(double) img(Xidx+1, yidx, zidx), weight);
+
+          // if the mapping (X) lands within EPSILON of the original image edge, fill use the original image edge value
+          } else if (weight < EPSILON && Xidx == (width - 1)) {
+            deskewed_img(xidx, yidx, zidx) = img(Xidx, yidx, zidx);          
           }
         }
       }
