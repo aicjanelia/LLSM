@@ -1,4 +1,4 @@
-#! /misc/local/python-3.7.0/bin/python
+#! /misc/local/python-3.8.2/bin/python3
 """
 autoDeconSend
 This script will scrub a high level folder (usually AIC visitor last name)
@@ -16,7 +16,7 @@ from pathlib import Path
 lastName = "Palmer"
 dateFolder = "20190923"
 #pattern = '*Settings.txt'
-dir_path = Path("//nrs/aic/aicguests/llsm")
+dir_path = Path("//nrs/aic/instruments/llsm")
 data_path = dir_path / lastName
 psf_path = dir_path / lastName / dateFolder / "Calibration"
 dir_loc = set()
