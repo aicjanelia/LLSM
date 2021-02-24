@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 from sys import exit
 
+"""
+Parser for command line arguments
+"""
 def parse_args():
     parser = argparse.ArgumentParser(description='Converts an LLSM Settings.txt file into a parsed JSON')
     parser.add_argument('input', help='path to Settings.txt file')
@@ -19,6 +22,9 @@ def parse_args():
 
     return args
 
+"""
+Adds a parsed string to a given dictionary
+"""
 def search_pattern(data, key, string, pattern, cast_as=str):
     m = re.search(pattern, string, re.MULTILINE)
 
@@ -130,7 +136,7 @@ def parse_txt(path):
 
     return json.dumps(data, indent=4)
 
-def main():
+if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
@@ -138,6 +144,3 @@ def main():
     settings_json = parse_txt(args.input)
 
     print(settings_json)
-
-if __name__ == '__main__':
-    main()
