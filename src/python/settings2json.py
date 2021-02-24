@@ -99,7 +99,36 @@ def parse_txt(path):
         search_pattern(data[sctn], 'cycle-lasers', sections[idx], r'^Cycle lasers :\t(.*)')
         search_pattern(data[sctn], 'z-motion', sections[idx], r'^Z motion :\t(.*)')
 
-    return json.dumps(data, sort_keys=False, indent=4)
+        for s in ['X Galvo', 'Z Galvo', 'Z PZT', 'S Piezo']:
+            groups = re.findall(r'^' + s + r'.*:\t(.*)', sections[idx], re.MULTILINE)
+
+            key = s.replace(' ', '-').lower()
+            for i,g in enumerate(groups):
+                if i == 0:
+                    data[sctn][key] = {'offset': [], 'interval': [], 'no-pixels-for-excitation': []}
+                g_parts = g.split('\t')
+                data[sctn][key]['offset'].append(int(g_parts[0]))
+                data[sctn][key]['interval'].append(float(g_parts[1])) 
+                data[sctn][key]['no-pixels-for-excitation'].append(int(g_parts[2])) 
+
+        groups = re.findall(r'^\# of stacks.*:\t(\d*)', sections[idx], re.MULTILINE)
+        data[sctn]['no-of-stacks'] = [int(val) for val in groups]
+
+        groups = re.findall(r'^Excitation Filter.*:\t(.*)', sections[idx], re.MULTILINE)
+        for i,g in enumerate(groups):
+            if i == 0:
+                data[sctn]['excitation-filter'] = []
+                data[sctn]['laser'] = []
+                data[sctn]['power'] = []
+                data[sctn]['exp'] = []
+            
+            g_parts = g.split('\t')
+            data[sctn]['excitation-filter'].append(g_parts[0])
+            data[sctn]['laser'].append(int(g_parts[1])) 
+            data[sctn]['power'].append(float(g_parts[2]))
+            data[sctn]['exp'].append(int(g_parts[3])) 
+
+    return json.dumps(data, indent=4)
 
 def main():
     # get command line arguments
