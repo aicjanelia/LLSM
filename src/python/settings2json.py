@@ -19,11 +19,15 @@ def parse_args():
 
     return args
 
-def search_pattern(data, key, string, pattern):
+def search_pattern(data, key, string, pattern, cast_as=str):
     m = re.search(pattern, string, re.MULTILINE)
 
     if m:
-        data[key] = m.group(1).strip()
+        if cast_as == str:
+            data[key] = m.group(1).strip()
+        else:
+            data[key] = cast_as(m.group(1).strip())
+        
 
 """
 Parser for v4.04505.Development Settings files
@@ -77,10 +81,10 @@ def parse_txt(path):
         sctn = '3d-tiling'
         data[sctn] = {}
 
-        search_pattern(data[sctn], 'x', sections[idx], r'^X :\t(\d*)')
-        search_pattern(data[sctn], 'y', sections[idx], r'^Y :\t(\d*)')
-        search_pattern(data[sctn], 'z', sections[idx], r'^Z :\t(\d*)')
-        search_pattern(data[sctn], 't', sections[idx], r'^T :\t(\d*)')
+        search_pattern(data[sctn], 'x', sections[idx], r'^X :\t(\d*)', cast_as=int)
+        search_pattern(data[sctn], 'y', sections[idx], r'^Y :\t(\d*)', cast_as=int)
+        search_pattern(data[sctn], 'z', sections[idx], r'^Z :\t(\d*)', cast_as=int)
+        search_pattern(data[sctn], 't', sections[idx], r'^T :\t(\d*)', cast_as=int)
 
     # parse Waveform
     try:
