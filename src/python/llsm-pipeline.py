@@ -8,7 +8,7 @@ import argparse
 import os
 import re
 import json
-from pathlib import Path
+from pathlib import Path, PurePath
 from sys import exit
 import settings2json
 
@@ -87,20 +87,20 @@ def get_dirs(path, excludes):
 
     return unprocessed_dirs
 
+def tag_filename(filename, string):
+    f = PurePath(filename)
+    return f.stem + string + f.suffix
+
+
 def process(dirs, configs):
     processed = {}
     params_bsub = {
         '-J': 'llsm-pipeline',
         '-o': '/dev/null',
         '-We': 10,
-        '-n': 4,
+        '-n': 4
     }
-    params_deskew = {
-        "-x": 0.104,
-        "-a": 31.8,
-        "-f": 0.0,
-        "-w": False
-    }
+    params_deskew = {}
     params_decon = {}
 
     # update default params with user defined configs
@@ -108,6 +108,20 @@ def process(dirs, configs):
         params_bsub.update(configs['bsub'])
     if 'deskew' in configs:
         params_deskew.update(configs['deskew'])
+    if 'decon' in configs:
+        params_decon.update(configs['decon'])
+
+    # build commands
+    s = ' '
+    cmd_bsub = 'bsub'
+    for key, val in params_bsub.items():
+        cmd_bsub = s.join([cmd_bsub, s.join([key,str(val)])])
+    cmd_deskew = 'deskew'
+    for key, val in params_deskew.items():
+        cmd_deskew = s.join([cmd_deskew, s.join([key,str(val)])])
+    cmd_decon = 'decon'
+    for key, val in params_decon.items():
+        cmd_decon = s.join([cmd_decon, s.join([key,str(val)])])
 
     # process each directory
     for d in dirs:
@@ -121,21 +135,57 @@ def process(dirs, configs):
             if f.endswith('Settings.txt'):
                 print(f'parsing \'%s\'...' % f)
                 settings = settings2json.parse_txt(d / f)
+                pattern = re.compile(f.split('_')[0] + '.*_ch(\d+).*\.tif')
                 break
 
-        # deskew
+        # deskew setup
         if 'waveform' not in settings:
             exit(f'error: settings file did not contain a Waveform section')
         if 'z-motion' not in settings['waveform']:
             exit(f'error: settings file did not contain a Z motion field')
 
+        deskew = False
         if settings['waveform']['z-motion'] == 'Sample piezo':
             if 's-piezo' not in settings['waveform']:
                 exit(f'error: settings file did not contain a S Piezo field')
             if 'interval' not in settings['waveform']['s-piezo']:
                 exit(f'error: settings file did not contain a S Piezo Interval field')
 
+            deskew = True
+
+            # get step sizes
             steps = settings['waveform']['s-piezo']['interval']
+
+            # deskew output directory
+            output_deskew = d / 'deskew'
+            # output_deskew.mkdir(exist_ok=True)
+
+        # decon setup
+        decon = False
+        if params_decon:
+            # TODO: check parameters
+
+            decon = True
+
+            # decon output directory
+            output_decon = d / 'decon'
+            # output_decon.mkdir(exist_ok=True)
+
+        # process all files in directory
+        for f in files:
+            m = pattern.fullmatch(f)
+            if m:
+                ch = int(m.group(1))
+                cmd = [cmd_bsub]
+
+                if deskew:
+                    outpath = output_deskew / tag_filename(f, '_deskew')
+                    tmp = cmd_deskew + f' -w -s %d -o %s %s' % (steps[ch], outpath , d / f)
+                    cmd.append(tmp)
+                if decon:
+                    cmd.append(cmd_decon)
+                if len(cmd) > 1:
+                    print(s.join(cmd))
 
     return  processed
 
