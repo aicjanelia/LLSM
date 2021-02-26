@@ -10,12 +10,21 @@
         }
     },
     "deskew": {
-
+        "xy-rez": 0.104,
+        "angle": 31.8,
+        "fill": 0.0,
+        "overwrite": false
     },
     "decon": {
 
     },
     "mip": {
         
+    },
+    "bsub": {
+        "-J": "llsm-pipeline",
+        "-o": "/dev/null",
+        "-We": 10,
+        "-n": 4
     }
 }
