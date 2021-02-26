@@ -113,7 +113,7 @@ def parse_txt(path):
                 if i == 0:
                     data[sctn][key] = {'offset': [], 'interval': [], 'no-pixels-for-excitation': []}
                 g_parts = g.split('\t')
-                data[sctn][key]['offset'].append(int(g_parts[0]))
+                data[sctn][key]['offset'].append(float(g_parts[0]))
                 data[sctn][key]['interval'].append(float(g_parts[1])) 
                 data[sctn][key]['no-pixels-for-excitation'].append(int(g_parts[2])) 
 
@@ -134,13 +134,13 @@ def parse_txt(path):
             data[sctn]['power'].append(float(g_parts[2]))
             data[sctn]['exp'].append(int(g_parts[3])) 
 
-    return json.dumps(data, indent=4)
+    return data
 
 if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
     # parse Settings.txt file
-    settings_json = parse_txt(args.input)
+    data = parse_txt(args.input)
 
-    print(settings_json)
+    print(json.dumps(data, indent=4))
