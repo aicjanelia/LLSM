@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('input', help='path to Settings.txt file')
     args = parser.parse_args()
 
-    if not Path(args.input).exists():
+    if not Path(args.input).is_file():
         exit(f'error: \'%s\' does not exist' % args.input)
 
     if not args.input.endswith('Settings.txt'):
