@@ -10,10 +10,9 @@
         }
     },
     "deskew": {
-        "xy-rez": 0.104,
-        "angle": 31.8,
-        "fill": 0.0,
-        "overwrite": false
+        "-x": 0.104,
+        "-a": 31.8,
+        "-f": 0.0
     },
     "decon": {
 
