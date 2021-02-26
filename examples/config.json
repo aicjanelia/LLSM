@@ -1,3 +1,21 @@
 {
-    "root": 
+    "paths": {
+        "root": "/nrs/aic/instruments/llsm/ReicheTesting",
+        "psf": {
+            "dir": "20200730/Calibration",
+            "laser": {
+                "561": "561_PSF.tif",
+                "488": "488_PSF.tif"
+            }
+        }
+    },
+    "deskew": {
+
+    },
+    "decon": {
+
+    },
+    "mip": {
+        
+    }
 }
