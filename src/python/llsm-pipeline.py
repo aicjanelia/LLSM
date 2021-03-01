@@ -14,19 +14,22 @@ import settings2json
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Batch deskewing and deconvolution script for LLSM images.')
-    parser.add_argument('input', help='path to configuration JSON file')
+    parser.add_argument('input', type=Path, help='path to configuration JSON file')
+    parser.add_argument('--dry-run', '-d', default=False, action='store_true', dest='dryrun',help='execute without submitting any bsub jobs')
+    parser.add_argument('--verbose', '-v', default=False, action='store_true', dest='verbose',help='print details (including commands to bsub)')
     args = parser.parse_args()
 
-    if not Path(args.input).is_file():
+    print(args.dryrun)
+    if not args.input.is_file():
         exit(f'error: \'%s\' does not exist' % args.input)
 
-    if not args.input.endswith('.json'):
+    if not args.input.suffix == '.json':
         print(f'warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
 
 def load_configs(path):
-    with Path(path).open(mode='r') as f:
+    with path.open(mode='r') as f:
         try:
             configs = json.load(f)
         except json.JSONDecodeError as e:
@@ -92,7 +95,7 @@ def tag_filename(filename, string):
     return f.stem + string + f.suffix
 
 
-def process(dirs, configs):
+def process(dirs, configs, dryrun=False, verbose=False):
     processed = {}
     params_bsub = {
         '-J': 'llsm-pipeline',
@@ -158,7 +161,8 @@ def process(dirs, configs):
 
             # deskew output directory
             output_deskew = d / 'deskew'
-            # output_deskew.mkdir(exist_ok=True)
+            if not dryrun:
+                output_deskew.mkdir(exist_ok=True)
 
         # decon setup
         decon = False
@@ -169,7 +173,8 @@ def process(dirs, configs):
 
             # decon output directory
             output_decon = d / 'decon'
-            # output_decon.mkdir(exist_ok=True)
+            if not dryrun:
+                output_decon.mkdir(exist_ok=True)
 
         # process all files in directory
         for f in files:
@@ -180,12 +185,25 @@ def process(dirs, configs):
 
                 if deskew:
                     outpath = output_deskew / tag_filename(f, '_deskew')
-                    tmp = cmd_deskew + f' -w -s %d -o %s %s' % (steps[ch], outpath , d / f)
+                    tmp = cmd_deskew + f' -w -s %d -o %s %s;' % (steps[ch], outpath , d / f)
                     cmd.append(tmp)
                 if decon:
                     cmd.append(cmd_decon)
                 if len(cmd) > 1:
-                    print(s.join(cmd))
+                    cmd = s.join(cmd) 
+                    if verbose:
+                        print(cmd)
+                    # if not dryrun:
+                    #     exec(cmd)
+        
+        # update processed list
+        d = str(d)
+        if deskew or decon:
+            processed[d] = {}
+        if deskew:
+            processed[d]['deskew'] = params_deskew
+        if decon:
+            processed[d]['decon'] = params_decon
 
     return  processed
 
@@ -209,11 +227,16 @@ if __name__ == '__main__':
     unprocessed_dirs = get_dirs(root_dir, excludes)
 
     # process images in new diectories
-    processed_dirs = process(unprocessed_dirs, configs)
+    processed_dirs = process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
 
     # update processed.json
     processed_json.update(processed_dirs)
-    with processed_path.open(mode='w') as f:
-        f.write(json.dumps(processed_dirs, indent=4))
+    if not args.dryrun:
+        with processed_path.open(mode='w') as f:
+            f.write(json.dumps(processed_json, indent=4))
+
+    if args.verbose:
+        print('processed.json...')
+        print(json.dumps(processed_json, indent=4))
 
     print('Done')
