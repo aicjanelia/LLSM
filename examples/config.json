@@ -1,10 +1,10 @@
 {
     "paths": {
-        "root": "/nrs/aic/instruments/llsm/ReicheTesting",
+        "root": "/nrs/aic/instruments/llsm/pipeline-test/chad",
         "psf": {
-            "dir": "20200730/Calibration",
+            "dir": "20210222/Calibration",
             "laser": {
-                "561": "561_PSF.tif",
+                "560": "560_PSF.tif",
                 "488": "488_PSF.tif"
             }
         }
