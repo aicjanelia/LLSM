@@ -11,13 +11,13 @@ Parser for command line arguments
 """
 def parse_args():
     parser = argparse.ArgumentParser(description='Converts an LLSM Settings.txt file into a parsed JSON')
-    parser.add_argument('input', help='path to Settings.txt file')
+    parser.add_argument('input', type=Path, help='path to Settings.txt file')
     args = parser.parse_args()
 
-    if not Path(args.input).is_file():
+    if not args.input.is_file():
         exit(f'error: \'%s\' does not exist' % args.input)
 
-    if not args.input.endswith('Settings.txt'):
+    if not str(args.input).endswith('Settings.txt'):
         print(f'warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
@@ -34,7 +34,6 @@ def search_pattern(data, key, string, pattern, cast_as=str):
         else:
             data[key] = cast_as(m.group(1).strip())
         
-
 """
 Parser for v4.04505.Development Settings files
 """
@@ -42,7 +41,6 @@ def parse_txt(path):
     data = {}
 
     # read file content to memory
-    path = Path(path)
     f = path.open(mode='r')
     txt = f.read()
     f.close()
