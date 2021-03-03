@@ -4,14 +4,6 @@ if(${CMAKE_VERSION} VERSION_LESS 3.12)
     message(FATAL_ERROR "A newer version of CMake is required. https://cmake.org/download/")
 endif()
 
-if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-      CACHE STRING "")
-    message(STATUS "Using CMake toolchain $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-else()
-    message(STATUS "Not using VCPKG from environment variable VCPKG_ROOT.")
-endif()
-
 project(Deskew  VERSION         2.0 
                 DESCRIPTION     "Deskew lattice lightsheet images." 
                 LANGUAGES       CXX)
