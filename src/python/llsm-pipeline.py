@@ -237,12 +237,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                 if deskew:
                     outpath = output_deskew / tag_filename(f, '_deskew')
-                    tmp = cmd_deskew + f' -w -s %d -o %s %s;' % (steps[ch], outpath , d / f)
+                    tmp = cmd_deskew + f' -w -s %s -o %s %s;' % (steps[ch], outpath , d / f)
                     cmd.append(tmp)
                 if decon:
                     cmd.append(cmd_decon)
                 if len(cmd) > 1:
-                    cmd = ' '.join(cmd) 
+                    cmd = ' '.join(cmd)
                     if verbose:
                         print(cmd)
                     if not dryrun:
