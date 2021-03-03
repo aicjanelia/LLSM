@@ -41,7 +41,7 @@ def load_configs(path):
 
     if 'decon' in configs:
         if 'psf' not in configs['paths']:
-            exit(f'error: decon enabled, but no psf parameters found in config file')
+            exit('error: decon enabled, but no psf parameters found in config file')
 
         if 'dir' in configs['paths']['psf']:
             partial_path = root / configs['paths']['psf']['dir']
@@ -245,8 +245,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     cmd = ' '.join(cmd) 
                     if verbose:
                         print(cmd)
-                    # if not dryrun:
-                    #     exec(cmd)
+                    if not dryrun:
+                        exec(cmd)
         
         # update processed list
         d = str(d)
