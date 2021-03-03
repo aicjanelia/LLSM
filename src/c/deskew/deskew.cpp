@@ -32,6 +32,20 @@ unsigned short GetTIFFBitDepth(const char* path);
 template <typename T>
 cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T fill_value, bool verbose);
 
+constexpr float lerp(float a, float b, float t) {
+  // Exact, monotonic, bounded, determinate, and (for a=b=0) consistent:
+  if(a<=0 && b>=0 || a>=0 && b<=0) 
+    return t*b + (1-t)*a;
+  if(t==1)
+    return b;
+
+  // exact
+  // Exact at t=0, monotonic except near t=1,
+  // bounded, determinate, and consistent:
+  const float x = a + t*(b-a);
+  return t>1 == b>a ? fmax(b,x) : fmin(b,x);  // monotonic near t=1
+}
+
 int main(int argc, char** argv) {
   // parameters
   float xy_res = UNSET_FLOAT;
@@ -238,7 +252,7 @@ cil::CImg<T> Deskew(cil::CImg<T> img, float angle, float step, float xy_res, T f
 
           // perform interpolation if mapped position (X) is within the original image bounds
           if (X >= 0.0 && Xidx < (width - 1)) {
-            deskewed_img(xidx, yidx, zidx) = std::lerp((double) img(Xidx, yidx, zidx),(double) img(Xidx+1, yidx, zidx), weight);
+            deskewed_img(xidx, yidx, zidx) = lerp((double) img(Xidx, yidx, zidx),(double) img(Xidx+1, yidx, zidx), weight);
 
           // if the mapping (X) lands within EPSILON of the original image edge, fill use the original image edge value
           } else if (weight < EPSILON && Xidx == (width - 1)) {
