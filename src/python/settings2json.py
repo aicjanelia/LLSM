@@ -6,19 +6,25 @@ import json
 from pathlib import Path
 from sys import exit
 
+"""
+Parser for command line arguments
+"""
 def parse_args():
     parser = argparse.ArgumentParser(description='Converts an LLSM Settings.txt file into a parsed JSON')
-    parser.add_argument('input', help='path to Settings.txt file')
+    parser.add_argument('input', type=Path, help='path to Settings.txt file')
     args = parser.parse_args()
 
-    if not Path(args.input).exists():
+    if not args.input.is_file():
         exit(f'error: \'%s\' does not exist' % args.input)
 
-    if not args.input.endswith('Settings.txt'):
+    if not str(args.input).endswith('Settings.txt'):
         print(f'warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
 
+"""
+Adds a parsed string to a given dictionary
+"""
 def search_pattern(data, key, string, pattern, cast_as=str):
     m = re.search(pattern, string, re.MULTILINE)
 
@@ -28,7 +34,6 @@ def search_pattern(data, key, string, pattern, cast_as=str):
         else:
             data[key] = cast_as(m.group(1).strip())
         
-
 """
 Parser for v4.04505.Development Settings files
 """
@@ -36,7 +41,6 @@ def parse_txt(path):
     data = {}
 
     # read file content to memory
-    path = Path(path)
     f = path.open(mode='r')
     txt = f.read()
     f.close()
@@ -99,16 +103,42 @@ def parse_txt(path):
         search_pattern(data[sctn], 'cycle-lasers', sections[idx], r'^Cycle lasers :\t(.*)')
         search_pattern(data[sctn], 'z-motion', sections[idx], r'^Z motion :\t(.*)')
 
-    return json.dumps(data, sort_keys=False, indent=4)
+        for s in ['X Galvo', 'Z Galvo', 'Z PZT', 'S Piezo']:
+            groups = re.findall(r'^' + s + r'.*:\t(.*)', sections[idx], re.MULTILINE)
 
-def main():
+            key = s.replace(' ', '-').lower()
+            for i,g in enumerate(groups):
+                if i == 0:
+                    data[sctn][key] = {'offset': [], 'interval': [], 'no-pixels-for-excitation': []}
+                g_parts = g.split('\t')
+                data[sctn][key]['offset'].append(float(g_parts[0]))
+                data[sctn][key]['interval'].append(float(g_parts[1])) 
+                data[sctn][key]['no-pixels-for-excitation'].append(int(g_parts[2])) 
+
+        groups = re.findall(r'^\# of stacks.*:\t(\d*)', sections[idx], re.MULTILINE)
+        data[sctn]['no-of-stacks'] = [int(val) for val in groups]
+
+        groups = re.findall(r'^Excitation Filter.*:\t(.*)', sections[idx], re.MULTILINE)
+        for i,g in enumerate(groups):
+            if i == 0:
+                data[sctn]['excitation-filter'] = []
+                data[sctn]['laser'] = []
+                data[sctn]['power'] = []
+                data[sctn]['exp'] = []
+            
+            g_parts = g.split('\t')
+            data[sctn]['excitation-filter'].append(g_parts[0])
+            data[sctn]['laser'].append(int(g_parts[1])) 
+            data[sctn]['power'].append(float(g_parts[2]))
+            data[sctn]['exp'].append(int(g_parts[3])) 
+
+    return data
+
+if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
     # parse Settings.txt file
-    settings_json = parse_txt(args.input)
+    data = parse_txt(args.input)
 
-    print(settings_json)
-
-if __name__ == '__main__':
-    main()
+    print(json.dumps(data, indent=4))
