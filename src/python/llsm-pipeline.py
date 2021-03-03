@@ -19,7 +19,6 @@ def parse_args():
     parser.add_argument('--verbose', '-v', default=False, action='store_true', dest='verbose',help='print details (including commands to bsub)')
     args = parser.parse_args()
 
-    print(args.dryrun)
     if not args.input.is_file():
         exit(f'error: \'%s\' does not exist' % args.input)
 
@@ -59,6 +58,47 @@ def load_configs(path):
             if not p.is_file():
                 exit(f'error: laser %s psf file \'%s\' does not exist' % (key, p))
 
+    # sanitize optional bsub configs
+    if 'bsub' in configs:
+        supported_opts = ['o', 'We', 'n']
+        for key in list(configs['bsub']):
+            if key not in supported_opts:
+                print(f'warning: bsub option \'%s\' in config.json is not supported' % key)
+                del configs['bsub'][key]
+
+        if 'o' in configs['bsub']:
+            if not Path(configs['bsub']['o']).is_dir:
+                exit(f'error: bsub output directory \'%s\' in config.json is not a valid path' % configs['bsub']['o'])
+            configs['bsub']['o'] = {'flag': '-o', 'arg': configs['bsub']['o']}
+        
+        if 'We' in configs['bsub']:
+            if not type(configs['bsub']['We']) is int:
+                exit(f'error: bsub estimated wait time \'%s\' in config.json is not an integer' % configs['bsub']['We'])
+            configs['bsub']['We'] = {'flag': '-We', 'arg': configs['bsub']['We']}
+        
+        if 'n' in configs['bsub']:
+            if not type(configs['bsub']['n']) is int:
+                exit(f'error: bsub slot count \'%s\' in config.json is not an integer' % configs['bsub']['n'])
+            configs['bsub']['n'] = {'flag': '-n', 'arg': configs['bsub']['n']}
+
+    # sanitize optional deskew configs
+    if 'deskew' in configs:
+        supported_opts = ['xy-res', 'fill']
+        for key in list(configs['deskew']):
+            if key not in supported_opts:
+                print(f'warning: deskew option \'%s\' in config.json is not supported' % key)
+                del configs['deskew'][key]
+
+        if 'xy-res' in configs['deskew']:
+            if not type(configs['deskew']['xy-res']) is float:
+                exit(f'error: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
+            configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
+        
+        if 'fill' in configs['deskew']:
+            if not type(configs['deskew']['fill']) is float:
+                exit(f'error: deskew background fill value \'%s\' in config.json is not a float' % configs['deskew']['fill'])
+            configs['deskew']['fill'] = {'flag': '-f', 'arg': configs['deskew']['fill']}
+
     return configs
 
 def get_processed_json(path):
@@ -80,7 +120,7 @@ def get_dirs(path, excludes):
         root = Path(root)
 
         # update directories to prevent us from traversing processed data
-        dirs[:] = [d for d in dirs if (root / d) not in excludes]
+        dirs[:] = [d for d in dirs if str(root / d) not in excludes]
 
         # check if root contains a Settings.txt file
         for f in files:
@@ -90,18 +130,37 @@ def get_dirs(path, excludes):
 
     return unprocessed_dirs
 
+
 def tag_filename(filename, string):
     f = PurePath(filename)
     return f.stem + string + f.suffix
 
+def params2cmd(params, cmd_name):
+    cmd = cmd_name
+    for key in params:
+        cmd += f' %s %s' % (params[key]['flag'], params[key]['arg'])
+
+    return cmd
 
 def process(dirs, configs, dryrun=False, verbose=False):
     processed = {}
     params_bsub = {
-        '-J': 'llsm-pipeline',
-        '-o': '/dev/null',
-        '-We': 10,
-        '-n': 4
+        'J': {
+            'flag': '-J',
+            'arg': 'llsm-pipeline'
+        },
+        'o': {
+            'flag': '-o',
+            'arg': '/dev/null'
+        },
+        'We': {
+            'flag': '-We',
+            'arg': 10
+        },
+        'n': {
+            'flag': '-n',
+            'arg': 4
+        }
     }
     params_deskew = {}
     params_decon = {}
@@ -115,16 +174,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
         params_decon.update(configs['decon'])
 
     # build commands
-    s = ' '
-    cmd_bsub = 'bsub'
-    for key, val in params_bsub.items():
-        cmd_bsub = s.join([cmd_bsub, s.join([key,str(val)])])
-    cmd_deskew = 'deskew'
-    for key, val in params_deskew.items():
-        cmd_deskew = s.join([cmd_deskew, s.join([key,str(val)])])
-    cmd_decon = 'decon'
-    for key, val in params_decon.items():
-        cmd_decon = s.join([cmd_decon, s.join([key,str(val)])])
+    cmd_bsub = params2cmd(params_bsub, 'bsub')
+    cmd_deskew = params2cmd(params_deskew, 'deskew')
+    cmd_decon = params2cmd(params_decon, 'decon')
 
     # process each directory
     for d in dirs:
@@ -190,7 +242,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if decon:
                     cmd.append(cmd_decon)
                 if len(cmd) > 1:
-                    cmd = s.join(cmd) 
+                    cmd = ' '.join(cmd) 
                     if verbose:
                         print(cmd)
                     # if not dryrun:
@@ -202,6 +254,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             processed[d] = {}
         if deskew:
             processed[d]['deskew'] = params_deskew
+            processed[d]['deskew']['step'] = steps
         if decon:
             processed[d]['decon'] = params_decon
 
@@ -222,7 +275,7 @@ if __name__ == '__main__':
     # get all directories containing a Settings files
     excludes = list(processed_json)
     if configs['paths']['psf']['dir'] != None:
-        excludes.append(root_dir / configs['paths']['psf']['dir'])
+        excludes.append(str(root_dir / configs['paths']['psf']['dir']))
 
     unprocessed_dirs = get_dirs(root_dir, excludes)
 
