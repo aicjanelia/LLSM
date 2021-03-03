@@ -60,6 +60,13 @@ else()
 endif()
 
 ## CImg
+FIND_PACKAGE(CImg REQUIRED)
+if(CImg_FOUND)
+    target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "Cannot find CImg package")
+endif()
+
 FIND_PACKAGE(TIFF REQUIRED)
 if(TIFF_FOUND)
     message(STATUS "Tiff version: ${TIFF_VERSION}")
