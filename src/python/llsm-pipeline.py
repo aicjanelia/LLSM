@@ -246,7 +246,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if verbose:
                         print(cmd)
                     if not dryrun:
-                        exec(cmd)
+                        os.system(cmd)
         
         # update processed list
         d = str(d)
