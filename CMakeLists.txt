@@ -1,94 +1,63 @@
-cmake_minimum_required(VERSION 3.12...3.19)
+cmake_minimum_required(VERSION 3.12...3.20)
+project(llsm-pipeline VERSION 0.1 DESCRIPTION "Process lattice lightsheet images." LANGUAGES CXX)
 
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
-    message(FATAL_ERROR "A newer version of CMake is required. https://cmake.org/download/")
-endif()
+######### Pre-Setup #########
 
-project(Deskew  VERSION         2.0 
-                DESCRIPTION     "Deskew lattice lightsheet images." 
-                LANGUAGES       CXX)
+# ITK wants us to use include before declaing any targets.
+# Ref bottom of https://itk.org/Wiki/ITK/FAQ#NoFactoryException
+
+find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF)
+include(${ITK_USE_FILE})
+
+######### Targets #########
 
 add_executable(deskew src/c/deskew/deskew.cpp)
-target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+add_executable(testitk src/c/itk-test/main.cpp)
 
-# Set the C++ standard
-set(CMAKE_CXX_COMPILER "clang++")
+######### Set Pre-package Variables #########
 
-# Add dependencies
-
-## Boost
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
+
+######### Add Packages #########
+
 find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options)
-message(STATUS "Boost version: ${Boost_VERSION}")
-# This is needed if your Boost version is newer than your CMake version
-# or if you have an old version of CMake (<3.5)
-if(NOT TARGET Boost::filesystem)
-    add_library(Boost::filesystem IMPORTED INTERFACE)
-    set_property(TARGET Boost::filesystem PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-    set_property(TARGET Boost::filesystem PROPERTY
-        INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES})
-endif()
-target_link_libraries(deskew PUBLIC Boost::filesystem)
-
-if(NOT TARGET Boost::program_options)
-    add_library(Boost::program_options IMPORTED INTERFACE)
-    set_property(TARGET Boost::program_options PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-    set_property(TARGET Boost::program_options PROPERTY
-        INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES})
-endif()
-target_link_libraries(deskew PUBLIC Boost::program_options)
-
-## OpenMP
 find_package(OpenMP REQUIRED)
-if(OpenMP_CXX_FOUND)
-    message(STATUS "OpenMP version: ${OpenMP_CXX_VERSION} Path: ${OpenMP_CXX_LIBRARIES}")
-    target_link_libraries(deskew PRIVATE OpenMP::OpenMP_CXX)
-else()
-    message(FATAL_ERROR "Cannot find OpenMP package")
-endif()
+find_package(CImg REQUIRED)
+find_package(TIFF REQUIRED)
+find_package(JPEG REQUIRED)
+find_package(ZLIB REQUIRED)
 
-## CImg
-FIND_PACKAGE(CImg REQUIRED)
-if(CImg_FOUND)
-    target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
-else()
-    message(FATAL_ERROR "Cannot find CImg package")
-endif()
+######### Set Post-package Variables #########
 
-FIND_PACKAGE(TIFF REQUIRED)
-if(TIFF_FOUND)
-    message(STATUS "Tiff version: ${TIFF_VERSION}")
-    set(CIMG_TIFF_CCFLAGS -Dcimg_use_tiff)
-    SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_TIFF_CCFLAGS}")
-    target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
-    target_link_libraries(deskew PRIVATE ${TIFF_LIBRARIES})
-else()
-    message(FATAL_ERROR "Cannot find tiff package")
-endif()
+set(CIMG_TIFF_CCFLAGS -Dcimg_use_tiff)
+set(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_TIFF_CCFLAGS}")
+set(CIMG_JPEG_CCFLAGS -Dcimg_use_jpeg)
+SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_JPEG_CCFLAGS}")
+SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_ZLIB_CCFLAGS}")
 
-FIND_PACKAGE(JPEG REQUIRED)
-if(JPEG_FOUND)
-    message(STATUS "JPEG version: ${JPEG_VERSION}")
-    set(CIMG_JPEG_CCFLAGS -Dcimg_use_jpeg)
-    SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_JPEG_CCFLAGS}")
-    target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
-    target_link_libraries(deskew PRIVATE ${JPEG_LIBRARIES})
-else()
-    message(FATAL_ERROR "Cannot find jpeg package")
-endif()
+######### Includes #########
 
-FIND_PACKAGE(ZLIB REQUIRED)
-if (ZLIB_FOUND)
-    message(STATUS "ZLIB version: ${ZLIB_VERSION}")
-    SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_ZLIB_CCFLAGS}")
-    target_include_directories(deskew PRIVATE ${ZLIB_LIB_DIRS})
-    target_link_libraries(deskew PRIVATE ${ZLIB_LIBRARIES})
-else()
-    message(FATAL_ERROR "Cannot find zlib package")
-endif()
+target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
+target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
+target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
 
-install(TARGETS deskew CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+target_include_directories(testitk PRIVATE ${PROJECT_SOURCE_DIR}/src/c/itk-test)
+
+######### Libraries #########
+
+target_link_libraries(deskew PRIVATE Boost::filesystem)
+target_link_libraries(deskew PRIVATE Boost::program_options)
+target_link_libraries(deskew PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(deskew PRIVATE ${TIFF_LIBRARIES})
+target_link_libraries(deskew PRIVATE ${JPEG_LIBRARIES})
+target_link_libraries(deskew PRIVATE ZLIB::ZLIB)
+
+target_link_libraries(testitk PRIVATE ZLIB::ZLIB)
+target_link_libraries(testitk PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
+
+######### Installs #########
+
+install(TARGETS deskew testitk CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
