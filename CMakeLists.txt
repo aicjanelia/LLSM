@@ -40,6 +40,7 @@ SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_ZLIB_CCFLAGS}")
 ######### Includes #########
 
 target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
