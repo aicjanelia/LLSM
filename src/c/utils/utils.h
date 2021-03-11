@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -8,11 +10,6 @@
 #include <tiffio.hxx>
 
 namespace fs = boost::filesystem;
-
-// Globals
-constexpr unsigned int Dimensions_g = 3;
-typedef double PixelType_g:
-typedef itk::Image<PixelType_g, Dimensions_g> ImageType_g; 
 
 bool IsFile(const char* path) {
   fs::path p(path);
