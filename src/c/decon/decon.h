@@ -3,11 +3,8 @@
 #define DECON_VERSION "AIC Decon version 0.1.0"
 
 #include "defines.h"
-#include "itkFFTConvolutionImageFilter.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkLandweberDeconvolutionImageFilter.h"
-#include "itkCastImageFilter.h"
+#include "itkRichardsonLucyDeconvolutionImageFilter.h"
+
 #include "itkMacro.h"
 #include "itkMath.h"
 
@@ -21,69 +18,15 @@
 //  Richardson-Lucy
 
 
-int RichardsonLucy(bool verbose)
-{
-    using float                                               RealPixelType;
-    using unsigned char                                       UCharPixelType;
-    const unsigned int                                          Dimension = 2;
-    using itk::Image< RealPixelType, Dimension >              ImageType;
-    using itk::Image<UCharPixelType, Dimension >              UCharImageType;
-    using itk::ImageFileReader< ImageType >                   ReaderType;
-    using itk::ImageFileWriter<UCharImageType >               WriterType;
-    using itk::FFTConvolutionImageFilter< ImageType >         ConvolutionFilterType;
-    using itk::LandweberDeconvolutionImageFilter< ImageType > DeconvolutionFilterType;
-    using itk::CastImageFilter<ImageType, UCharImageType>     CastFilterType;
+ImageType_g::Pointer decon_img RichardsonLucy(ImageType_g::Pointer img, ImageType_g kernel, unsigned int iterations, bool verbose) {
 
-    ReaderType::Pointer inputReader = ReaderType::New();
-    inputReader->SetFileName(argv[1]);
-    inputReader->Update();
+    using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter< ImageType_g >;
 
-    ReaderType::Pointer kernelReader = ReaderType::New();
-    kernelReader->SetFileName(argv[2]);
-    kernelReader->Update();
+    DeconFilterType::Pointer filter = DeconFilterType::New();
+    filter->SetInput(img);
+    filter->SetKernelImage(kernel);
+    filter->NormalizeOn();
+    filter->SetNumberOfIterations(iterations);
 
-    // Generate a convolution of the input image with the kernel image
-    ConvolutionFilterType::Pointer convolutionFilter = ConvolutionFilterType::New();
-    convolutionFilter->SetInput(inputReader->GetOutput());
-    convolutionFilter->NormalizeOn();
-    convolutionFilter->SetKernelImage(kernelReader->GetOutput());
-
-    // Test the deconvolution algorithm
-    DeconvolutionFilterType::Pointer deconvolutionFilter = DeconvolutionFilterType::New();
-    deconvolutionFilter->SetInput(convolutionFilter->GetOutput());
-    deconvolutionFilter->SetKernelImage(kernelReader->GetOutput());
-    deconvolutionFilter->NormalizeOn();
-    deconvolutionFilter->SetAlpha(atof(argv[6]));
-    if (itk::Math::NotExactlyEquals(deconvolutionFilter->GetAlpha(), atof( argv[6] ))) {
-        std::cerr << "Set/GetAlpha() test failed." << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    unsigned int iterations = static_cast< unsigned int >(atoi(argv[5]));
-    deconvolutionFilter->SetNumberOfIterations(iterations);
-
-    CastFilterType::Pointer castOutputFilter = CastFilterType::New();
-    castOutputFilter->SetInput(deconvolutionFilter->GetOutput());
-
-    CastFilterType::Pointer castInputFilter = CastFilterType::New();
-    castInputFilter->SetInput(convolutionFilter->GetOutput());
-
-    // Write the deconvolution result
-    try {
-        WriterType::Pointer writer = WriterType::New();
-
-        writer->SetFileName(argv[3]);
-        writer->SetInput(castInputFilter->GetOutput());
-        writer->Update();
-
-        writer->SetFileName(argv[4] );
-        writer->SetInput(castOutputFilter->GetOutput());
-        writer->Update();
-    } catch ( itk::ExceptionObject & e ) {
-        std::cerr << "Unexpected exception caught when writing deconvolution image: "
-            << e << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
+    return decon_filter->;
 }
