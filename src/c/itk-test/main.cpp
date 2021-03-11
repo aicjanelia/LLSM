@@ -1,12 +1,16 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImageIOBase.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkCastImageFilter.h"
+#include <limits>
 
-template <class TImage>
-int ReadImage(const char *fileName, typename TImage::Pointer image)
+#include "itkImageFileWriter.h"
+
+template <class TImageIn, class TImageOut>
+itk::SmartPointer<TImageOut> ReadImage(const char *fileName)
 {
-  using ImageType = TImage;
-  using ImageReaderType = itk::ImageFileReader<ImageType>;
+  using ImageReaderType = itk::ImageFileReader<TImageIn>;
 
   typename ImageReaderType::Pointer reader = ImageReaderType::New();
   reader->SetFileName(fileName);
@@ -18,38 +22,40 @@ int ReadImage(const char *fileName, typename TImage::Pointer image)
   catch (itk::ExceptionObject &e)
   {
     std::cerr << e.what() << std::endl;
-    return EXIT_FAILURE;
+    return itk::SmartPointer<TImageOut>();
   }
 
-  image->Graft(reader->GetOutput());
+  using RescaleType = itk::RescaleIntensityImageFilter<TImageIn, TImageOut>;
+  typename RescaleType::Pointer rescale = RescaleType::New();
+  rescale->SetInput(reader->GetOutput());
+  rescale->SetOutputMinimum(0);
+  rescale->SetOutputMaximum(1.0);
+  rescale->Update();
 
-  return EXIT_SUCCESS;
+  // using FilterType = itk::CastImageFilter<TImageIn, TImageOut>;
+  // typename FilterType::Pointer filter = FilterType::New();
+  // filter->SetInput(rescale->GetOutput());
+  // filter->Update();
+
+  return rescale->GetOutput();
 }
 
-template <unsigned int VDimension>
-int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum componentType)
+template <unsigned int VDimension, class TImageOut>
+itk::SmartPointer<TImageOut> ReadImage(const char *inputFileName, const itk::IOComponentEnum componentType)
 {
   switch (componentType)
   {
   default:
   case itk::IOComponentEnum::UNKNOWNCOMPONENTTYPE:
     std::cerr << "Unknown and unsupported component type!" << std::endl;
-    return EXIT_FAILURE;
+    return itk::SmartPointer<TImageOut>();
 
   case itk::IOComponentEnum::UCHAR:
   {
     using PixelType = unsigned char;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::CHAR:
@@ -57,15 +63,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = char;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::USHORT:
@@ -73,15 +71,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = unsigned short;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::SHORT:
@@ -89,15 +79,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = short;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::UINT:
@@ -105,15 +87,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = unsigned int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::INT:
@@ -121,15 +95,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::ULONG:
@@ -137,15 +103,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = unsigned long;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::LONG:
@@ -153,15 +111,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = long;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::FLOAT:
@@ -169,15 +119,7 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = float;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
 
   case itk::IOComponentEnum::DOUBLE:
@@ -185,18 +127,11 @@ int ReadScalarImage(const char *inputFileName, const itk::IOComponentEnum compon
     using PixelType = double;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    typename ImageType::Pointer image = ImageType::New();
-
-    if (ReadImage<ImageType>(inputFileName, image) == EXIT_FAILURE)
-    {
-      return EXIT_FAILURE;
-    }
-
-    std::cout << image << std::endl;
-    break;
+    return ReadImage<ImageType, TImageOut>(inputFileName);
   }
   }
-  return EXIT_SUCCESS;
+
+  return itk::SmartPointer<TImageOut>();
 }
 
 int main(int argc, char *argv[])
@@ -222,27 +157,43 @@ int main(int argc, char *argv[])
 
   std::cout << "Image Dimension is " << imageDimension << std::endl;
 
+  using PixelType = float;
+  constexpr unsigned int dims = 3;
+  using ImageType = itk::Image<PixelType,dims>;
+  typename itk::SmartPointer<ImageType> image;
+
   switch (pixelType)
   {
   case itk::IOPixelEnum::SCALAR:
   {
     if (imageDimension == 2)
     {
-      return ReadScalarImage<2>(inputFileName.c_str(), componentType);
+      // return ReadScalarImage<2>(inputFileName.c_str(), componentType);
+      std::cerr << "Need 3-D image!" << std::endl;
+      return EXIT_FAILURE;
     }
-    else if (imageDimension == 3)
+    else if (imageDimension == dims)
     {
-      return ReadScalarImage<3>(inputFileName.c_str(), componentType);
+      image = ReadImage<dims,ImageType>(inputFileName.c_str(), componentType);
     }
     else if (imageDimension == 4)
     {
-      return ReadScalarImage<4>(inputFileName.c_str(), componentType);
+      // return ReadScalarImage<4>(inputFileName.c_str(), componentType);
+      std::cerr << "Need 3-D image!" << std::endl;
+      return EXIT_FAILURE;
     }
+    break;
   }
-
   default:
     std::cerr << "not implemented yet!" << std::endl;
     return EXIT_FAILURE;
   }
+
+  using WriterType = itk::ImageFileWriter<ImageType>;
+  WriterType::Pointer writer = WriterType::New();
+  writer->SetFileName("test.tiff");
+  writer->SetInput(image);
+  writer->Update();
+
   return EXIT_SUCCESS;
 }
