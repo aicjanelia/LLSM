@@ -23,16 +23,16 @@
 
 int RichardsonLucy(bool verbose)
 {
-    typedef float                                               RealPixelType;
-    typedef unsigned char                                       UCharPixelType;
+    using float                                               RealPixelType;
+    using unsigned char                                       UCharPixelType;
     const unsigned int                                          Dimension = 2;
-    typedef itk::Image< RealPixelType, Dimension >              ImageType;
-    typedef itk::Image<UCharPixelType, Dimension >              UCharImageType;
-    typedef itk::ImageFileReader< ImageType >                   ReaderType;
-    typedef itk::ImageFileWriter<UCharImageType >               WriterType;
-    typedef itk::FFTConvolutionImageFilter< ImageType >         ConvolutionFilterType;
-    typedef itk::LandweberDeconvolutionImageFilter< ImageType > DeconvolutionFilterType;
-    typedef itk::CastImageFilter<ImageType, UCharImageType>     CastFilterType;
+    using itk::Image< RealPixelType, Dimension >              ImageType;
+    using itk::Image<UCharPixelType, Dimension >              UCharImageType;
+    using itk::ImageFileReader< ImageType >                   ReaderType;
+    using itk::ImageFileWriter<UCharImageType >               WriterType;
+    using itk::FFTConvolutionImageFilter< ImageType >         ConvolutionFilterType;
+    using itk::LandweberDeconvolutionImageFilter< ImageType > DeconvolutionFilterType;
+    using itk::CastImageFilter<ImageType, UCharImageType>     CastFilterType;
 
     ReaderType::Pointer inputReader = ReaderType::New();
     inputReader->SetFileName(argv[1]);
