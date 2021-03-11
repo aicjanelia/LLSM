@@ -1,15 +1,8 @@
-#define VERSION "AIC Deskew version 0.1.0"
-#define UNSET_DOUBLE -1.0
-#define UNSET_FLOAT -1.0f
-#define UNSET_INT -1
-#define UNSET_UNSIGNED_SHORT 0
-#define UNSET_BOOL false
-#define EPSILON 1e-5
-#define cimg_display 0
-#define cimg_verbosity 1
-#define cimg_use_tiff
-#define cimg_use_openmp 1
+#pragma once
 
+#define DESKEW_VERSION "AIC Deskew version 0.1.0"
+
+#include "defines.h"
 #include <iostream>
 #include <CImg.h>
 

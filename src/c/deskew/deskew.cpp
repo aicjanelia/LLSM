@@ -1,5 +1,6 @@
 #include "deskew.h"
 #include "utils.h"
+#include "defines.h"
 #include <iostream>
 #include <boost/program_options.hpp>
 
@@ -56,7 +57,7 @@ int main(int argc, char** argv) {
 
     // print version number
     if (varsmap.count("version")) {
-      std::cerr << VERSION << std::endl;
+      std::cerr << DESKEW_VERSION << std::endl;
       return EXIT_FAILURE;
     }
     

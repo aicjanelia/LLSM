@@ -1,24 +1,9 @@
-#define VERSION "AIC Deconv version 0.1.0"
-#define UNSET_DOUBLE -1.0
-#define UNSET_FLOAT -1.0f
-#define UNSET_INT -1
-#define UNSET_UNSIGNED_SHORT 0
-#define UNSET_BOOL false
-
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <exception>
-#include <math.h>
+#include "decon.h"
+#include "utils.h"
+#include "defines.h"
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
-#include <itkImageFileReader.h>
-#include <itkImageFileWriter.h>
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
-
-bool IsFile(const char* path);
 
 int main(int argc, char** argv) {
   // parameters
@@ -26,7 +11,7 @@ int main(int argc, char** argv) {
   bool verbose = UNSET_BOOL;
 
   // declare the supported options
-  po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
+  po::options_description visible_opts("usage: decon [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
       ("output,o", po::value<std::string>()->required(),"output file path")
@@ -53,14 +38,14 @@ int main(int argc, char** argv) {
 
     // print help message
     if (varsmap.count("help") || (argc == 1)) {
-      std::cerr << "deconv: deconvolves image with or without a PSF\n";
+      std::cerr << "decon: deconvolves image with or without a PSF\n";
       std::cerr << visible_opts << std::endl;
       return EXIT_FAILURE;
     }
 
     // print version number
     if (varsmap.count("version")) {
-      std::cerr << VERSION << std::endl;
+      std::cerr << DECON_VERSION << std::endl;
       return EXIT_FAILURE;
     }
     
@@ -68,11 +53,11 @@ int main(int argc, char** argv) {
     po::notify(varsmap);
 
   } catch (po::error& e) {
-    std::cerr << "deconv: " << e.what() << "\n\n";
+    std::cerr << "decon: " << e.what() << "\n\n";
     std::cerr << visible_opts << std::endl;
     return EXIT_FAILURE;
   } catch (...) {
-    std::cerr << "deconv: unknown error during command line parsing\n\n";
+    std::cerr << "decon: unknown error during command line parsing\n\n";
     std::cerr << visible_opts << std::endl;
     return EXIT_FAILURE;
   }
@@ -80,7 +65,7 @@ int main(int argc, char** argv) {
   // check files
   const char* in_path = varsmap["input"].as<std::string>().c_str();
   if (!IsFile(in_path)) {
-    std::cerr << "deconv: input path is not a file" << std::endl;
+    std::cerr << "decon: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -88,7 +73,7 @@ int main(int argc, char** argv) {
   const char* out_path = varsmap["output"].as<std::string>().c_str();
   if (IsFile(out_path)) {
     if (!overwrite) {
-      std::cerr << "deconv: output path already exists" << std::endl;
+      std::cerr << "decon: output path already exists" << std::endl;
       return EXIT_FAILURE;
     } else if (verbose) {
         std::cout << "overwriting: " << out_path << std::endl;
@@ -104,17 +89,7 @@ int main(int argc, char** argv) {
     std::cout << "Overwrite = " << overwrite << "\n";
   }
 
-  // deconv
+  // decon
 
   return EXIT_SUCCESS;
-}
-
-bool IsFile(const char* path) {
-  fs::path p(path);
-  if (fs::exists(p)) {
-    if (fs::is_regular_file(p)) {
-      return true;
-    }
-  }
-  return false;
 }

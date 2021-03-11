@@ -1,13 +1,15 @@
+#pragma once
+
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <iostream>
 #include <exception>
 #include <boost/filesystem.hpp>
+#include <itk/ImageBase.h>
 #include <tiffio.hxx>
 
 namespace fs = boost::filesystem;
-
 
 bool IsFile(const char* path) {
   fs::path p(path);
