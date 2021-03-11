@@ -6,7 +6,7 @@
 #include <iostream>
 #include <exception>
 #include <boost/filesystem.hpp>
-#include <itk/ImageBase.h>
+#include <itkImage.h>
 #include <tiffio.hxx>
 
 namespace fs = boost::filesystem;
