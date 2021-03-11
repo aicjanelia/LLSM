@@ -12,7 +12,7 @@ include(${ITK_USE_FILE})
 ######### Targets #########
 
 add_executable(deskew src/c/deskew/deskew.cpp)
-add_executable(testitk src/c/itk-test/main.cpp)
+add_executable(reader-test src/c/tests/readerTest.cpp)
 
 ######### Set Pre-package Variables #########
 
@@ -45,7 +45,8 @@ target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
 
-target_include_directories(testitk PRIVATE ${PROJECT_SOURCE_DIR}/src/c/itk-test)
+target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/tests)
+target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
 ######### Libraries #########
 
@@ -56,9 +57,9 @@ target_link_libraries(deskew PRIVATE ${TIFF_LIBRARIES})
 target_link_libraries(deskew PRIVATE ${JPEG_LIBRARIES})
 target_link_libraries(deskew PRIVATE ZLIB::ZLIB)
 
-target_link_libraries(testitk PRIVATE ZLIB::ZLIB)
-target_link_libraries(testitk PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
+target_link_libraries(reader-test PRIVATE ZLIB::ZLIB)
+target_link_libraries(reader-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 
 ######### Installs #########
 
-install(TARGETS deskew testitk CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS deskew reader-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)

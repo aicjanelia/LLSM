@@ -14,6 +14,6 @@
 #define cimg_use_openmp 1
 
 // Globals
-constexpr unsigned int Dimensions_g = 3;
-typedef double PixelType_g;
-typedef itk::Image<PixelType_g, Dimensions_g> ImageType_g;
+constexpr unsigned int kDimensions = 3;
+using kPixelType = double;
+using kImageType = itk::Image<kPixelType, kDimensions>;
