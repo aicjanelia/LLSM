@@ -1,4 +1,5 @@
 #pragma once
+#include <itkImage.h>
 
 #define UNSET_DOUBLE -1.0
 #define UNSET_FLOAT -1.0f
@@ -14,5 +15,5 @@
 
 // Globals
 constexpr unsigned int Dimensions_g = 3;
-typedef double PixelType_g:
-typedef itk::Image<PixelType_g, Dimensions_g> ImageType_g; 
+typedef double PixelType_g;
+typedef itk::Image<PixelType_g, Dimensions_g> ImageType_g;
