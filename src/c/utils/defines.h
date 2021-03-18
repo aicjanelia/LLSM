@@ -1,4 +1,5 @@
 #pragma once
+
 #include <itkImage.h>
 
 #define UNSET_DOUBLE -1.0

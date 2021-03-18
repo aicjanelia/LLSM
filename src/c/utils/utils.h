@@ -6,7 +6,6 @@
 #include <iostream>
 #include <exception>
 #include <boost/filesystem.hpp>
-#include <itkImage.h>
 #include <tiffio.hxx>
 
 namespace fs = boost::filesystem;
@@ -21,6 +20,7 @@ bool IsFile(const char* path) {
   return false;
 }
 
+// TODO: remove this function and tiffio header once deskew uses ITK
 unsigned short GetTIFFBitDepth(const char* path) {
   // read bit depth from file
   unsigned short bps = UNSET_UNSIGNED_SHORT;
