@@ -65,7 +65,7 @@ target_link_libraries(deskew PRIVATE ZLIB::ZLIB)
 target_link_libraries(decon PRIVATE Boost::filesystem)
 target_link_libraries(decon PRIVATE Boost::program_options)
 target_link_libraries(decon PRIVATE ${TIFF_LIBRARIES}) # TODO: remove when we kill GetBitDepth in utils
-target_link_libraries(decon PRIVATE ITKCommon)
+target_link_libraries(decon PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 
 target_link_libraries(reader-test PRIVATE ZLIB::ZLIB)
 target_link_libraries(reader-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
