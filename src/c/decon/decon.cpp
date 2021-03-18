@@ -1,6 +1,7 @@
 #include "decon.h"
-#include "utils.h"
 #include "defines.h"
+#include "utils.h"
+#include "reader.h"
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -9,11 +10,14 @@ int main(int argc, char** argv) {
   // parameters
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
+  unsigned int iterations = UNSET_UNSIGNED_INT;
 
   // declare the supported options
   po::options_description visible_opts("usage: decon [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
+      ("kernel,k", po::value<std::string>()->required(),"kernel file path")
+      ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
@@ -68,6 +72,11 @@ int main(int argc, char** argv) {
     std::cerr << "decon: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
+  const char* kernel_path = varsmap["kernel"].as<std::string>().c_str();
+  if (!IsFile(kernel_path)) {
+    std::cerr << "decon: kernel path is not a file" << std::endl;
+    return EXIT_FAILURE;
+  }
 
   // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
@@ -90,6 +99,9 @@ int main(int argc, char** argv) {
   }
 
   // decon
+  itk::SmartPointer<kImageType> img = ReadImageFile(in_path);
+  itk::SmartPointer<kImageType> kernel = ReadImageFile(kernel_path);
+  kImageType::Pointer decon_img = RichardsonLucy(img, kernel, iterations, verbose);
 
   return EXIT_SUCCESS;
 }
