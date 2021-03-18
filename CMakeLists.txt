@@ -12,6 +12,7 @@ include(${ITK_USE_FILE})
 ######### Targets #########
 
 add_executable(deskew src/c/deskew/deskew.cpp)
+add_executable(decon src/c/decon/decon.cpp)
 add_executable(reader-test src/c/tests/readerTest.cpp)
 
 ######### Set Pre-package Variables #########
@@ -45,6 +46,10 @@ target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${CImg_INCLUDE_DIR})
 target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
 
+target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/decon)
+target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+target_include_directories(decon PRIVATE ${TIFF_INCLUDE_DIR}) # TODO: remove when we kill GetBitDepth in utils
+
 target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/tests)
 target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
@@ -57,9 +62,14 @@ target_link_libraries(deskew PRIVATE ${TIFF_LIBRARIES})
 target_link_libraries(deskew PRIVATE ${JPEG_LIBRARIES})
 target_link_libraries(deskew PRIVATE ZLIB::ZLIB)
 
+target_link_libraries(decon PRIVATE Boost::filesystem)
+target_link_libraries(decon PRIVATE Boost::program_options)
+target_link_libraries(decon PRIVATE ${TIFF_LIBRARIES}) # TODO: remove when we kill GetBitDepth in utils
+target_link_libraries(decon PRIVATE ITKCommon)
+
 target_link_libraries(reader-test PRIVATE ZLIB::ZLIB)
 target_link_libraries(reader-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 
 ######### Installs #########
 
-install(TARGETS deskew reader-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS deskew decon reader-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)

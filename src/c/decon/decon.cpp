@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
 
     // print help message
     if (varsmap.count("help") || (argc == 1)) {
-      std::cerr << "decon: deconvolves image with or without a PSF\n";
+      std::cerr << "decon: deconvolves an image with a PSF or PSF parameters\n";
       std::cerr << visible_opts << std::endl;
       return EXIT_FAILURE;
     }
