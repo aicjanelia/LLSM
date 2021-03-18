@@ -6,6 +6,7 @@
 #define UNSET_FLOAT -1.0f
 #define UNSET_INT -1
 #define UNSET_UNSIGNED_SHORT 0
+#define UNSET_UNSIGNED_INT 0
 #define UNSET_BOOL false
 #define EPSILON 1e-5
 
