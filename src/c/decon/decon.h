@@ -3,6 +3,7 @@
 #define DECON_VERSION "AIC Decon version 0.1.0"
 
 #include "defines.h"
+#include <itkImage.h>
 #include <itkRichardsonLucyDeconvolutionImageFilter.h>
 #include <itkZeroFluxNeumannBoundaryCondition.h>
 
@@ -17,9 +18,9 @@
 //  Richardson-Lucy
 
 
-kImageType::Pointer decon_img RichardsonLucy(kImageType::Pointer img, kImageType kernel, unsigned int iterations, bool verbose)
+kImageType::Pointer RichardsonLucy(kImageType::Pointer img, kImageType::Pointer kernel, unsigned int iterations, bool verbose)
 {
-    using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter< kImageType >;
+    using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter<kImageType>;
     itk::ZeroFluxNeumannBoundaryCondition< kImageType > bc;
 
     DeconFilterType::Pointer filter = DeconFilterType::New();
