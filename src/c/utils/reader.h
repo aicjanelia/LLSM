@@ -1,12 +1,11 @@
 #pragma once
 
 #include "defines.h"
+#include "utils.h"
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkImageIOBase.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkCastImageFilter.h"
+#include <itkImageFileReader.h>
+#include <itkImageFileWriter.h>
+#include <itkImageIOBase.h>
 
 template <class TImageIn, class TImageOut>
 itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
@@ -26,14 +25,7 @@ itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
     return itk::SmartPointer<TImageOut>();
   }
 
-  using RescaleType = itk::RescaleIntensityImageFilter<TImageIn, TImageOut>;
-  typename RescaleType::Pointer rescale = RescaleType::New();
-  rescale->SetInput(reader->GetOutput());
-  rescale->SetOutputMinimum(0);
-  rescale->SetOutputMaximum(1.0);
-  rescale->Update();
-
-  return rescale->GetOutput();
+  return ConvertImage<TImageIn,TImageOut>(reader->GetOutput());
 }
 
 template <unsigned int VDimension, class TImageOut>

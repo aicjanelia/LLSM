@@ -6,8 +6,25 @@
 #include <iostream>
 #include <exception>
 #include <boost/filesystem.hpp>
-#include <itkImage.h>
 #include <tiffio.hxx>
+
+#include <itkImage.h>
+#include <itkCastImageFilter.h>
+#include <itkRescaleIntensityImageFilter.h>
+
+
+template <class TImageIn, class TImageOut>
+itk::SmartPointer<TImageOut> ConvertImage(itk::SmartPointer<TImageIn> image_in, const double output_min=0.0, const double output_max=1.0)
+{
+  using RescaleType = itk::RescaleIntensityImageFilter<TImageIn, TImageOut>;
+  typename RescaleType::Pointer rescale = RescaleType::New();
+  rescale->SetInput(image_in);
+  rescale->SetOutputMinimum(output_min);
+  rescale->SetOutputMaximum(output_max);
+  rescale->Update();
+
+  return rescale->GetOutput();
+}
 
 namespace fs = boost::filesystem;
 
