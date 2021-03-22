@@ -12,7 +12,7 @@
 template <class TImageIn, class TImageOut>
 bool writer(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
 {
-  itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in,0.0,std::numeric_limits<typename TImageOut::PixelType>::max());
+  itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
 
   using WriterType = itk::ImageFileWriter<TImageOut>;
   typename WriterType::Pointer writer = WriterType::New();
