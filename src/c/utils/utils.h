@@ -7,6 +7,7 @@
 #include <exception>
 #include <boost/filesystem.hpp>
 #include <tiffio.hxx>
+#include <limits>
 
 #include <itkImage.h>
 #include <itkCastImageFilter.h>
@@ -22,50 +23,50 @@ void GetRange(itk::SmartPointer<TImage> image, double &min_val, double &max_val)
 
 void GetRange(itk::SmartPointer<itk::Image<unsigned char, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = 0.0;
-  max_val = 255.0;
+  min_val = double(std::numeric_limits<unsigned char>::min());
+  max_val = double(std::numeric_limits<unsigned char>::max());
 }
 
 void GetRange(itk::SmartPointer<itk::Image<char, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = -128.0;
-  max_val = 127.0;
+  min_val = double(std::numeric_limits<char>::min());
+  max_val = double(std::numeric_limits<char>::max());
 }
 
 void GetRange(itk::SmartPointer<itk::Image<unsigned short, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = 0.0;
-  max_val = pow(2.0, 16.0) - 1.0;
+  min_val = double(std::numeric_limits<unsigned short>::min());
+  max_val = double(std::numeric_limits<unsigned short>::max());
 }
 
 void GetRange(itk::SmartPointer<itk::Image<short, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = pow(2.0, 15.0) * -1.0;
-  max_val = pow(2.0, 15.0) - 1.0;
+  min_val = double(std::numeric_limits<short>::min());
+  max_val = double(std::numeric_limits<short>::max());
 }
 
 void GetRange(itk::SmartPointer<itk::Image<unsigned int, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = 0.0;
-  max_val = pow(2.0, 32.0) - 1.0;
+  min_val = double(std::numeric_limits<unsigned int>::min());
+  max_val = double(std::numeric_limits<unsigned int>::max());
 }
 
 void GetRange(itk::SmartPointer<itk::Image<int, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = pow(2.0, 31.0) * -1.0;
-  max_val = pow(2.0, 31.0) - 1.0;
+  min_val = double(std::numeric_limits<int>::min());
+  max_val = double(std::numeric_limits<int>::max());
 }
 
-void GetRange(itk::SmartPointer<itk::Image<unsigned long, kDimensions>> image, double &min_val, double &max_val)
+void GetRange(itk::SmartPointer<itk::Image<unsigned long int, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = 0.0;
-  max_val = pow(2.0, 64.0) - 1.0;
+  min_val = double(std::numeric_limits<unsigned long int>::min());
+  max_val = double(std::numeric_limits<unsigned long int>::max());
 }
 
-void GetRange(itk::SmartPointer<itk::Image<long, kDimensions>> image, double &min_val, double &max_val)
+void GetRange(itk::SmartPointer<itk::Image<long int, kDimensions>> image, double &min_val, double &max_val)
 {
-  min_val = pow(2.0, 63.0) * -1.0;
-  max_val = pow(2.0, 63.0) - 1.0;
+  min_val = double(std::numeric_limits<long int>::min());
+  max_val = double(std::numeric_limits<long int>::max());
 }
 
 template <class TImageIn, class TImageOut>
