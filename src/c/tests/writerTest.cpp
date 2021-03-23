@@ -18,11 +18,7 @@ main(int argc, char * argv[])
   using PixelTypeOut = uint16;
   using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
 
-  bool worked = WriteImageFile<kImageType,ImageTypeOut>(image,"test.tif");
-  if (!worked)
-  {
-    return EXIT_FAILURE;
-  }
+  WriteImageFile<kImageType,ImageTypeOut>(image,"test.tif");
 
   return EXIT_SUCCESS;
 }

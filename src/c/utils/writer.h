@@ -10,7 +10,7 @@
 #include <string>
 
 template <class TImageIn, class TImageOut>
-bool WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
+void WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
 {
   itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
 
@@ -18,16 +18,5 @@ bool WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_
   typename WriterType::Pointer writer = WriterType::New();
   writer->SetFileName(file_path_out);
   writer->SetInput(image_output);
-
-  try
-  {
-    writer->Update();
-  }
-  catch (itk::ExceptionObject & error)
-  {
-    std::cerr << "WriteImageFile: " << error << std::endl;
-    return false;
-  }
-
-  return true;
+  writer->Update();
 }
