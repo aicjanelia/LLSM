@@ -193,6 +193,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 pattern = re.compile(f.split('_')[0] + '.*_ch(\d+).*\.tif')
                 break
 
+        # save settings json
+        if not dryrun:
+            with open(d / 'settings.json', 'w') as path:
+                json.dump(settings, path, indent=4)
+
         # deskew setup
         if 'waveform' not in settings:
             exit(f'error: settings file did not contain a Waveform section')
