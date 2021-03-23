@@ -29,7 +29,7 @@ itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
 }
 
 template <unsigned int VDimension, class TImageOut>
-itk::SmartPointer<TImageOut> ReadAnyImage(const char *file_path, const itk::IOComponentEnum component_type)
+itk::SmartPointer<TImageOut> ReadImage(const char *file_path, const itk::IOComponentEnum component_type)
 {
   switch (component_type)
   {
@@ -88,7 +88,7 @@ itk::SmartPointer<TImageOut> ReadAnyImage(const char *file_path, const itk::IOCo
 
   case itk::IOComponentEnum::ULONG:
   {
-    using PixelType = unsigned long;
+    using PixelType = unsigned long int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
     return ReadAndConvertImage<ImageType, TImageOut>(file_path);
@@ -96,7 +96,7 @@ itk::SmartPointer<TImageOut> ReadAnyImage(const char *file_path, const itk::IOCo
 
   case itk::IOComponentEnum::LONG:
   {
-    using PixelType = long;
+    using PixelType = long int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
     return ReadAndConvertImage<ImageType, TImageOut>(file_path);
@@ -152,7 +152,7 @@ itk::SmartPointer<kImageType> ReadImageFile(std::string file_path, bool verbose=
       std::cerr << "Need 3-D image!" << std::endl;
       return nullptr;
     }
-    return ReadAnyImage<kDimensions, kImageType>(file_path.c_str(), component_type);
+    return ReadImage<kDimensions, kImageType>(file_path.c_str(), component_type);
 
   default:
     std::cerr << "not implemented yet!" << std::endl;

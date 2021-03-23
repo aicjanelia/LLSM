@@ -10,7 +10,7 @@
 #include <string>
 
 template <class TImageIn, class TImageOut>
-bool writer(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
+bool WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
 {
   itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
 
@@ -26,8 +26,8 @@ bool writer(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
   catch (itk::ExceptionObject & error)
   {
     std::cerr << "Error: " << error << std::endl;
-    return EXIT_FAILURE;
+    return false;
   }
 
-  return EXIT_SUCCESS;
+  return true;
 }
