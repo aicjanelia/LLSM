@@ -25,7 +25,7 @@ bool WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_
   }
   catch (itk::ExceptionObject & error)
   {
-    std::cerr << "Error: " << error << std::endl;
+    std::cerr << "WriteImageFile: " << error << std::endl;
     return false;
   }
 
