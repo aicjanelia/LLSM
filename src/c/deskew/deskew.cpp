@@ -81,6 +81,16 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  const char* out_path = varsmap["output"].as<std::string>().c_str();
+  if (IsFile(out_path)) {
+    if (!overwrite) {
+      std::cerr << "deskew: output path already exists" << std::endl;
+      return EXIT_FAILURE;
+    } else if (verbose) {
+        std::cout << "overwriting: " << out_path << std::endl;
+    }
+  }
+
   // check angle
   if (fabs(angle) > 360.0) {
     std::cerr << "deskew: angle must be within [-360,360]" << std::endl;
@@ -90,20 +100,8 @@ int main(int argc, char** argv) {
   // set global openmp thread number
   omp_set_num_threads(nthreads);
 
-  // get output file path
-  const char* out_path = varsmap["output"].as<std::string>().c_str();
-  if (IsFile(out_path)) {
-    if (!overwrite) {
-      std::cerr << "deskew: output path already exists" << std::endl;
-      return EXIT_FAILURE;
-    } else if (verbose) {
-        std::cout << "overwriting: " << out_path << std::endl;
-    }
-
-  }
-
   // get bit depth
-  unsigned short bits = GetTIFFBitDepth(in_path);
+  unsigned short bit_depth = GetTIFFBitDepth(in_path);
 
   // print parameters
   if (verbose) {
@@ -117,23 +115,23 @@ int main(int argc, char** argv) {
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
     std::cout << "\nTIFF Properties\n";
-    std::cout << "Bit Depth = " << bits << std::endl;
+    std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
 
   // deskew
   float voxel_size[3] = {UNSET_FLOAT};
   cil::CImg<char> tiff_desc;
-  if (bits <= 8) {
+  if (bit_depth <= 8) {
     cil::CImg<unsigned char> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
     cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, verbose);
     deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
-  } else if (bits == 16) {
+  } else if (bit_depth == 16) {
     cil::CImg<unsigned short> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
     cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned short) fill_value, verbose);
     deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
-  } else if (bits == 32) {
+  } else if (bit_depth == 32) {
     cil::CImg<float> img;
     img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
     cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, fill_value, verbose);
