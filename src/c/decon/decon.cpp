@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
     WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
   } else {
+    std::cerr << "decon: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
   }
 
