@@ -13,6 +13,8 @@
 #include <itkIntensityWindowingImageFilter.h>
 #include <itkMinimumMaximumImageCalculator.h>
 
+namespace fs = boost::filesystem;
+
 template <class TImage>
 void GetRange(itk::SmartPointer<TImage> image, double &min_val, double &max_val)
 {
@@ -94,8 +96,6 @@ itk::SmartPointer<TImage> ConvertImage(itk::SmartPointer<TImage> image_in)
 {
   return image_in;
 }
-
-namespace fs = boost::filesystem;
 
 bool IsFile(const char *path)
 {
