@@ -22,7 +22,7 @@ itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
   catch (itk::ExceptionObject &e)
   {
     std::cerr << e.what() << std::endl;
-    return itk::SmartPointer<TImageOut>();
+    return nullptr;
   }
 
   return ConvertImage<TImageIn,TImageOut>(reader->GetOutput());
@@ -36,7 +36,7 @@ itk::SmartPointer<TImageOut> ReadImage(const char *file_path, const itk::IOCompo
   default:
   case itk::IOComponentEnum::UNKNOWNCOMPONENTTYPE:
     std::cerr << "Unknown and unsupported component type!" << std::endl;
-    return itk::SmartPointer<TImageOut>();
+    return nullptr;
 
   case itk::IOComponentEnum::UCHAR:
   {
@@ -119,7 +119,7 @@ itk::SmartPointer<TImageOut> ReadImage(const char *file_path, const itk::IOCompo
   }
   }
 
-  return itk::SmartPointer<TImageOut>();
+  return nullptr;
 }
 
 itk::SmartPointer<kImageType> ReadImageFile(std::string file_path, bool verbose=false)
