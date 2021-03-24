@@ -10,10 +10,11 @@ namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
   // parameters
-  bool overwrite = UNSET_BOOL;
-  bool verbose = UNSET_BOOL;
   unsigned int iterations = UNSET_UNSIGNED_INT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
+  bool overwrite = UNSET_BOOL;
+  bool verbose = UNSET_BOOL;
+
 
   // declare the supported options
   po::options_description visible_opts("usage: decon [options] path\n\nAllowed options");
@@ -119,15 +120,15 @@ int main(int argc, char** argv) {
   if (bit_depth == 8) {
     using PixelTypeOut = unsigned char;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
   } else if (bit_depth == 16) {
     using PixelTypeOut = unsigned short;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
   } else if (bit_depth == 32) {
     using PixelTypeOut = float;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
   } else {
     std::cerr << "decon: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
