@@ -15,7 +15,7 @@ main(int argc, char * argv[])
 
   itk::SmartPointer<kImageType> image = ReadImageFile(input_file_name);
 
-  using PixelTypeOut = uint16;
+  using PixelTypeOut = unsigned short;
   using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
 
   WriteImageFile<kImageType,ImageTypeOut>(image,"test.tif");
