@@ -18,7 +18,7 @@
 //  Richardson-Lucy
 
 
-kImageType::Pointer RichardsonLucy(kImageType::Pointer img, kImageType::Pointer kernel, unsigned int iterations, bool verbose)
+itk::SmartPointer<kImageType> RichardsonLucy(kImageType::Pointer img, kImageType::Pointer kernel, unsigned int iterations, bool verbose)
 {
     using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter<kImageType>;
     itk::ZeroFluxNeumannBoundaryCondition< kImageType > bc;

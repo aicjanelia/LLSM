@@ -2,6 +2,8 @@
 #include "defines.h"
 #include "utils.h"
 #include "reader.h"
+#include "writer.h"
+#include <algorithm>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -11,6 +13,7 @@ int main(int argc, char** argv) {
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
   unsigned int iterations = UNSET_UNSIGNED_INT;
+  unsigned int bit_depth = UNSET_UNSIGNED_INT;
 
   // declare the supported options
   po::options_description visible_opts("usage: decon [options] path\n\nAllowed options");
@@ -19,6 +22,7 @@ int main(int argc, char** argv) {
       ("kernel,k", po::value<std::string>()->required(),"kernel file path")
       ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
       ("output,o", po::value<std::string>()->required(),"output file path")
+      ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
@@ -77,8 +81,6 @@ int main(int argc, char** argv) {
     std::cerr << "decon: kernel path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
-
-  // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
   if (IsFile(out_path)) {
     if (!overwrite) {
@@ -87,21 +89,48 @@ int main(int argc, char** argv) {
     } else if (verbose) {
         std::cout << "overwriting: " << out_path << std::endl;
     }
+  }
 
+  // check bit depth
+  unsigned int bits[] = {8, 16, 32};
+  unsigned int* p = std::find(std::begin(bits), std::end(bits), bit_depth);
+  if (p == std::end(bits)) {
+    std::cerr << "decon: bit depth must be 8, 16, or 32" << std::endl;
+    return EXIT_FAILURE;
   }
 
   // print parameters
   if (verbose) {
     std::cout << "\nInput Parameters\n";
+    std::cout << "Iterations = " << iterations << "\n";
     std::cout << "Input Path = " << in_path << "\n";
+    std::cout << "Kernel Path = " << kernel_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
+    std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
 
   // decon
   itk::SmartPointer<kImageType> img = ReadImageFile(in_path);
   itk::SmartPointer<kImageType> kernel = ReadImageFile(kernel_path);
-  kImageType::Pointer decon_img = RichardsonLucy(img, kernel, iterations, verbose);
+  itk::SmartPointer<kImageType> decon_img = RichardsonLucy(img, kernel, iterations, verbose);
+
+  // write file
+  if (bit_depth == 8) {
+    using PixelTypeOut = unsigned char;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+  } else if (bit_depth == 16) {
+    using PixelTypeOut = unsigned short;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+  } else if (bit_depth == 32) {
+    using PixelTypeOut = float;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(img, out_path);
+  } else {
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }
