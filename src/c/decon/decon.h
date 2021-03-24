@@ -5,6 +5,8 @@
 #include "defines.h"
 #include <itkImage.h>
 #include <itkRichardsonLucyDeconvolutionImageFilter.h>
+#include <itkProjectedLandweberDeconvolutionImageFilter.h>
+#include <itkParametricBlindLeastSquaresDeconvolutionImageFilter.h>
 #include <itkZeroFluxNeumannBoundaryCondition.h>
 
 
@@ -17,7 +19,10 @@
 //  Projected Landweber
 //  Richardson-Lucy
 
+// Iterative Methods
 
+// Richardson-Lucy
+// Requires a kernel and a number of iterations.
 itk::SmartPointer<kImageType> RichardsonLucy(kImageType::Pointer img, kImageType::Pointer kernel, unsigned int iterations, bool verbose)
 {
     using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter<kImageType>;
@@ -28,6 +33,26 @@ itk::SmartPointer<kImageType> RichardsonLucy(kImageType::Pointer img, kImageType
     filter->SetKernelImage(kernel);
     filter->NormalizeOn();
     filter->SetNumberOfIterations(iterations);
+    filter->SetOutputRegionModeToSame();
+    filter->SetBoundaryCondition(&bc);
+
+    return filter->GetOutput();
+}
+
+// Projected Landweber (non-negative version of Landweber)
+// Requires a kernel, a number of iterations, and a relaxation parameter alpha. The parameter alpha is positive and less than 2/sigma1^2, where 
+// sigma1 is the largest singular value of the convolution operator.
+itk::SmartPointer<kImageType> ProjectedLandweber(kImageType::Pointer img, kImageType::Pointer kernel, unsigned int iterations, double alpha, bool verbose)
+{
+    using DeconFilterType = itk::ProjectedLandweberDeconvolutionImageFilter<kImageType>;
+    itk::ZeroFluxNeumannBoundaryCondition< kImageType > bc;
+
+    DeconFilterType::Pointer filter = DeconFilterType::New();
+    filter->SetInput(img);
+    filter->SetKernelImage(kernel);
+    filter->NormalizeOn();
+    filter->SetNumberOfIterations(iterations);
+    filter->SetAlpha(alpha);
     filter->SetOutputRegionModeToSame();
     filter->SetBoundaryCondition(&bc);
 
