@@ -7,8 +7,6 @@
 #include <itkImageBase.h>
 #include <itkImageFileWriter.h>
 
-#include <string>
-
 template <class TImageIn, class TImageOut>
 void WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string file_path_out)
 {
