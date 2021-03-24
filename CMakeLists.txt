@@ -53,10 +53,10 @@ target_include_directories(decon PRIVATE ${TIFF_INCLUDE_DIR}) # TODO: remove whe
 
 target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/tests)
 target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
-target_include_directories(reader-test PRIVATE ${TIFF_INCLUDE_DIR})
+target_include_directories(reader-test PRIVATE ${TIFF_INCLUDE_DIR}) # TODO: remove when we kill GetBitDepth in utils
 
 target_include_directories(writer-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
-target_include_directories(writer-test PRIVATE ${TIFF_INCLUDE_DIR})
+target_include_directories(writer-test PRIVATE ${TIFF_INCLUDE_DIR}) # TODO: remove when we kill GetBitDepth in utils
 
 ######### Libraries #########
 
