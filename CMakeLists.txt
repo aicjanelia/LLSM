@@ -13,8 +13,8 @@ include(${ITK_USE_FILE})
 
 add_executable(deskew src/c/deskew/deskew.cpp)
 add_executable(decon src/c/decon/decon.cpp)
-add_executable(reader-test src/c/tests/readerTest.cpp)
-add_executable(writer-test src/c/tests/writerTest.cpp)
+add_executable(reader-test src/c/tests/reader-test.cpp)
+add_executable(writer-test src/c/tests/writer-test.cpp)
 
 ######### Set Pre-package Variables #########
 
