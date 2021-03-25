@@ -33,7 +33,7 @@ void ParamSetter(itk::SmartPointer<kImageType> img, double angle, double step, d
 int main()
 {
     // parameters
-    std::string in_path("/nrs/aic/instruments/llsm/pipeline-test/chad/20210222/scan1/pos1/pos1_Iter_0000_ch0_CAM1_stack0000_560nm_0000000msec_0002518314msecAbs_000x_000y_000z_0000t.tif");
+    std::string in_path("skewed-image-c1.tif");
 
     double xy_res = 0.104;
     double step = 0.4;
@@ -68,7 +68,7 @@ int main()
     using PixelTypeOut = unsigned short;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
 
-    WriteImageFile<kImageType,ImageTypeOut>(img,"/nrs/aic/instruments/llsm/pipeline-test/chad/param-set-test.tif");
+    WriteImageFile<kImageType,ImageTypeOut>(img,"param-set-test.tif");
 
     return EXIT_SUCCESS;
 }
