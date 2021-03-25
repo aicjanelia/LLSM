@@ -14,14 +14,20 @@ void ParamSetter(itk::SmartPointer<kImageType> img, double angle, double step, d
 
     spacing[0] = xy_res;
     spacing[1] = xy_res;
-    spacing[2] = step * cos(angle * M_PI/180.0);
+    spacing[2] = step * sin(angle * M_PI/180.0);
 
     img->SetSpacing(spacing);
 
     // set origin
-
+    kImageType::PointType newOrigin;
+    newOrigin.Fill(0.0);
+    img->SetOrigin(newOrigin);
 
     // set direction
+    kImageType::DirectionType direction;
+    direction.SetIdentity();
+    direction[0][2] = step * cos(angle * M_PI/180.0);
+    img->SetDirection(direction);
 }
 
 int main()
@@ -49,6 +55,14 @@ int main()
     const kImageType::SpacingType & sp = img->GetSpacing();
     std::cout << "Spacing = ";
     std::cout << sp[0] << ", " << sp[1] << ", " << sp[2] << std::endl;
+
+    const kImageType::PointType & origin = img->GetOrigin();
+    std::cout << "Origin = ";
+    std::cout << origin[0] << ", " << origin[1] << ", " << origin[2] << std::endl;
+
+    const kImageType::DirectionType & direct = img->GetDirection();
+    std::cout << "Direction = " << std::endl;
+    std::cout << direct << std::endl;
 
     // write image
     using PixelTypeOut = unsigned short;
