@@ -8,16 +8,16 @@
 #include <itkImageFileWriter.h>
 #include <itkResampleImageFilter.h>
 #include "itkAffineTransform.h"
-#include "itkNearestNeighborInterpolateImageFunction.h"
+#include "itkLinearInterpolateImageFunction.h"
 
-void ParamSetter(itk::SmartPointer<kImageType> img, double angle, double step, double xy_res, unsigned short fill_value)
+void ParamSetter(itk::SmartPointer<kImageType> img, double angle, double stage_move_distance, double xy_res, unsigned short fill_value)
 {
     // set spacing
     kImageType::SpacingType spacing;
 
     spacing[0] = xy_res;
     spacing[1] = xy_res;
-    spacing[2] = step * sin(angle * M_PI/180.0);
+    spacing[2] = stage_move_distance * sin(angle * M_PI/180.0);
 
     img->SetSpacing(spacing);
 
@@ -29,17 +29,17 @@ void ParamSetter(itk::SmartPointer<kImageType> img, double angle, double step, d
     // set direction
     kImageType::DirectionType direction;
     direction.SetIdentity();
-    // direction[0][2] = step * cos(angle * M_PI/180.0);
+    direction[0][2] = stage_move_distance * cos(angle * M_PI/180.0) / spacing[2];
     img->SetDirection(direction);
 }
 
 int main()
 {
     // parameters
-    std::string in_path("skewed-image-c1.tif");
+    std::string in_path("idk.tif");
 
     double xy_res = 0.104;
-    double step = 0.4;
+    double stage_move_distance = 0.26667;
     double angle = 31.8;
     unsigned short fill_value = 0;
     unsigned int bit_depth = 16;
@@ -49,12 +49,12 @@ int main()
 
     if (img == nullptr)
     {
-    std::cerr << "Unable to read " << in_path.c_str() << std::endl;
-    return EXIT_FAILURE;
+        std::cerr << "Unable to read " << in_path.c_str() << std::endl;
+        return EXIT_FAILURE;
     }
 
     // set parameters
-    ParamSetter(img, angle, step, xy_res, fill_value);
+    ParamSetter(img, angle, stage_move_distance, xy_res, fill_value);
     const kImageType::SpacingType & sp = img->GetSpacing();
     std::cout << "Spacing = ";
     std::cout << sp[0] << ", " << sp[1] << ", " << sp[2] << std::endl;
@@ -67,24 +67,11 @@ int main()
     std::cout << "Direction = " << std::endl;
     std::cout << direct << std::endl;
 
+    std::cout << "Direction set val: " << stage_move_distance * cos(angle * M_PI/180.0) << std::endl;
+
     // write image
     using PixelTypeOut = unsigned short;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-
-    // itk::SmartPointer<ImageTypeOut> deskewed_img = ImageTypeOut::New();
-    // ImageTypeOut::IndexType start;
-    // start[0] = 0; // first index on X
-    // start[1] = 0; // first index on Y
-    // start[2] = 0; // first index on Z
-    // ImageTypeOut::SizeType size;
-    // size[0] = 200; // size along X
-    // size[1] = 200; // size along Y
-    // size[2] = 200; // size along Z
-    // ImageTypeOut::RegionType region;
-    // region.SetSize(size);
-    // region.SetIndex(start);
-    // deskewed_img->SetRegions(region);
-    // deskewed_img->Allocate();
 
     using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
     FilterType::Pointer filter = FilterType::New();
@@ -93,15 +80,14 @@ int main()
     TransformType::Pointer transform = TransformType::New();
     filter->SetTransform(transform);
 
-    using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<kImageType, double>; //change to linear
-    InterpolatorType::Pointer interpolator = InterpolatorType::New();
-    filter->SetInterpolator(interpolator);
+    // using InterpolatorType = itk::LinearInterpolateImageFunction<kImageType, double>; //change to linear
+    // InterpolatorType::Pointer interpolator = InterpolatorType::New();
+    // filter->SetInterpolator(interpolator);
 
     filter->SetDefaultPixelValue(0);
 
     // pixel spacing in millimeters along X and Y
-    const double spacing[kDimensions] = { 1.0, 1.0, 1.0 };
-    filter->SetOutputSpacing(spacing);
+    filter->SetOutputSpacing(sp);
     // Physical space coordinate of origin for X and Y
     const double originOut[kDimensions] = { 0.0, 0.0, 0.0 };
     filter->SetOutputOrigin(originOut);
@@ -110,10 +96,19 @@ int main()
     direction.SetIdentity();
     filter->SetOutputDirection(direction);
 
-    kImageType::SizeType size;
-    size[0] = 512; // number of pixels along X
-    size[1] = 650; // number of pixels along Y
-    size[2] = 60; // number of pixels along Y
+    // Calculate output size
+    double shift = img->GetDirection()[0][2];
+    kImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
+    std::cout << "Old Size:" << size[0] << ", " << size[1] << ", " << size[2] << std::endl;
+    //const int deskewed_width = ceil(width + (fabs(shift) * (nslices-1)));
+    size[0] = ceil(size[0] + (fabs(shift*sp[2]) / sp[0] * (size[2]-1)));
+
+    std::cout << "New Size:" << size[0] << ", " << size[1] << ", " << size[2] << std::endl;
+
+    // kImageType::SizeType size;
+    // size[0] = 512; // number of pixels along X
+    // size[1] = 650; // number of pixels along Y
+    // size[2] = 60; // number of pixels along Y
     filter->SetSize(size);
 
     filter->SetInput(img);
