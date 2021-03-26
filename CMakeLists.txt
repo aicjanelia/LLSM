@@ -6,7 +6,7 @@ project(llsm-pipeline VERSION 0.1 DESCRIPTION "Process lattice lightsheet images
 # ITK wants us to use include before declaing any targets.
 # Ref bottom of https://itk.org/Wiki/ITK/FAQ#NoFactoryException
 
-find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF)
+find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF ITKImageGrid ITKTransform ITKImageFunction)
 include(${ITK_USE_FILE})
 
 ######### Targets #########
@@ -52,7 +52,8 @@ target_link_libraries(decon PRIVATE Boost::program_options)
 target_link_libraries(decon PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 
 target_link_libraries(param-test PRIVATE Boost::filesystem)
-target_link_libraries(param-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
+# target_link_libraries(param-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF ITKImageGrid ITKTransform ITKImageFunction)
+target_link_libraries(param-test PRIVATE ${ITK_LIBRARIES})
 
 target_link_libraries(reader-test PRIVATE Boost::filesystem)
 target_link_libraries(reader-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
