@@ -48,7 +48,7 @@ target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils
 
 target_link_libraries(deskew PRIVATE Boost::filesystem)
 target_link_libraries(deskew PRIVATE Boost::program_options)
-target_link_libraries(deskew PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
+target_link_libraries(deskew PRIVATE ${ITK_LIBRARIES})
 
 target_link_libraries(decon PRIVATE Boost::filesystem)
 target_link_libraries(decon PRIVATE Boost::program_options)

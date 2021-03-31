@@ -4,30 +4,71 @@
 
 #include "defines.h"
 #include <itkImage.h>
+#include <itkImageBase.h>
+#include <itkResampleImageFilter.h>
+#include "itkAffineTransform.h"
+#include "itkLinearInterpolateImageFunction.h"
 
-template <typename T>
-itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, float angle, float step, float xy_res, T fill_value, bool verbose) {
+itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, float angle, float step, float xy_res, float fill_value, bool verbose) 
+{
+    // compute shift
+    const double shift = step * cos(angle * M_PI/180.0) / xy_res;
 
-  // // calculate shift from angle, step, and xy-resolution
-  // const float shift = step * cos(angle * M_PI/180.0) / xy_res;
-  // const int deskewed_width = ceil(width + (fabs(shift) * (nslices-1)));
-  
-  // // print parameters
-  // if (verbose) {
-  //   std::cout << "\nImage Properties\n";
-  //   std::cout << "Width (px) = " << width << "\n";
-  //   std::cout << "Height (px) = " << height << "\n";
-  //   std::cout << "Depth (slices) = " << nslices << "\n";
-  //   std::cout << "\nDeskew Parameters\n";
-  //   std::cout << "Shift (px) = " << shift << "\n";
-  //   std::cout << "Deskewed Image Width (px) = " << deskewed_width << std::endl; 
-  // }
+    if (verbose)
+    {
+      std::cout << "\nDeskew Parameters\n";
+      std::cout << "Shift (px) = " << shift << "\n";
+    }
 
-  // deskew by shifting each slice using 1-D linear interpolation
-  // cil::CImg<T> deskewed_img(deskewed_width, height, nslices, 1, fill_value);
-  // const double deskew_origin_x = (deskewed_width-1)/2.0;
-  // const double origin_x = (width-1)/2.0;
-  // const double origin_z = (nslices-1)/2.0;
+    // set up resample filter
+    using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
+    FilterType::Pointer filter = FilterType::New();
 
-  return nullptr;
+    using TransformType = itk::AffineTransform<double, kDimensions>;
+    TransformType::Pointer transform = TransformType::New();
+    transform->Shear(0, 2, -shift);
+    filter->SetTransform(transform);
+
+    using InterpolatorType = itk::LinearInterpolateImageFunction<kImageType, double>;
+    InterpolatorType::Pointer interpolator = InterpolatorType::New();
+    filter->SetInterpolator(interpolator);
+
+    filter->SetDefaultPixelValue(fill_value);
+
+    // calculate and set output size
+    kImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
+
+    if (verbose)
+    {
+      std::cout << "Input Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
+    }
+    
+    size[0] = ceil(size[0] + (fabs(shift) * (size[2]-1)));
+
+    if (verbose)
+    {
+      std::cout << "Output Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
+    }
+
+    filter->SetSize(size);
+
+    // perform deskew
+    filter->SetInput(img);
+    filter->Update();
+
+    // set spacing
+    kImageType::SpacingType spacing;
+
+    spacing[0] = xy_res;
+    spacing[1] = xy_res;
+    spacing[2] = step * sin(angle * M_PI/180.0);
+
+    img->SetSpacing(spacing);
+
+    if (verbose)
+    {
+      std::cout << "Output Resolution (um/px) = " << spacing[0] << " x " << spacing[1] << " x " << spacing[2] << std::endl;
+    }
+
+    return filter->GetOutput();
 }

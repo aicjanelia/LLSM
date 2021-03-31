@@ -59,7 +59,7 @@ itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, double a
 int main()
 {
     // parameters
-    std::string in_path("skewed-image-c1.tif");
+    std::string in_path("/nrs/aic/instruments/llsm/pipeline-test/stage-scan/hobsonc-20210325/cell1/cell1_Iter_0003_ch0_CAM1_stack0000_488nm_0000000msec_0014278808msecAbs_000x_000y_000z_0003t.tif");
 
     double xy_res = 0.104;
     double stage_move_distance = 0.26667;
