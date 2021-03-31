@@ -16,6 +16,7 @@ add_executable(decon src/c/decon/decon.cpp)
 add_executable(param-test src/c/tests/param-test.cpp)
 add_executable(reader-test src/c/tests/reader-test.cpp)
 add_executable(writer-test src/c/tests/writer-test.cpp)
+add_executable(deskew-test src/c/tests/deskew-test.cpp)
 
 ######### Set Pre-package Variables #########
 
@@ -41,6 +42,8 @@ target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils
 
 target_include_directories(writer-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
+target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+
 ######### Libraries #########
 
 target_link_libraries(deskew PRIVATE Boost::filesystem)
@@ -61,6 +64,9 @@ target_link_libraries(reader-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 target_link_libraries(writer-test PRIVATE Boost::filesystem)
 target_link_libraries(writer-test PRIVATE ITKCommon ITKIOImageBase ITKIOTIFF)
 
+target_link_libraries(deskew-test PRIVATE Boost::filesystem)
+target_link_libraries(deskew-test PRIVATE ${ITK_LIBRARIES})
+
 ######### Installs #########
 
-install(TARGETS deskew decon param-test reader-test writer-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS deskew decon param-test reader-test writer-test deskew-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
