@@ -35,6 +35,7 @@ itk::SmartPointer<kImageType> RichardsonLucy(itk::SmartPointer<kImageType> img, 
     filter->SetNumberOfIterations(iterations);
     filter->SetOutputRegionModeToSame();
     filter->SetBoundaryCondition(&bc);
+    filter->Update();
 
     return filter->GetOutput();
 }
@@ -55,6 +56,7 @@ itk::SmartPointer<kImageType> ProjectedLandweber(itk::SmartPointer<kImageType> i
     filter->SetAlpha(alpha);
     filter->SetOutputRegionModeToSame();
     filter->SetBoundaryCondition(&bc);
+    filter->Update(); 
 
     return filter->GetOutput();
 }
