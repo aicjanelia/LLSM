@@ -10,14 +10,7 @@
 template <class TImageIn, class TImageOut>
 void WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string out_path)
 {
-  // if (std::is_same<TImageIn, TImageOut>::value == true)
-  // {
-  //   itk::SmartPointer<TImageOut> image_output = image_in;
-  // }
-  // else
-  // {
-    itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
-  // }
+  itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
 
   using WriterType = itk::ImageFileWriter<TImageOut>;
   typename WriterType::Pointer writer = WriterType::New();

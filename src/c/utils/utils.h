@@ -73,6 +73,9 @@ void GetRange(itk::SmartPointer<itk::Image<long int, kDimensions>> image, double
 template <class TImageIn, class TImageOut>
 itk::SmartPointer<TImageOut> ConvertImage(itk::SmartPointer<TImageIn> image_in)
 {
+  if constexpr (std::is_same<TImageIn, TImageOut>::value)
+    return image_in;
+
   double input_min, input_max, output_min, output_max;
 
   GetRange(image_in, input_min, input_max);
