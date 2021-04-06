@@ -18,6 +18,14 @@ add_executable(reader-test src/c/tests/reader-test.cpp)
 add_executable(writer-test src/c/tests/writer-test.cpp)
 add_executable(deskew-test src/c/tests/deskew-test.cpp)
 
+set_property(TARGET deskew PROPERTY CXX_STANDARD 17)
+set_property(TARGET decon PROPERTY CXX_STANDARD 17)
+set_property(TARGET param-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET deskew-test PROPERTY CXX_STANDARD 17)
+
+
 ######### Set Pre-package Variables #########
 
 set(Boost_USE_STATIC_LIBS OFF)
