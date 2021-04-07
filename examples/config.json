@@ -11,13 +11,14 @@
     },
     "deskew": {
         "xy-res": 0.104,
-        "fill": 0.0
+        "fill": 0.0,
+        "bit-depth": 16
     },
     "decon": {
-
+        "n": 5,
+        "bit-depth": 16
     },
     "mip": {
-        
     },
     "bsub": {
         "o": "/dev/null",
