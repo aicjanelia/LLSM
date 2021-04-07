@@ -15,7 +15,7 @@ int main()
 {
     // read image
     std::string image_path("examples/cell2_ch0_CAM1_stack0001_560nm_0004529msec_0009990533msecAbs_000x_000y_000z_0000t.tif");
-    itk::SmartPointer<kImageType> image = ReadImageFile(image_path);
+    itk::SmartPointer<kImageType> image = ReadImageFile(image_path, true);
 
     if (image == nullptr)
     {
@@ -31,13 +31,13 @@ int main()
     unsigned int bit_depth = 16;
 
     // deskew
-    itk::SmartPointer<kImageType> deskew_img = Deskew(image, angle, stage_move_distance, xy_res, fill_value);
+    itk::SmartPointer<kImageType> deskew_img = Deskew(image, angle, stage_move_distance, xy_res, fill_value, true);
 
     // write image
     using PixelTypeOut = unsigned short;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
 
-    WriteImageFile<kImageType, ImageTypeOut>(deskew_img,"deskew-test.tif");
+    WriteImageFile<kImageType, ImageTypeOut>(deskew_img,"deskew-test.tif", true);
 
     return EXIT_SUCCESS;
 }

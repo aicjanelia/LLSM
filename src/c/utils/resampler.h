@@ -4,7 +4,7 @@
 #include <itkLinearInterpolateImageFunction.h>
 
 // TODO make this templated
-itk::SmartPointer<kImageType> Resampler(itk::SmartPointer<kImageType> image, kImageType::SpacingType out_spacing)
+itk::SmartPointer<kImageType> Resampler(itk::SmartPointer<kImageType> image, kImageType::SpacingType out_spacing, bool verbose=false)
 {
   // set up resample filter
   using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
@@ -28,6 +28,29 @@ itk::SmartPointer<kImageType> Resampler(itk::SmartPointer<kImageType> image, kIm
   // perform resample
   filter->SetInput(image);
   filter->Update();
+
+  if (verbose)
+  {
+    printf("In spacing: ");
+    for (int i=0; i<kDimensions; ++i)
+    {
+      printf("%0.3f ", in_spacing[i]);
+    }
+
+    printf("\nOut spacing: ");
+    for (int i=0; i<kDimensions; ++i)
+    {
+      printf("%0.3f ", out_spacing[i]);
+    }
+
+    printf("\nOut dimension: ");
+    for (int i=0; i<kDimensions; ++i)
+    {
+      printf("%ld ", size[i]);
+    }
+
+    printf("\n");
+  }
 
   return filter->GetOutput();
 }
