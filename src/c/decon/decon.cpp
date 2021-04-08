@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "reader.h"
 #include "resampler.h"
+#include "math.h"
 #include "writer.h"
 #include <algorithm>
 #include <boost/program_options.hpp>
@@ -13,6 +14,7 @@ int main(int argc, char** argv) {
   // parameters
   float kernel_zstep = UNSET_FLOAT;
   float img_zstep = UNSET_FLOAT;
+  float subtract_constant = UNSET_FLOAT;
   unsigned int iterations = UNSET_UNSIGNED_INT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
@@ -27,6 +29,7 @@ int main(int argc, char** argv) {
       ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
       ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(1.0f),"z-step size of kernel")
       ("image-spacing,q", po::value<float>(&img_zstep)->default_value(1.0f),"z-step size of input image")
+      ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant instensity value to subtract from input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -140,6 +143,13 @@ int main(int argc, char** argv) {
   if (img_zstep != kernel_zstep)
   {
     kernel = Resampler(kernel, img_spacing, verbose);
+  }
+
+  // subtract constant
+  if (subtract_constant != 0.0)
+  {
+    img = SubtractConstantClamped(img, (kPixelType) subtract_constant/std::numeric_limits<unsigned short>::max()); // TODO: scale subtraction by input type
+
   }
 
   // decon
