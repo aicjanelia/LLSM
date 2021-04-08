@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 
   // deskew
   itk::SmartPointer<kImageType> img = ReadImageFile(in_path);
-  itk::SmartPointer<kImageType> deskew_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, verbose);
+  itk::SmartPointer<kImageType> deskew_img = Deskew(img, angle, step, xy_res, (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
 
   // write file
   if (bit_depth == 8) {
