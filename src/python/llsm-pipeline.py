@@ -310,7 +310,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     step = settings['waveform']['s-piezo']['interval'][ch] 
                     step = step * math.sin(31.8 * math.pi/180.0)
 
-                    tmp = cmd_decon + f' -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
+                    tmp = cmd_decon + f' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
                 if len(cmd) > 1:
                     cmd = ''.join(cmd)
