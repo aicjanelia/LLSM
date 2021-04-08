@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "reader.h"
 #include "resampler.h"
-#include "math.h"
+#include "math_local.h"
 #include "writer.h"
 #include <algorithm>
 #include <boost/program_options.hpp>
