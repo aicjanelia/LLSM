@@ -14,7 +14,7 @@ include(${ITK_USE_FILE})
 add_executable(deskew src/c/deskew/deskew.cpp)
 add_executable(deskew-test src/c/tests/deskew-test.cpp)
 add_executable(decon src/c/decon/decon.cpp)
-add_executable(param-test src/c/tests/param-test.cpp)
+# add_executable(decon-test src/c/tests/decon-test.cpp)
 add_executable(reader-test src/c/tests/reader-test.cpp)
 add_executable(writer-test src/c/tests/writer-test.cpp)
 add_executable(resampler-test src/c/tests/resampler-test.cpp)
@@ -22,11 +22,10 @@ add_executable(resampler-test src/c/tests/resampler-test.cpp)
 set_property(TARGET deskew PROPERTY CXX_STANDARD 17)
 set_property(TARGET deskew-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET decon PROPERTY CXX_STANDARD 17)
-set_property(TARGET param-test PROPERTY CXX_STANDARD 17)
+# set_property(TARGET decon-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET resampler-test PROPERTY CXX_STANDARD 17)
-
 
 ######### Set Pre-package Variables #########
 
@@ -48,8 +47,8 @@ target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils
 target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/decon)
 target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
 target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
-
-target_include_directories(param-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+# target_include_directories(decon-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/decon)
+# target_include_directories(decon-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
 target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 target_include_directories(writer-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
@@ -61,12 +60,13 @@ target_link_libraries(deskew PRIVATE Boost::filesystem)
 target_link_libraries(deskew PRIVATE Boost::program_options)
 target_link_libraries(deskew PRIVATE ${ITK_LIBRARIES})
 
+target_link_libraries(deskew-test PRIVATE ${ITK_LIBRARIES})
+
 target_link_libraries(decon PRIVATE Boost::filesystem)
 target_link_libraries(decon PRIVATE Boost::program_options)
 target_link_libraries(decon PRIVATE ${ITK_LIBRARIES})
-target_link_libraries(decon-test PRIVATE Boost::filesystem)
-target_link_libraries(decon-test PRIVATE Boost::program_options)
-target_link_libraries(decon-test PRIVATE ${ITK_LIBRARIES})
+
+# target_link_libraries(decon-test PRIVATE ${ITK_LIBRARIES})
 
 target_link_libraries(reader-test PRIVATE Boost::filesystem)
 target_link_libraries(reader-test PRIVATE ${ITK_LIBRARIES})
@@ -79,4 +79,4 @@ target_link_libraries(resampler-test PRIVATE ${ITK_LIBRARIES})
 
 ######### Installs #########
 
-install(TARGETS deskew deskew-test decon decon-test reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS deskew deskew-test decon reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)

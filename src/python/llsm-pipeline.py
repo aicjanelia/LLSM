@@ -293,7 +293,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             m = pattern.fullmatch(f)
             if m:
                 ch = int(m.group(1))
-                cmd = [cmd_bsub, '`']
+                cmd = [cmd_bsub, ' \"']
 
                 if deskew:
                     inpath = d / f
@@ -313,8 +313,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     tmp = cmd_decon + f' -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
                 if len(cmd) > 1:
-                    cmd.append('`')
-                    cmd = ' '.join(cmd)
+                    cmd = ''.join(cmd)
+                    cmd = cmd + '\"'
                     if verbose:
                         print(cmd)
                     if not dryrun:
