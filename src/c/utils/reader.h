@@ -122,7 +122,8 @@ itk::SmartPointer<TImageOut> ReadImage(const char *file_path, const itk::IOCompo
   return nullptr;
 }
 
-itk::SmartPointer<kImageType> ReadImageFile(std::string file_path, bool verbose=false)
+template <class TImage>
+itk::SmartPointer<TImage> ReadImageFile(std::string file_path, bool verbose=false)
 {
   itk::ImageIOBase::Pointer image_io = itk::ImageIOFactory::CreateImageIO(file_path.c_str(), itk::CommonEnums::IOFileMode::ReadMode);
 
@@ -152,7 +153,7 @@ itk::SmartPointer<kImageType> ReadImageFile(std::string file_path, bool verbose=
       std::cerr << "Need 3-D image!" << std::endl;
       return nullptr;
     }
-    return ReadImage<kDimensions, kImageType>(file_path.c_str(), component_type);
+    return ReadImage<kDimensions, TImage>(file_path.c_str(), component_type);
 
   default:
     std::cerr << "not implemented yet!" << std::endl;

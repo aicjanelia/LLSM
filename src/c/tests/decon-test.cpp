@@ -9,11 +9,11 @@ int main()
 {
     // read image
     std::string image_path("examples/cell2_ch1_CAM1_stack0001_488nm_0004529msec_0009990533msecAbs_000x_000y_000z_0000t.tif");
-    itk::SmartPointer<kImageType> image = ReadImageFile(image_path, true);
+    itk::SmartPointer<kImageType> image = ReadImageFile<kImageType>(image_path, true);
 
     // read PSF
     std::string psf_path("examples/488_PSF_piezoScan.tif");
-    itk::SmartPointer<kImageType> psf = ReadImageFile(psf_path, true);
+    itk::SmartPointer<kImageType> psf = ReadImageFile<kImageType>(psf_path, true);
 
     if (image == nullptr)
     {

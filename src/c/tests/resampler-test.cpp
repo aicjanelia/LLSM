@@ -7,7 +7,7 @@ int main()
 {
   std::string input_file_name("examples/560_PSF_piezoScan.tif");
 
-  itk::SmartPointer<kImageType> image = ReadImageFile(input_file_name, true);
+  itk::SmartPointer<kImageType> image = ReadImageFile<kImageType>(input_file_name, true);
 
   if (image == nullptr)
   {
