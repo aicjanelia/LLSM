@@ -1,77 +1,90 @@
-cmake_minimum_required(VERSION 3.12...3.19)
+cmake_minimum_required(VERSION 3.12...3.20)
+project(llsm-pipeline VERSION 0.1 DESCRIPTION "Process lattice lightsheet images." LANGUAGES CXX)
 
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
-    message(FATAL_ERROR "A newer version of CMake is required. https://cmake.org/download/")
-endif()
+######### Pre-Setup #########
 
-project(Deskew  VERSION         2.0 
-                DESCRIPTION     "Deskew lattice lightsheet images." 
-                LANGUAGES       CXX)
+# ITK wants us to use include before declaing any targets.
+# Ref bottom of https://itk.org/Wiki/ITK/FAQ#NoFactoryException
 
+find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF ITKImageGrid ITKTransform ITKImageFunction)
+include(${ITK_USE_FILE})
 
-add_executable(deskew ${PROJECT_SOURCE_DIR}/src/c/deskew/deskew.cpp)
-target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew ${PROJECT_SOURCE_DIR}/src/c/utils)
+######### Targets #########
 
-# Set the C++ standard
-set(CMAKE_CXX_COMPILER "clang++")
+add_executable(deskew src/c/deskew/deskew.cpp)
+add_executable(deskew-test src/c/tests/deskew-test.cpp)
+add_executable(decon src/c/decon/decon.cpp)
+add_executable(decon-test src/c/tests/decon-test.cpp)
+add_executable(reader-test src/c/tests/reader-test.cpp)
+add_executable(writer-test src/c/tests/writer-test.cpp)
+add_executable(resampler-test src/c/tests/resampler-test.cpp)
 
-# Add dependencies
+set_property(TARGET deskew PROPERTY CXX_STANDARD 17)
+set_property(TARGET deskew-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET decon PROPERTY CXX_STANDARD 17)
+set_property(TARGET decon-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
+set_property(TARGET resampler-test PROPERTY CXX_STANDARD 17)
 
-## Boost
+######### Set Pre-package Variables #########
+
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
+
+######### Add Packages #########
+
 find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options)
-message(STATUS "Boost version: ${Boost_VERSION}")
-# This is needed if your Boost version is newer than your CMake version
-# or if you have an old version of CMake (<3.5)
-if(NOT TARGET Boost::filesystem)
-    add_library(Boost::filesystem IMPORTED INTERFACE)
-    set_property(TARGET Boost::filesystem PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-    set_property(TARGET Boost::filesystem PROPERTY
-        INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES})
-endif()
-target_link_libraries(deskew PUBLIC Boost::filesystem)
 
-if(NOT TARGET Boost::program_options)
-    add_library(Boost::program_options IMPORTED INTERFACE)
-    set_property(TARGET Boost::program_options PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-    set_property(TARGET Boost::program_options PROPERTY
-        INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES})
-endif()
-target_link_libraries(deskew PUBLIC Boost::program_options)
+######### Includes #########
 
-## OpenMP
-find_package(OpenMP REQUIRED)
-message(STATUS "OpenMP version: ${OpenMP_CXX_VERSION} Path: ${OpenMP_CXX_LIBRARIES}")
-target_link_libraries(deskew PRIVATE OpenMP::OpenMP_CXX)
+target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
-## CImg
-find_package(CImg REQUIRED)
-message(STATUS "CImg include: ${CImg_DIR}")
-# target_include_directories(libdeskew PRIVATE ${CImg_DIR}/../../include)
-target_include_directories(deskew PRIVATE ${CImg_DIR}/../../include)
+target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/decon)
+target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+target_include_directories(decon-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/decon)
+target_include_directories(decon-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
+target_include_directories(decon-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
-find_package(TIFF REQUIRED)
-message(STATUS "Tiff version: ${TIFF_VERSION}")
-set(CIMG_TIFF_CCFLAGS -Dcimg_use_tiff)
-SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_TIFF_CCFLAGS}")
-target_include_directories(deskew PRIVATE ${TIFF_INCLUDE_DIR})
-target_link_libraries(deskew PRIVATE ${TIFF_LIBRARIES})
+target_include_directories(reader-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+target_include_directories(writer-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+target_include_directories(resampler-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
-find_package(JPEG REQUIRED)
-message(STATUS "JPEG version: ${JPEG_VERSION}")
-set(CIMG_JPEG_CCFLAGS -Dcimg_use_jpeg)
-SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_JPEG_CCFLAGS}")
-target_include_directories(deskew PRIVATE ${JPEG_LIB_DIRS})
-target_link_libraries(deskew PRIVATE ${JPEG_LIBRARIES})
+######### Libraries #########
 
-find_package(ZLIB REQUIRED)
-message(STATUS "ZLIB version: ${ZLIB_VERSION}")
-SET(CIMG_CFLAGS "${CIMG_CFLAGS} ${CIMG_ZLIB_CCFLAGS}")
-target_include_directories(deskew PRIVATE ${ZLIB_LIB_DIRS})
-target_link_libraries(deskew PRIVATE ${ZLIB_LIBRARIES})
+target_link_libraries(deskew PRIVATE Boost::filesystem)
+target_link_libraries(deskew PRIVATE Boost::program_options)
+target_link_libraries(deskew PRIVATE ${ITK_LIBRARIES})
+target_link_libraries(deskew-test PRIVATE Boost::filesystem)
+target_link_libraries(deskew-test PRIVATE Boost::program_options)
+target_link_libraries(deskew-test PRIVATE ${ITK_LIBRARIES})
 
-install(TARGETS deskew CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+target_link_libraries(decon PRIVATE Boost::filesystem)
+target_link_libraries(decon PRIVATE Boost::program_options)
+target_link_libraries(decon PRIVATE ${ITK_LIBRARIES})
+target_link_libraries(decon-test PRIVATE Boost::filesystem)
+target_link_libraries(decon-test PRIVATE Boost::program_options)
+target_link_libraries(decon-test PRIVATE ${ITK_LIBRARIES})
+
+target_link_libraries(reader-test PRIVATE Boost::filesystem)
+target_link_libraries(reader-test PRIVATE ${ITK_LIBRARIES})
+
+target_link_libraries(writer-test PRIVATE Boost::filesystem)
+target_link_libraries(writer-test PRIVATE ${ITK_LIBRARIES})
+
+target_link_libraries(resampler-test PRIVATE Boost::filesystem)
+target_link_libraries(resampler-test PRIVATE ${ITK_LIBRARIES})
+
+######### Installs #########
+
+install(TARGETS deskew deskew-test decon decon-test reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+
+file(COPY ${PROJECT_SOURCE_DIR}/src/python/llsm-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file(RENAME ${PROJECT_SOURCE_DIR}/bin/llsm-pipeline.py ${PROJECT_SOURCE_DIR}/bin/llsm-pipeline)
+file(COPY ${PROJECT_SOURCE_DIR}/src/python/settings2json.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file(RENAME ${PROJECT_SOURCE_DIR}/bin/settings2json.py ${PROJECT_SOURCE_DIR}/bin/settings2json)

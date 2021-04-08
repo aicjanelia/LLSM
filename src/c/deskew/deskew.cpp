@@ -1,10 +1,12 @@
 #include "deskew.h"
+#include "defines.h"
 #include "utils.h"
-#include <iostream>
+#include "reader.h"
+#include "writer.h"
+#include <algorithm>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
-
 
 int main(int argc, char** argv) {
   // parameters
@@ -12,7 +14,7 @@ int main(int argc, char** argv) {
   float step = UNSET_FLOAT;
   float angle = UNSET_FLOAT;
   float fill_value = UNSET_FLOAT;
-  int nthreads = UNSET_INT;
+  unsigned int bit_depth = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -24,8 +26,8 @@ int main(int argc, char** argv) {
       ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
       ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
-      ("nthreads,n", po::value<int>(&nthreads)->default_value(omp_get_num_procs()),"number of threads")
       ("output,o", po::value<std::string>()->required(),"output file path")
+      ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
@@ -56,7 +58,7 @@ int main(int argc, char** argv) {
 
     // print version number
     if (varsmap.count("version")) {
-      std::cerr << VERSION << std::endl;
+      std::cerr << DESKEW_VERSION << std::endl;
       return EXIT_FAILURE;
     }
     
@@ -79,17 +81,6 @@ int main(int argc, char** argv) {
     std::cerr << "deskew: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
-
-  // check angle
-  if (fabs(angle) > 360.0) {
-    std::cerr << "deskew: angle must be within [-360,360]" << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  // set global openmp thread number
-  omp_set_num_threads(nthreads);
-
-  // get output file path
   const char* out_path = varsmap["output"].as<std::string>().c_str();
   if (IsFile(out_path)) {
     if (!overwrite) {
@@ -98,11 +89,21 @@ int main(int argc, char** argv) {
     } else if (verbose) {
         std::cout << "overwriting: " << out_path << std::endl;
     }
-
   }
 
-  // get bit depth
-  unsigned short bits = GetTIFFBitDepth(in_path);
+  // check bit depth
+  unsigned int bits[] = {8, 16, 32};
+  unsigned int* p = std::find(std::begin(bits), std::end(bits), bit_depth);
+  if (p == std::end(bits)) {
+    std::cerr << "deskew: bit depth must be 8, 16, or 32" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  // check angle
+  if (fabs(angle) > 360.0) {
+    std::cerr << "deskew: angle must be within [-360,360]" << std::endl;
+    return EXIT_FAILURE;
+  }
 
   // print parameters
   if (verbose) {
@@ -111,32 +112,29 @@ int main(int argc, char** argv) {
     std::cout << "Step Size (um) = " << step << "\n";
     std::cout << "Objective Angle (degrees) = " << angle <<"\n";
     std::cout << "Fill Value = " << fill_value << "\n";
-    std::cout << "Number of Threads = " << nthreads << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
-    std::cout << "\nTIFF Properties\n";
-    std::cout << "Bit Depth = " << bits << std::endl;
+    std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
 
   // deskew
-  float voxel_size[3] = {UNSET_FLOAT};
-  cil::CImg<char> tiff_desc;
-  if (bits <= 8) {
-    cil::CImg<unsigned char> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned char> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned char) fill_value, verbose);
-    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
-  } else if (bits == 16) {
-    cil::CImg<unsigned short> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<unsigned short> deskewed_img = Deskew(img, angle, step, xy_res, (unsigned short) fill_value, verbose);
-    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
-  } else if (bits == 32) {
-    cil::CImg<float> img;
-    img.load_tiff(in_path, 0, ~0U, 1, voxel_size, &tiff_desc);
-    cil::CImg<float> deskewed_img = Deskew(img, angle, step, xy_res, fill_value, verbose);
-    deskewed_img.save_tiff(out_path, 0, voxel_size, tiff_desc, false);
+  itk::SmartPointer<kImageType> img = ReadImageFile<kImageType>(in_path);
+  itk::SmartPointer<kImageType> deskew_img = Deskew(img, angle, step, xy_res, (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
+
+  // write file
+  if (bit_depth == 8) {
+    using PixelTypeOut = unsigned char;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
+  } else if (bit_depth == 16) {
+    using PixelTypeOut = unsigned short;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
+  } else if (bit_depth == 32) {
+    using PixelTypeOut = float;
+    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
+    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
   } else {
     std::cerr << "deskew: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
