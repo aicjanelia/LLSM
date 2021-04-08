@@ -148,7 +148,8 @@ int main(int argc, char** argv) {
   // subtract constant
   if (subtract_constant != 0.0)
   {
-    img = SubtractConstantClamped(img, (kPixelType) subtract_constant);
+    img = SubtractConstantClamped(img, (kPixelType) subtract_constant/std::numeric_limits<unsigned short>::max()); // TODO: scale subtraction by input type
+
   }
 
   // decon
