@@ -5,25 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "param-test-uninx",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/param-test",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name": "reader-test-uninx",
             "type": "cppdbg",
             "request": "launch",
@@ -47,6 +28,44 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/writer-test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "deskew-test-uninx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/deskew-test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "decon-test-uninx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/decon-test",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
