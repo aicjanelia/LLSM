@@ -88,7 +88,7 @@ def load_configs(path):
 
     # sanitize decon configs
     if 'decon' in configs:
-        supported_opts = ['n', 'bit-depth']
+        supported_opts = ['n', 'bit-depth', 'subtract']
         for key in list(configs['decon']):
             if key not in supported_opts:
                 print(f'warning: decon option \'%s\' in config.json is not supported' % key)
@@ -103,6 +103,11 @@ def load_configs(path):
             if configs['decon']['bit-depth'] not in [8, 16, 32]:
                 exit(f'error: decon bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['bit-depth'])
             configs['decon']['bit-depth'] = {'flag': '-b', 'arg': configs['decon']['bit-depth']}
+
+        if 'subtract' in configs['decon']:
+            if not type(configs['decon']['subtract']) is float:
+                exit(f'error: decon subtract value \'%s\' in config.json must be a float' % configs['decon']['subtract'])
+            configs['decon']['subtract'] = {'flag': '-s', 'arg': configs['decon']['subtract']}
 
         if 'psf' not in configs['paths']:
             exit('error: decon enabled, but no psf parameters found in config file')
