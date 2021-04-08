@@ -6,7 +6,7 @@
 #include <itkSubtractImageFilter.h>
 #include <itkClampImageFilter.h>
 
-itk::SmartPointer<kImageType> SubtractConstantClamped(kImageType img, kPixelType constant)
+itk::SmartPointer<kImageType> SubtractConstantClamped(itk::SmartPointer<kImageType> img, kPixelType constant)
 {
     using SubtractImageFilterType = itk::SubtractImageFilter<kImageType, kImageType, kImageType>;
     SubtractImageFilterType::Pointer subtract_filter = SubtractImageFilterType::New();
@@ -23,7 +23,7 @@ itk::SmartPointer<kImageType> SubtractConstantClamped(kImageType img, kPixelType
     return clamp_filter->GetOutput();
 }
 
-itk::SmartPointer<kImageType> SubtractConstant(kImageType img, kPixelType constant)
+itk::SmartPointer<kImageType> SubtractConstant(itk::SmartPointer<kImageType> img, kPixelType constant)
 {
     using SubtractImageFilterType = itk::SubtractImageFilter<kImageType, kImageType, kImageType>;
     SubtractImageFilterType::Pointer subtract_filter = SubtractImageFilterType::New();
