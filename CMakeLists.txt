@@ -27,7 +27,6 @@ set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET resampler-test PROPERTY CXX_STANDARD 17)
 
-
 ######### Set Pre-package Variables #########
 
 set(Boost_USE_STATIC_LIBS OFF)
@@ -65,12 +64,13 @@ target_link_libraries(deskew-test PRIVATE Boost::filesystem)
 target_link_libraries(deskew-test PRIVATE Boost::program_options)
 target_link_libraries(deskew-test PRIVATE ${ITK_LIBRARIES})
 
+target_link_libraries(deskew-test PRIVATE ${ITK_LIBRARIES})
+
 target_link_libraries(decon PRIVATE Boost::filesystem)
 target_link_libraries(decon PRIVATE Boost::program_options)
 target_link_libraries(decon PRIVATE ${ITK_LIBRARIES})
-target_link_libraries(decon-test PRIVATE Boost::filesystem)
-target_link_libraries(decon-test PRIVATE Boost::program_options)
-target_link_libraries(decon-test PRIVATE ${ITK_LIBRARIES})
+
+# target_link_libraries(decon-test PRIVATE ${ITK_LIBRARIES})
 
 target_link_libraries(reader-test PRIVATE Boost::filesystem)
 target_link_libraries(reader-test PRIVATE ${ITK_LIBRARIES})

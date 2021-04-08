@@ -8,6 +8,7 @@ import argparse
 import os
 import re
 import json
+import math
 from pathlib import Path, PurePath
 from sys import exit
 import settings2json
@@ -34,31 +35,12 @@ def load_configs(path):
         except json.JSONDecodeError as e:
             exit(f'error: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
 
-    # check critical configs
+    # sanitize root path
     root = Path(configs["paths"]["root"])
     if not root.is_dir():
         exit(f'error: root path \'%s\' does not exist' % root)
 
-    if 'decon' in configs:
-        if 'psf' not in configs['paths']:
-            exit('error: decon enabled, but no psf parameters found in config file')
-
-        if 'dir' in configs['paths']['psf']:
-            partial_path = root / configs['paths']['psf']['dir']
-        else:
-            configs['paths']['psf']['dir'] = None
-            partial_path = root
-            print(f'warning: no psf directory provided... using \'%s\'' % root)
-        
-        if 'laser' not in configs['paths']['psf']:
-            exit(f'error: no psf files provided')
-
-        for key, val in configs['paths']['psf']['laser'].items():
-            p = partial_path / val
-            if not p.is_file():
-                exit(f'error: laser %s psf file \'%s\' does not exist' % (key, p))
-
-    # sanitize optional bsub configs
+    # sanitize bsub configs
     if 'bsub' in configs:
         supported_opts = ['o', 'We', 'n']
         for key in list(configs['bsub']):
@@ -81,9 +63,9 @@ def load_configs(path):
                 exit(f'error: bsub slot count \'%s\' in config.json is not an integer' % configs['bsub']['n'])
             configs['bsub']['n'] = {'flag': '-n', 'arg': configs['bsub']['n']}
 
-    # sanitize optional deskew configs
+    # sanitize deskew configs
     if 'deskew' in configs:
-        supported_opts = ['xy-res', 'fill']
+        supported_opts = ['xy-res', 'fill', 'bit-depth']
         for key in list(configs['deskew']):
             if key not in supported_opts:
                 print(f'warning: deskew option \'%s\' in config.json is not supported' % key)
@@ -98,6 +80,47 @@ def load_configs(path):
             if not type(configs['deskew']['fill']) is float:
                 exit(f'error: deskew background fill value \'%s\' in config.json is not a float' % configs['deskew']['fill'])
             configs['deskew']['fill'] = {'flag': '-f', 'arg': configs['deskew']['fill']}
+
+        if 'bit-depth' in configs['deskew']:
+            if configs['deskew']['bit-depth'] not in [8, 16, 32]:
+                exit(f'error: deskew bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['deskew']['bit-depth'])
+            configs['deskew']['bit-depth'] = {'flag': '-b', 'arg': configs['deskew']['bit-depth']}
+
+    # sanitize decon configs
+    if 'decon' in configs:
+        supported_opts = ['n', 'bit-depth']
+        for key in list(configs['decon']):
+            if key not in supported_opts:
+                print(f'warning: decon option \'%s\' in config.json is not supported' % key)
+                del configs['decon'][key]
+
+        if 'n' in configs['decon']:
+            if not type(configs['decon']['n']) is int:
+                exit(f'error: decon iteration number (n) \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['n'])
+            configs['decon']['n'] = {'flag': '-n', 'arg': configs['decon']['n']}
+        
+        if 'bit-depth' in configs['decon']:
+            if configs['decon']['bit-depth'] not in [8, 16, 32]:
+                exit(f'error: decon bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['bit-depth'])
+            configs['decon']['bit-depth'] = {'flag': '-b', 'arg': configs['decon']['bit-depth']}
+
+        if 'psf' not in configs['paths']:
+            exit('error: decon enabled, but no psf parameters found in config file')
+
+        if 'dir' in configs['paths']['psf']:
+            partial_path = root / configs['paths']['psf']['dir']
+        else:
+            configs['paths']['psf']['dir'] = None
+            partial_path = root
+            print(f'warning: no psf directory provided... using \'%s\'' % root)
+        
+        if 'laser' not in configs['paths']['psf']:
+            exit(f'error: no psf files provided')
+
+        for key, val in configs['paths']['psf']['laser'].items():
+            p = partial_path / val
+            if not p.is_file():
+                exit(f'error: laser %s psf file \'%s\' does not exist' % (key, p))
 
     return configs
 
@@ -178,6 +201,28 @@ def process(dirs, configs, dryrun=False, verbose=False):
     cmd_deskew = params2cmd(params_deskew, 'deskew')
     cmd_decon = params2cmd(params_decon, 'decon')
 
+    # parse PSF settings files
+    if 'decon' in configs:
+        root = Path(configs["paths"]["root"])
+
+        psf_settings = {}
+        for key, val in configs['paths']['psf']['laser'].items():
+            psf_settings[key] = {}
+            filename, _ = os.path.splitext(val)
+            p = root / configs['paths']['psf']['dir'] / (filename + '_Settings.txt')
+            if not p.is_file():
+                exit(f'error: laser %s psf file \'%s\' does not have a Settings file' % (key, p))
+   
+            settings = settings2json.parse_txt(p)
+
+            if settings['waveform']['z-motion'] == 'Sample piezo':
+                step = settings['waveform']['s-piezo']['interval'][0] 
+                psf_settings[key]['z-step'] = step * math.sin(31.8 * math.pi/180.0)
+            elif settings['waveform']['z-motion'] == 'Z galvo & piezo':
+                psf_settings[key]['z-step'] = settings['waveform']['z-pzt']['interval'][0] 
+            else:
+                exit(f'error: PSF z-motion cannot be determined for laser %s' % key)
+
     # process each directory
     for d in dirs:
         print(f'processing \'%s\'...' % d)
@@ -185,7 +230,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # get list of files
         files = os.listdir(d)
 
-        # parse the first Settings.txt we find
+        # parse the last Settings.txt file
         for f in reversed(files):
             if f.endswith('Settings.txt'):
                 print(f'parsing \'%s\'...' % f)
@@ -193,17 +238,18 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 pattern = re.compile(f.split('_')[0] + '.*_ch(\d+).*\.tif')
                 break
 
+        # check for z-motion settings
+        if 'waveform' not in settings:
+            exit(f'error: settings file did not contain a Waveform section')
+        if 'z-motion' not in settings['waveform']:
+            exit(f'error: settings file did not contain a Z motion field')
+
         # save settings json
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
                 json.dump(settings, path, indent=4)
 
         # deskew setup
-        if 'waveform' not in settings:
-            exit(f'error: settings file did not contain a Waveform section')
-        if 'z-motion' not in settings['waveform']:
-            exit(f'error: settings file did not contain a Z motion field')
-
         deskew = False
         if settings['waveform']['z-motion'] == 'Sample piezo':
             if 's-piezo' not in settings['waveform']:
@@ -224,9 +270,18 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # decon setup
         decon = False
         if params_decon:
-            # TODO: check parameters
+            if 'laser' not in settings['waveform']:
+                exit(f'error: settings file did not contain a Laser field')
 
             decon = True
+
+            root = Path(configs['paths']['root'])
+            psfpaths = []
+            psfsteps = []
+            for laser in settings['waveform']['laser']:
+                filename = configs['paths']['psf']['laser'][str(laser)]
+                psfpaths.append(root / configs['paths']['psf']['dir'] / filename )
+                psfsteps.append(psf_settings[str(laser)]['z-step'])
 
             # decon output directory
             output_decon = d / 'decon'
@@ -238,16 +293,28 @@ def process(dirs, configs, dryrun=False, verbose=False):
             m = pattern.fullmatch(f)
             if m:
                 ch = int(m.group(1))
-                cmd = [cmd_bsub]
+                cmd = [cmd_bsub, ' \"']
 
                 if deskew:
+                    inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
-                    tmp = cmd_deskew + f' -w -s %s -o %s %s;' % (steps[ch], outpath , d / f)
+                    tmp = cmd_deskew + f' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
                     cmd.append(tmp)
                 if decon:
-                    cmd.append(cmd_decon)
+                    if deskew:
+                        inpath = output_deskew / tag_filename(f, '_deskew')
+                    else:
+                        inpath = d / f
+
+                    outpath = output_decon / tag_filename(f, '_decon')
+                    step = settings['waveform']['s-piezo']['interval'][ch] 
+                    step = step * math.sin(31.8 * math.pi/180.0)
+
+                    tmp = cmd_decon + f' -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
+                    cmd.append(tmp)
                 if len(cmd) > 1:
-                    cmd = ' '.join(cmd)
+                    cmd = ''.join(cmd)
+                    cmd = cmd + '\"'
                     if verbose:
                         print(cmd)
                     if not dryrun:
@@ -284,7 +351,7 @@ if __name__ == '__main__':
 
     unprocessed_dirs = get_dirs(root_dir, excludes)
 
-    # process images in new diectories
+    # process images in new directories
     processed_dirs = process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
 
     # update processed.json

@@ -2,6 +2,7 @@
 #include "defines.h"
 #include "utils.h"
 #include "reader.h"
+#include "resampler.h"
 #include "writer.h"
 #include <algorithm>
 #include <boost/program_options.hpp>
@@ -10,6 +11,8 @@ namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
   // parameters
+  float kernel_zstep = UNSET_FLOAT;
+  float img_zstep = UNSET_FLOAT;
   unsigned int iterations = UNSET_UNSIGNED_INT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
@@ -22,6 +25,8 @@ int main(int argc, char** argv) {
       ("help,h", "display this help message")
       ("kernel,k", po::value<std::string>()->required(),"kernel file path")
       ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
+      ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(1.0f),"z-step size of kernel")
+      ("image-spacing,q", po::value<float>(&img_zstep)->default_value(1.0f),"z-step size of input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -111,9 +116,33 @@ int main(int argc, char** argv) {
     std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
 
-  // decon
+  // read data
   itk::SmartPointer<kImageType> img = ReadImageFile(in_path);
   itk::SmartPointer<kImageType> kernel = ReadImageFile(kernel_path);
+
+  // set spacing
+  float xy_res = 0.104;
+  kImageType::SpacingType img_spacing;
+
+  img_spacing[0] = xy_res;
+  img_spacing[1] = xy_res;
+  img_spacing[2] = img_zstep;
+  img->SetSpacing(img_spacing);
+
+  kImageType::SpacingType kernel_spacing;
+
+  kernel_spacing[0] = xy_res;
+  kernel_spacing[1] = xy_res;
+  kernel_spacing[2] = kernel_zstep;
+  kernel->SetSpacing(kernel_spacing);
+
+  // resample kernel
+  if (img_zstep != kernel_zstep)
+  {
+    kernel = Resampler(kernel, img_spacing, verbose);
+  }
+
+  // decon
   itk::SmartPointer<kImageType> decon_img = RichardsonLucy(img, kernel, iterations, verbose);
 
   // write file

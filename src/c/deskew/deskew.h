@@ -12,64 +12,64 @@
 
 itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, float angle, float step, float xy_res, float fill_value, bool verbose=false)
 {
-    // compute shift
-    const double shift = step * cos(angle * M_PI/180.0) / xy_res;
+  // compute shift
+  const double shift = step * cos(angle * M_PI/180.0) / xy_res;
 
-    if (verbose)
-    {
-      std::cout << "\nDeskew Parameters\n";
-      std::cout << "Shift (px) = " << shift << "\n";
-    }
+  if (verbose)
+  {
+    std::cout << "\nDeskew Parameters\n";
+    std::cout << "Shift (px) = " << shift << "\n";
+  }
 
-    // set up resample filter
-    using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
-    FilterType::Pointer filter = FilterType::New();
+  // set up resample filter
+  using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
+  FilterType::Pointer filter = FilterType::New();
 
-    using TransformType = itk::AffineTransform<double, kDimensions>;
-    TransformType::Pointer transform = TransformType::New();
-    transform->Shear(0, 2, -shift);
-    filter->SetTransform(transform);
+  using TransformType = itk::AffineTransform<double, kDimensions>;
+  TransformType::Pointer transform = TransformType::New();
+  transform->Shear(0, 2, -shift);
+  filter->SetTransform(transform);
 
-    using InterpolatorType = itk::LinearInterpolateImageFunction<kImageType, double>;
-    InterpolatorType::Pointer interpolator = InterpolatorType::New();
-    filter->SetInterpolator(interpolator);
+  using InterpolatorType = itk::LinearInterpolateImageFunction<kImageType, double>;
+  InterpolatorType::Pointer interpolator = InterpolatorType::New();
+  filter->SetInterpolator(interpolator);
 
-    filter->SetDefaultPixelValue(fill_value);
+  filter->SetDefaultPixelValue(fill_value);
 
-    // calculate and set output size
-    kImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
+  // calculate and set output size
+  kImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
 
-    if (verbose)
-    {
-      std::cout << "Input Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
-    }
-    
-    size[0] = ceil(size[0] + (fabs(shift) * (size[2]-1)));
+  if (verbose)
+  {
+    std::cout << "Input Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
+  }
 
-    if (verbose)
-    {
-      std::cout << "Output Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
-    }
+  size[0] = ceil(size[0] + (fabs(shift) * (size[2]-1)));
 
-    filter->SetSize(size);
+  if (verbose)
+  {
+    std::cout << "Output Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
+  }
 
-    // perform deskew
-    filter->SetInput(img);
-    filter->Update();
+  filter->SetSize(size);
 
-    // set spacing
-    kImageType::SpacingType spacing;
+  // perform deskew
+  filter->SetInput(img);
+  filter->Update();
 
-    spacing[0] = xy_res;
-    spacing[1] = xy_res;
-    spacing[2] = step * sin(angle * M_PI/180.0);
+  // set spacing
+  kImageType::SpacingType spacing;
 
-    img->SetSpacing(spacing);
+  spacing[0] = xy_res;
+  spacing[1] = xy_res;
+  spacing[2] = step * sin(angle * M_PI/180.0);
 
-    if (verbose)
-    {
-      std::cout << "Output Resolution (um/px) = " << spacing[0] << " x " << spacing[1] << " x " << spacing[2] << std::endl;
-    }
+  img->SetSpacing(spacing);
 
-    return filter->GetOutput();
+  if (verbose)
+  {
+    std::cout << "Output Resolution (um/px) = " << spacing[0] << " x " << spacing[1] << " x " << spacing[2] << std::endl;
+  }
+
+  return filter->GetOutput();
 }
