@@ -112,3 +112,13 @@ bool IsFile(const char *path)
   }
   return false;
 }
+
+std::string AppendPath(std::string path, std::string label)
+{
+  fs::path in_path(path);
+  fs::path out_path(in_path.parent_path());
+  out_path /= in_path.stem();
+  out_path += label;
+  out_path += in_path.extension();
+  return out_path.string(); 
+}
