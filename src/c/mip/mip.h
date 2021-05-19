@@ -8,9 +8,11 @@
 
 #include "itkMaximumProjectionImageFilter.h"
 
-itk::SmartPointer<kImageType> MaxIntensityProjection(itk::SmartPointer<kImageType> img, unsigned int axis, bool verbose=false)
+itk::SmartPointer<itk::Image<kPixelType, 2>> MaxIntensityProjection(itk::SmartPointer<kImageType> img, unsigned int axis, bool verbose=false)
 {
-  using FilterType = itk::MaximumProjectionImageFilter<kImageType, kImageType>;
+  using FilterType = itk::MaximumProjectionImageFilter<kImageType, itk::Image<kPixelType, 2>>;
+  // using FilterType = itk::MaximumProjectionImageFilter<kImageType, kImageType>;
+
   FilterType::Pointer filter = FilterType::New();
   filter->SetInput(img);
   filter->SetProjectionDimension(axis);

@@ -126,21 +126,22 @@ int main(int argc, char** argv) {
     {
         // itk::SmartPointer<kImageType> mip_img = MIP(img, i, verbose);
         std::string axis_out_path = AppendPath(out_path, labels[i]);
-        itk::SmartPointer<kImageType> mip_img = MaxIntensityProjection(img, i, verbose);
+        using ProjectionType = itk::Image<kPixelType, 2>;
+        itk::SmartPointer<ProjectionType> mip_img = MaxIntensityProjection(img, i, verbose);
 
         // write file
         if (bit_depth == 8) {
             using PixelTypeOut = unsigned char;
-            using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-            WriteImageFile<kImageType,ImageTypeOut>(mip_img, axis_out_path);
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
         } else if (bit_depth == 16) {
             using PixelTypeOut = unsigned short;
-            using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-            WriteImageFile<kImageType,ImageTypeOut>(mip_img, axis_out_path);
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
         } else if (bit_depth == 32) {
             using PixelTypeOut = float;
-            using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-            WriteImageFile<kImageType,ImageTypeOut>(mip_img, axis_out_path);
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
         } else {
             std::cerr << "mip: unknown bit depth" << std::endl;
             return EXIT_FAILURE;
