@@ -1,9 +1,10 @@
 #pragma once
 
-
 #define DESKEW_VERSION "AIC Deskew version 0.1.0"
+#define _USE_MATH_DEFINES
 
 #include "defines.h"
+#include <cmath>
 #include <itkImage.h>
 #include <itkImageBase.h>
 #include <itkResampleImageFilter.h>

@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <iostream>
 #include <exception>
 #include <boost/filesystem.hpp>

@@ -1,8 +1,8 @@
+#include "deskew.h"
 #include "defines.h"
 #include "utils.h"
 #include "reader.h"
 #include "writer.h"
-#include "deskew.h"
 
 #include <itkImage.h>
 #include <itkImageBase.h>

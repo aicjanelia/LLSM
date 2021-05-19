@@ -1,4 +1,7 @@
+#define _USE_MATH_DEFINES
+
 #include "defines.h"
+#include <cmath>
 #include "reader.h"
 #include "writer.h"
 #include "resampler.h"
