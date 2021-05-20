@@ -78,25 +78,19 @@ itk::SmartPointer<TImageOut> ConvertImage(itk::SmartPointer<TImageIn> image_in)
   double input_min, input_max, output_min, output_max;
 
   GetRange(image_in, input_min, input_max);
-  typename itk::SmartPointer<TImageOut> image_out = TImageOut::New();
+  itk::SmartPointer<TImageOut> image_out = TImageOut::New();
   GetRange(image_out, output_min, output_max);
 
-  using RescaleType = itk::IntensityWindowingImageFilter<TImageIn, TImageOut>;
-  typename RescaleType::Pointer convert_fltr = RescaleType::New();
-  convert_fltr->SetInput(image_in);
-  convert_fltr->SetWindowMinimum(input_min);
-  convert_fltr->SetWindowMaximum(input_max);
-  convert_fltr->SetOutputMinimum(output_min);
-  convert_fltr->SetOutputMaximum(output_max);
-  convert_fltr->Update();
+  using FilterType = itk::IntensityWindowingImageFilter<TImageIn, TImageOut>;
+  typename FilterType::Pointer filter = FilterType::New();
+  filter->SetInput(image_in);
+  filter->SetWindowMinimum(input_min);
+  filter->SetWindowMaximum(input_max);
+  filter->SetOutputMinimum(output_min);
+  filter->SetOutputMaximum(output_max);
+  filter->Update();
 
-  return convert_fltr->GetOutput();
-}
-
-template <class TImage>
-itk::SmartPointer<TImage> ConvertImage(itk::SmartPointer<TImage> image_in)
-{
-  return image_in;
+  return filter->GetOutput();
 }
 
 bool IsFile(const char *path)
@@ -119,5 +113,6 @@ std::string AppendPath(std::string path, std::string label)
   out_path /= in_path.stem();
   out_path += label;
   out_path += in_path.extension();
+
   return out_path.string(); 
 }
