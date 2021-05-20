@@ -65,16 +65,16 @@ void GetRange(double &min_val, double &max_val)
 }
 
 template <class TImageIn, class TImageOut>
-itk::SmartPointer<TImageOut> ConvertImage(itk::SmartPointer<TImageIn> image_in)
+typename TImageOut::Pointer ConvertImage(typename TImageIn::Pointer image_in)
 {
   if constexpr (std::is_same<TImageIn, TImageOut>::value)
     return image_in;
 
   double input_min, input_max, output_min, output_max;
 
-  GetRange<TImageIn::PixelType>(input_min, input_max);
-  itk::SmartPointer<TImageOut> image_out = TImageOut::New();
-  GetRange<TImageOut::PixelType>(output_min, output_max);
+  GetRange<typename TImageIn::PixelType>(input_min, input_max);
+  typename TImageOut::Pointer image_out = TImageOut::New();
+  GetRange<typename TImageOut::PixelType>(output_min, output_max);
 
   using FilterType = itk::IntensityWindowingImageFilter<TImageIn, TImageOut>;
   typename FilterType::Pointer filter = FilterType::New();

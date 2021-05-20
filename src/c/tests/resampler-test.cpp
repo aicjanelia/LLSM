@@ -10,7 +10,7 @@ int main()
 {
   std::string input_file_name("examples/560_PSF_piezoScan.tif");
 
-  itk::SmartPointer<kImageType> image = ReadImageFile<kImageType>(input_file_name, true);
+  kImageType::Pointer image = ReadImageFile<kImageType>(input_file_name, true);
 
   if (image == nullptr)
   {
@@ -28,7 +28,7 @@ int main()
   out_spacing[0] = 0.104;
   out_spacing[1] = 0.104;
   out_spacing[2] = 0.4 * sin(31.8 * M_PI/180.0);
-  itk::SmartPointer<kImageType> resampled_image = Resampler(image, out_spacing, true);
+  kImageType::Pointer resampled_image = Resampler(image, out_spacing, true);
 
   using PixelTypeOut = unsigned short;
   using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;

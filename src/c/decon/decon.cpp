@@ -120,8 +120,8 @@ int main(int argc, char** argv) {
   }
 
   // read data
-  itk::SmartPointer<kImageType> img = ReadImageFile<kImageType>(in_path);
-  itk::SmartPointer<kImageType> kernel = ReadImageFile<kImageType>(kernel_path);
+  kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
+  kImageType::Pointer kernel = ReadImageFile<kImageType>(kernel_path);
 
   // set spacing
   float xy_res = 0.104;
@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
   }
 
   // decon
-  itk::SmartPointer<kImageType> decon_img = RichardsonLucy(img, kernel, iterations, verbose);
+  kImageType::Pointer decon_img = RichardsonLucy(img, kernel, iterations, verbose);
 
   // write file
   if (bit_depth == 8) {

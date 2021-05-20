@@ -8,7 +8,7 @@
 #include <itkImageIOBase.h>
 
 template <class TImageIn, class TImageOut>
-itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
+typename TImageOut::Pointer ReadAndConvertImage(const char *file_path)
 {
   using ImageReaderType = itk::ImageFileReader<TImageIn>;
 
@@ -29,7 +29,7 @@ itk::SmartPointer<TImageOut> ReadAndConvertImage(const char *file_path)
 }
 
 template <unsigned int VDimension, class TImageOut>
-itk::SmartPointer<TImageOut> ReadImage(const char *file_path, const itk::IOComponentEnum component_type)
+typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOComponentEnum component_type)
 {
   switch (component_type)
   {

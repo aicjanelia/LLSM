@@ -8,9 +8,9 @@
 #include <itkImageFileWriter.h>
 
 template <class TImageIn, class TImageOut>
-void WriteImageFile(itk::SmartPointer<TImageIn> image_in, std::string out_path, bool verbose=false)
+void WriteImageFile(typename TImageIn::Pointer image_in, std::string out_path, bool verbose=false)
 {
-  itk::SmartPointer<TImageOut> image_output = ConvertImage<TImageIn,TImageOut>(image_in);
+  typename TImageOut::Pointer image_output = ConvertImage<TImageIn,TImageOut>(image_in);
 
   using WriterType = itk::ImageFileWriter<TImageOut>;
   typename WriterType::Pointer writer = WriterType::New();

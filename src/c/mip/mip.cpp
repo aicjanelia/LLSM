@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
   }
 
   // mip
-  itk::SmartPointer<kImageType> img = ReadImageFile<kImageType>(in_path);
+  kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
 
   bool axes[] = {y_axis, x_axis, z_axis};
   std::string labels[] = {"_y", "_x", "_z"};
@@ -124,10 +124,9 @@ int main(int argc, char** argv) {
   {
     if (axes[i])
     {
-        // itk::SmartPointer<kImageType> mip_img = MIP(img, i, verbose);
         std::string axis_out_path = AppendPath(out_path, labels[i]);
         using ProjectionType = itk::Image<kPixelType, 2>;
-        itk::SmartPointer<ProjectionType> mip_img = MaxIntensityProjection(img, i, verbose);
+        ProjectionType::Pointer mip_img = MaxIntensityProjection(img, i, verbose);
 
         // write file
         if (bit_depth == 8) {

@@ -11,7 +11,7 @@
 #include "itkAffineTransform.h"
 #include "itkLinearInterpolateImageFunction.h"
 
-itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
+kImageType::Pointer Deskew(kImageType::Pointer img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
 {
   // compute shift
   const double shift = step * cos(angle * M_PI/180.0) / xy_res;
