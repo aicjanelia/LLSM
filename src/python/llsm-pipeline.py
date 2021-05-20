@@ -9,6 +9,8 @@ import os
 import re
 import json
 import math
+import time
+import datetime
 from pathlib import Path, PurePath
 from sys import exit
 import settings2json
@@ -127,6 +129,29 @@ def load_configs(path):
             if not p.is_file():
                 exit(f'error: laser %s psf file \'%s\' does not exist' % (key, p))
 
+    # sanitize mip configs
+    if 'mip' in configs:
+        supported_opts = ['x', 'y', 'z']
+        for key in list(configs['mip']):
+            if key not in supported_opts:
+                print(f'warning: mip option \'%s\' in config.json is not supported' % key)
+                del configs['mip'][key]
+
+        if 'x' in configs['mip']:
+            if not type(configs['mip']['x']) is bool:
+                exit(f'error: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
+            configs['mip']['x'] = {'flag': '-x', 'arg': configs['mip']['x']}
+        
+        if 'y' in configs['mip']:
+            if not type(configs['mip']['y']) is bool:
+                exit(f'error: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
+            configs['mip']['y'] = {'flag': '-y', 'arg': configs['mip']['y']}
+
+        if 'z' in configs['mip']:
+            if not type(configs['mip']['z']) is bool:
+                exit(f'error: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
+            configs['mip']['z'] = {'flag': '-z', 'arg': configs['mip']['z']}
+
     return configs
 
 def get_processed_json(path):
@@ -192,6 +217,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     }
     params_deskew = {}
     params_decon = {}
+    params_mip = {}
 
     # update default params with user defined configs
     if 'bsub' in configs:
@@ -200,6 +226,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
         params_deskew.update(configs['deskew'])
     if 'decon' in configs:
         params_decon.update(configs['decon'])
+    if 'mip' in configs:
+        params_mip.update(configs['mip'])
 
     # build commands
     cmd_bsub = params2cmd(params_bsub, 'bsub')
@@ -293,6 +321,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if not dryrun:
                 output_decon.mkdir(exist_ok=True)
 
+        # mip setup
+        mip = False
+        if params_mip:
+
+            mip = True
+
+            # mip output directory
+            output_mip = d / 'mip'
+            if not dryrun:
+                output_mip.mkdir(exist_ok=True)
+
         # process all files in directory
         for f in files:
             m = pattern.fullmatch(f)
@@ -327,13 +366,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
         
         # update processed list
         d = str(d)
-        if deskew or decon:
-            processed[d] = {}
+        processed[d] = {}
+        processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
         if deskew:
             processed[d]['deskew'] = params_deskew
             processed[d]['deskew']['step'] = steps
         if decon:
             processed[d]['decon'] = params_decon
+        if decon:
+            processed[d]['decon'] = params_decon
+        if mip:
+            processed[d]['mip'] = params_mip 
 
     return  processed
 

@@ -19,6 +19,9 @@
         "bit-depth": 16
     },
     "mip": {
+        "x": true,
+        "y": true,
+        "z": true
     },
     "bsub": {
         "o": "/dev/null",
