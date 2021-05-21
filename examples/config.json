@@ -16,7 +16,8 @@
     },
     "decon": {
         "n": 5,
-        "bit-depth": 16
+        "bit-depth": 16,
+        "subtract": 200.0
     },
     "mip": {
         "x": true,
