@@ -245,6 +245,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     cmd_bsub = params2cmd(params_bsub, 'bsub')
     cmd_deskew = params2cmd(params_deskew, 'deskew')
     cmd_decon = params2cmd(params_decon, 'decon')
+    cmd_mip = params2cmd(params_mip, 'mip')
 
     # parse PSF settings files
     if 'decon' in configs:
