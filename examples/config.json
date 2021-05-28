@@ -1,32 +1,52 @@
 {
-    "paths": {
-        "root": "/nrs/aic/instruments/llsm/pipeline-test/chad",
-        "psf": {
-            "dir": "20210222/Calibration",
-            "laser": {
-                "560": "560_PSF.tif",
-                "488": "488_PSF.tif"
-            }
-        }
+    "datasets": {
+        "root": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan"
     },
     "deskew": {
-        "xy-res": 0.104,
-        "fill": 0.0,
-        "bit-depth": 16
+        "parent": "datasets",
+        "module": "deskew",
+        "options": {
+            "xy-res": 0.104,
+            "fill": 0.0,
+            "bit-depth": 16
+        }
+    },
+    "mip-deskew": {
+        "parent": "deskew",
+        "module": "mip",
+        "options": {
+            "x": true,
+            "y": true,
+            "z": true
+        }
     },
     "decon": {
-        "n": 5,
-        "bit-depth": 16,
-        "subtract": 200.0
+        "parent": "deskew",
+        "module": "decon",
+        "options": {
+            "n": 5,
+            "bit-depth": 16,
+            "subtract": 200.0,
+            "psf": {
+                "path": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan20210222/Calibration",
+                "laser": {
+                    "560": "560_PSF.tif",
+                    "488": "488_PSF.tif"
+                }
+        },
+        "bsub": {
+            "o": "/dev/null",
+            "We": 10,
+            "n": 4
+        }
     },
-    "mip": {
-        "x": true,
-        "y": true,
-        "z": true
-    },
-    "bsub": {
-        "o": "/dev/null",
-        "We": 10,
-        "n": 4
+    "mip-decon": {
+        "parent": "decon",
+        "module": "mip",
+        "options": {
+            "x": true,
+            "y": true,
+            "z": true
+        }
     }
 }

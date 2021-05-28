@@ -35,15 +35,10 @@ def search_pattern(data, key, string, pattern, cast_as=str):
             data[key] = cast_as(m.group(1).strip())
         
 """
-Parser for v4.04505.Development Settings files
+Converter for v4.04505.Development Settings files
 """
-def parse_txt(path):
+def convert(txt):
     data = {}
-
-    # read file content to memory
-    f = path.open(mode='r')
-    txt = f.read()
-    f.close()
 
     # split by section (e.g., ***** ***** ***** General ***** ***** *****)
     sections = re.split(r'\*{5} \*{5} \*{5} +(\S* ??\S*) +\*{5} \*{5} \*{5}', txt)
@@ -138,7 +133,12 @@ if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
+    # read Settings to memory
+    f = args.input.open(mode='r')
+    txt = f.read()
+    f.close()
+
     # parse Settings.txt file
-    data = parse_txt(args.input)
+    data = convert(txt)
 
     print(json.dumps(data, indent=4))
