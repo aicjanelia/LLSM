@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from sys import exit
 
+import pipeline
+
 """
 Parser for command line arguments
 """
@@ -76,20 +78,21 @@ def sanitize_decon_opts(options):
     if 'psf' not in options:
         exit('error: decon enabled, but no psf parameters found in config file')
 
-    if 'path' in options['psf']:
-        partial_path = root / options['psf']['path']
-    else:
-        options['psf']['path'] = None
-        partial_path = root
-        print('warning: no psf directory provided... using \'%s\'' % root)
+    if 'path' not in options['psf']:
+        exit('error: no psf path found in config file')
+    
+    psf_dir = Path(options['psf']['path'])
+    if not psf_dir.is_dir():
+        exit('error: psf path \'%s\' is not a directory' % psf_dir)
     
     if 'laser' not in options['psf']:
         exit('error: no psf files provided')
 
-    for key, val in options['psf']['laser'].items():
-        p = partial_path / val
+    for laser, filename in options['psf']['laser'].items():
+        p = psf_dir / filename
         if not p.is_file():
-            exit('error: laser %s psf file \'%s\' does not exist' % (key, p))
+            exit('error: laser \'%s\' psf file \'%s\' does not exist' % (laser, p))
+        options['psf']['laser'][laser] = p
     
     return options
 
@@ -159,54 +162,57 @@ def sanitize_bsub_opts(options):
 """
 Checks that each node is properly formatted
 """
-def sanitize_node(configs, node_id):
+def sanitize_node_data(configs, node_id):
     supported_modules = ['deskew',
                          'decon',
                          'mip']
 
-    node = configs[node_id]
-
+    node_data = configs[node_id]
+    
     if node_id == 'datasets':
         # sanitize root path
-        root = Path(configs['datasets']['root'])
-        if not root.is_dir():
-            exit('error: root path \'%s\' does not exist' % root)
+        root_path = Path(node_data['path'])
+        if not root_path.is_dir():
+            exit('error: root path \'%s\' is not a directory' % root_path)
+        node_data['path'] = root_path
+        node_data['module'] = 'root'
+        node_data['parent'] = None
     else:
         # check parent
-        if 'parent' not in node:
+        if 'parent' not in node_data:
             exit('error: node \'%s\' does not specify a parent' % node_id)
-        if node['parent'] == node_id:
+        if node_data['parent'] == node_id:
             exit('error: node \'%s\' cannot have itself as a parent')
-        if node['parent'] not in configs:
-            exit('error: parent \'%s\' of node \'%s\' does not exist' % (node['parent'], node_id)
+        if node_data['parent'] not in configs:
+            exit('error: parent \'%s\' of node \'%s\' does not exist' % (node_data['parent'], node_id))
 
         # check module
-        if 'module' not in node:
+        if 'module' not in node_data:
             exit('error: node \'%s\' does not specify a module' % node_id)
-        if node['module'] not in supported_modules:
-            exit('error: module \'%s\' for node \'%s\' does not exist' % (node['module'], node_id))
+        if node_data['module'] not in supported_modules:
+            exit('error: module \'%s\' for node \'%s\' does not exist' % (node_data['module'], node_id))
 
         # check module options
-        if 'options' not in node:
-            print('warning: node \'%s\' does not have options for module \'%s\'' % (node_id, node['module']))
-            node['options'] = {}
+        if 'options' not in node_data:
+            print('warning: node \'%s\' does not have options for module \'%s\'' % (node_id, node_data['module']))
+            node_data['options'] = {}
         else:
-            if node['module'] == 'deskew':
-                node['options'] = sanitize_deskew_opts(node['options'])
-            elif node['module'] == 'decon':
-                node['options'] = sanitize_decon_opts(node['options'])
-            elif node['module'] == 'mip':
-                node['options'] = sanitize_mip_opts(node['options'])
+            if node_data['module'] == 'deskew':
+                node_data['options'] = sanitize_deskew_opts(node_data['options'])
+            elif node_data['module'] == 'decon':
+                node_data['options'] = sanitize_decon_opts(node_data['options'])
+            elif node_data['module'] == 'mip':
+                node_data['options'] = sanitize_mip_opts(node_data['options'])
             else:
-                exit('error: no sanitization method for module \'%s\'' % node['module'])
+                exit('error: no sanitization method for module \'%s\'' % node_data['module'])
 
         # check bsub options
-        if 'bsub' in node:
-            node['bsub'] = sanitize_bsub_opts(node['bsub'])
+        if 'bsub' in node_data:
+            node_data['bsub'] = sanitize_bsub_opts(node_data['bsub'])
         else:
-            node['bsub'] = {}
-        
-        return node
+            node_data['bsub'] = {}
+
+    return node_data
 
 """
 Converts a config.json file into a pipeline graph
@@ -215,8 +221,8 @@ def convert(configs):
     # check for required nodes
     if 'datasets' not in configs:
         exit('error: config.json requires a \'datasets\' node')
-    elif 'root' not in configs['datasets']:
-        exit('error: config.json requires a \'root\' field within the \'datasets\' node')
+    elif 'path' not in configs['datasets']:
+        exit('error: config.json requires a \'path\' field within the \'datasets\' node')
 
     # check that each node has a unique name
     node_ids = set()
@@ -224,13 +230,21 @@ def convert(configs):
         if node_id in node_ids:
             exit('error: node name \'%s\' is duplicated. Nodes must have unique names.' % node_id)
         else:
-            node_ids.add(key)
+            node_ids.add(node_id)
 
-    # check format of each node
+    # build pipeline
+    g = pipeline.Graph()
     for node_id in configs:
-        configs[node_id] = sanitize_node(configs, node_id)
+        # check node formatting
+        node_data = sanitize_node_data(configs, node_id)
 
-    return pipeline
+        # add unlinked node to graph
+        g.add_node(node_id, node_data)
+
+    g.link_nodes()
+    print(g)
+
+    return g
 
 """
 Command-line
@@ -245,11 +259,11 @@ if __name__ == '__main__':
             try:
                 j = json.load(f)
             except json.JSONDecodeError as e:
-                exit('error: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
+                exit('error: \'%s\' is not formatted as a proper JSON file...\n%s' % (args.input, e))
     else:
         exit('error: path \'%s\' is not a file' % args.input)
 
     # convert
     pipeline = convert(j)
 
-    print(pipeline)
+    repr(pipeline)
