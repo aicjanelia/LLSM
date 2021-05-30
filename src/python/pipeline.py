@@ -58,8 +58,10 @@ class Graph:
             else:
                 s += '├─ '
 
+        # print node
         s += '%s (%s)\n' % (node.id, node.module)
 
+        # recurse for child nodes
         if node.children:
             if not is_last:
                 levels[-1] = 1
