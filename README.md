@@ -4,10 +4,8 @@ This repository contains pipeline code for handling AIC's LLSM data. The pipelin
 
 ## Dependencies
 
-* Cimg >= 2.6.2
 * boost-program-options >= 1.73.0
 * boost-filesystem >= 1.73.0
-* OpenMP
 * Python >= 3.8.2
 * CMake
 
