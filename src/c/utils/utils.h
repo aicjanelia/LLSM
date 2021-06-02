@@ -85,7 +85,10 @@ typename TImageOut::Pointer ConvertImage(typename TImageIn::Pointer image_in)
   filter->SetOutputMaximum(output_max);
   filter->Update();
 
-  return filter->GetOutput();
+  image_out = filter->GetOutput();
+  image_out->SetSpacing(image_in->GetSpacing());
+
+  return image_out;
 }
 
 bool IsFile(const char *path)
