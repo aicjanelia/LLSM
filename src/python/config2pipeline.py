@@ -1,10 +1,14 @@
 #! /misc/local/python-3.8.2/bin/python3
+"""
+config2pipeline
+This program converts a user-specified config.json into a pipeline for execution.
+"""
 
 import argparse
-import json
 from pathlib import Path
 from sys import exit
 
+import utils
 import pipeline
 
 """
@@ -155,6 +159,8 @@ def sanitize_bsub_opts(options):
     if 'n' in options:
         if type(options['n']) is not int:
             exit('error: bsub slot count \'%s\' in config.json is not an integer' % options['n'])
+        if options['n'] > 6:
+            print('warning: number of bsub slots exceeds 6')
         options['n'] = {'flag': '-n', 'arg': options['n']}
     
     return options
@@ -217,7 +223,10 @@ def sanitize_node_data(configs, node_id):
 """
 Converts a config.json file into a pipeline graph
 """
-def convert(configs):
+def convert(path, verbose=False):
+    # load configs into memory
+    configs = utils.load_json(path)
+
     # check for required nodes
     if 'datasets' not in configs:
         exit('error: config.json requires a \'datasets\' node')
@@ -242,7 +251,9 @@ def convert(configs):
         g.add_node(node_id, node_data)
 
     g.link_nodes()
-    print(g)
+
+    if verbose:
+        print(g)
 
     return g
 
@@ -253,17 +264,7 @@ if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
-    # read config to memory
-    if args.input.is_file():
-        with args.input.open(mode='r') as f:
-            try:
-                j = json.load(f)
-            except json.JSONDecodeError as e:
-                exit('error: \'%s\' is not formatted as a proper JSON file...\n%s' % (args.input, e))
-    else:
-        exit('error: path \'%s\' is not a file' % args.input)
-
     # convert
-    pipeline = convert(j)
+    pipeline = convert(args.input)
 
-    repr(pipeline)
+    print(pipeline)

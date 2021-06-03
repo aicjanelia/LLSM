@@ -1,5 +1,7 @@
 from sys import exit
 
+import directory2datasets
+
 class Node:
     def __init__(self, id, data):
         self.id = id
@@ -44,6 +46,10 @@ class Graph:
             print('warning: cannot print graph diagram because nodes have not been linked')
             return self.__repr__()
 
+
+    """
+    Helper method for recursively printing nodes in a tree
+    """
     def _print_node(self, node, levels, is_last):
         s = ''
 
@@ -101,3 +107,22 @@ class Graph:
         
         self.linked = True
         
+    """
+    Executes the pipeline for the defined root node datasets
+    """
+    def execute(self, dryrun=False, verbose=False):
+        # generate datasets from root node
+        datasets = directory2datasets.convert(self.root['path'], dryrun, verbose)
+        
+        # process images in new directories
+        processed_dirs = graph_processor.process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
+
+        # update processed.json
+        processed.update(processed_dirs)
+        if not args.dryrun:
+            with processed_path.open(mode='w') as f:
+                f.write(json.dumps(processed, indent=4))
+
+        if args.verbose:
+            print('processed.json...')
+            print(json.dumps(processed_json, indent=4))
