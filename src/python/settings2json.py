@@ -1,4 +1,8 @@
 #! /misc/local/python-3.8.2/bin/python3
+"""
+settings2json
+This program converts a user-specified v4.04505.Development LLSM Settings file to a json.
+"""
 
 import argparse
 import re
@@ -15,10 +19,10 @@ def parse_args():
     args = parser.parse_args()
 
     if not args.input.is_file():
-        exit(f'error: \'%s\' does not exist' % args.input)
+        exit('error: \'%s\' does not exist' % args.input)
 
     if not str(args.input).endswith('Settings.txt'):
-        print(f'warning: \'%s\' does not appear to be a settings file\n' % args.input)
+        print('warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
 
@@ -37,8 +41,13 @@ def search_pattern(data, key, string, pattern, cast_as=str):
 """
 Converter for v4.04505.Development Settings files
 """
-def convert(txt):
+def convert(path):
     data = {}
+
+    # read Settings to memory
+    f = path.open(mode='r')
+    txt = f.read()
+    f.close()
 
     # split by section (e.g., ***** ***** ***** General ***** ***** *****)
     sections = re.split(r'\*{5} \*{5} \*{5} +(\S* ??\S*) +\*{5} \*{5} \*{5}', txt)
@@ -129,16 +138,14 @@ def convert(txt):
 
     return data
 
+"""
+Command-line
+"""
 if __name__ == '__main__':
     # get command line arguments
     args = parse_args()
 
-    # read Settings to memory
-    f = args.input.open(mode='r')
-    txt = f.read()
-    f.close()
-
     # parse Settings.txt file
-    data = convert(txt)
+    data = convert(args.input)
 
     print(json.dumps(data, indent=4))
