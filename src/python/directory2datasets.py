@@ -57,11 +57,14 @@ def convert(path, dryrun=False, verbose=False):
     dataset_dirs = get_dataset_dirs(path, excludes)
 
     datasets = []
-    for dir in dataset_dirs:
-        datasets.append(dataset.Dataset(dir))
+    for d in dataset_dirs:
+        datasets.append(dataset.Dataset(d))
 
     return datasets
 
+"""
+Command-line
+"""
 if __name__ == '__main__':
     # get command line arguments
     args = parse_args()

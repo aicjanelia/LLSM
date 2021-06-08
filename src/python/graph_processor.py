@@ -7,26 +7,6 @@ from pathlib import Path, PurePath
 
 import settings2json
 
-def get_dirs(path, excludes):
-    unprocessed_dirs = []
-
-    for root, dirs, files in os.walk(path):
-        root = Path(root)
-
-        # update directories to prevent us from traversing processed data
-        dirs[:] = [d for d in dirs if str(root / d) not in excludes]
-
-        # check if root contains a Settings.txt file
-        for f in files:
-            if f.endswith('Settings.txt'):
-                unprocessed_dirs.append(root)
-                break
-
-    return unprocessed_dirs
-
-def tag_filename(filename, string):
-    f = PurePath(filename)
-    return f.stem + string + f.suffix
 
 def params2cmd(params, cmd_name):
     cmd = cmd_name
