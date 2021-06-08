@@ -113,6 +113,12 @@ class Graph:
     def execute(self, dryrun=False, verbose=False):
         # generate datasets from root node
         datasets = directory2datasets.convert(self.root['path'], dryrun, verbose)
+
+        # process each dataset
+        for dataset in datasets:
+            for datum in dataset:
+                
+            
         
         # process images in new directories
         processed_dirs = graph_processor.process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
