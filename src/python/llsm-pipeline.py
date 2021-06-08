@@ -21,10 +21,10 @@ def parse_args():
     args = parser.parse_args()
 
     if not args.input.is_file():
-        exit(f'error: \'%s\' does not exist' % args.input)
+        exit('error: \'%s\' does not exist' % args.input)
 
     if not args.input.suffix == '.json':
-        print(f'warning: \'%s\' does not appear to be a settings file\n' % args.input)
+        print('warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
 

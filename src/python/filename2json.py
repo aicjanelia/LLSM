@@ -19,10 +19,10 @@ def parse_args():
     args = parser.parse_args()
 
     if not args.input.is_file():
-        exit(f'error: \'%s\' does not exist' % args.input)
+        exit('error: \'%s\' does not exist' % args.input)
 
-    if not args.input.lower().endswith(('.tif', '.tiff')):
-        print(f'warning: \'%s\' does not appear to be a LLSM image file\n' % args.input)
+    if not str(args.input).lower().endswith(('.tif', '.tiff')):
+        print('warning: \'%s\' does not appear to be a LLSM image file\n' % args.input)
 
     return args
 

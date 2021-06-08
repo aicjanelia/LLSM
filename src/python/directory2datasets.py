@@ -21,7 +21,7 @@ def parse_args():
     args = parser.parse_args()
 
     if not args.input.is_dir():
-        exit(f'error: \'%s\' does not exist' % args.input)
+        exit('error: \'%s\' does not exist' % args.input)
 
     return args
 
