@@ -9,8 +9,19 @@ import filename2json
 class Datum:
     def __init__(self, path):
         self.path = path
-        self.channel = None
+        self.name = None
+        self.iters = None
         self.camera = None
+        self.channel = None
+        self.stack = None
+        self.laser = None
+        self.rel_time = None
+        self.abs_time = None
+        self.x = None
+        self.y = None
+        self.z = None
+        self.t = None
+
         self.generate()
 
     def generate(self):
