@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 from sys import exit
 
+import utils
+
 """
 Parser for command line arguments
 """
@@ -25,18 +27,6 @@ def parse_args():
         print('warning: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
-
-"""
-Adds a parsed string to a given dictionary
-"""
-def search_pattern(data, key, string, pattern, cast_as=str):
-    m = re.search(pattern, string, re.MULTILINE)
-
-    if m:
-        if cast_as == str:
-            data[key] = m.group(1).strip()
-        else:
-            data[key] = cast_as(m.group(1).strip())
         
 """
 Converter for v4.04505.Development Settings files
@@ -61,10 +51,10 @@ def convert(path):
         sctn = 'general'
         data[sctn] = {}
 
-        search_pattern(data[sctn], 'date', sections[idx], r'^Date :\t(.*)')
-        search_pattern(data[sctn], 'acq-mode', sections[idx], r'^Acq Mode :\t(.*)')
-        search_pattern(data[sctn], 'version', sections[idx], r'^Version :\t(.*)')
-        search_pattern(data[sctn], 'pc', sections[idx], r'^PC :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'date', sections[idx], r'^Date :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'acq-mode', sections[idx], r'^Acq Mode :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'version', sections[idx], r'^Version :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'pc', sections[idx], r'^PC :\t(.*)')
     
     # parse Notes
     try:
@@ -75,10 +65,10 @@ def convert(path):
         sctn = 'notes'
         data[sctn] = {}
 
-        search_pattern(data[sctn], 'microscopist', sections[idx], r'^Microscopist :\\t(.*)')
-        search_pattern(data[sctn], 'collaborator', sections[idx], r'^Collaborator :\\t(.*)')
-        search_pattern(data[sctn], 'sample', sections[idx], r'^Sample :\\t(.*)')
-        search_pattern(data[sctn], 'notes', sections[idx], r'Notes :\\t([\w\W]*)')
+        utils.find_first_pattern(data[sctn], 'microscopist', sections[idx], r'^Microscopist :\\t(.*)')
+        utils.find_first_pattern(data[sctn], 'collaborator', sections[idx], r'^Collaborator :\\t(.*)')
+        utils.find_first_pattern(data[sctn], 'sample', sections[idx], r'^Sample :\\t(.*)')
+        utils.find_first_pattern(data[sctn], 'notes', sections[idx], r'Notes :\\t([\w\W]*)')
 
     # parse 3D Tiling
     try:
@@ -89,10 +79,10 @@ def convert(path):
         sctn = '3d-tiling'
         data[sctn] = {}
 
-        search_pattern(data[sctn], 'x', sections[idx], r'^X :\t(\d*)', cast_as=int)
-        search_pattern(data[sctn], 'y', sections[idx], r'^Y :\t(\d*)', cast_as=int)
-        search_pattern(data[sctn], 'z', sections[idx], r'^Z :\t(\d*)', cast_as=int)
-        search_pattern(data[sctn], 't', sections[idx], r'^T :\t(\d*)', cast_as=int)
+        utils.find_first_pattern(data[sctn], 'x', sections[idx], r'^X :\t(\d*)', cast_as=int)
+        utils.find_first_pattern(data[sctn], 'y', sections[idx], r'^Y :\t(\d*)', cast_as=int)
+        utils.find_first_pattern(data[sctn], 'z', sections[idx], r'^Z :\t(\d*)', cast_as=int)
+        utils.find_first_pattern(data[sctn], 't', sections[idx], r'^T :\t(\d*)', cast_as=int)
 
     # parse Waveform
     try:
@@ -103,9 +93,9 @@ def convert(path):
         sctn = 'waveform'
         data[sctn] = {}
 
-        search_pattern(data[sctn], 'waveform-type', sections[idx], r'^Waveform type :\t(.*)')
-        search_pattern(data[sctn], 'cycle-lasers', sections[idx], r'^Cycle lasers :\t(.*)')
-        search_pattern(data[sctn], 'z-motion', sections[idx], r'^Z motion :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'waveform-type', sections[idx], r'^Waveform type :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'cycle-lasers', sections[idx], r'^Cycle lasers :\t(.*)')
+        utils.find_first_pattern(data[sctn], 'z-motion', sections[idx], r'^Z motion :\t(.*)')
 
         for s in ['X Galvo', 'Z Galvo', 'Z PZT', 'S Piezo']:
             groups = re.findall(r'^' + s + r'.*:\t(.*)', sections[idx], re.MULTILINE)
