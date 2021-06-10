@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('input', type=str, help='path to LLSM image file')
     args = parser.parse_args()
 
-    if not str(args.input).lower().endswith(('.tif', '.tiff')):
+    if not args.input.lower().endswith(('.tif', '.tiff')):
         print('warning: \'%s\' does not appear to be a LLSM image file\n' % args.input)
 
     return args
