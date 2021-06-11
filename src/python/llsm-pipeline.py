@@ -363,6 +363,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if deskew:
                     inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
+                    step = settings['waveform']['s-piezo']['interval'][ch] 
+                    step = step * math.sin(31.8 * math.pi/180.0)
+
                     tmp = cmd_deskew + f' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
                     cmd.append(tmp)
 
@@ -370,7 +373,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_deskew / tag_filename(f, '_deskew')
                         outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
-                        tmp = cmd_mip + f' -o %s %s;' % (outpath , inpath)
+                        tmp = cmd_mip + f' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
                 if decon:
@@ -390,7 +393,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_decon / tag_filename(f, '_decon')
                         outpath = output_decon_mip / tag_filename(f, '_decon_mip')
-                        tmp = cmd_mip + f' -o %s %s;' % (outpath , inpath)
+                        tmp = cmd_mip + f' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
                 if len(cmd) > 1:
