@@ -27,11 +27,36 @@ class Datum:
 
         self.generate()
 
+    """
+    Prints class variables
+    """
+    def __repr__(self):
+        s = '\nDatum - %s\n\tname = %s' % (self.path, self.name)
+
+        if self.is_macro:
+            s += '\n\titers = %s' % (self.iters)
+        if self.is_dualcam:
+            s += '\n\tcamera = %s' % (self.camera)
+
+        s += '\n\tchannel = %i\n\tstack = %i\n\tlaser = %i nm\n\trel time = %i ms\n\tabs time = %i ms\n\tx = %i\n\ty = %i\n\tz = %i\n\tt = %i'\
+                % (self.channel, self.stack, self.laser, self.time_rel, self.time_abs, self.x, self.y, self.z, self.t)
+        
+        return s
+
+    """
+    Prints class variables
+    """
+    def __str__(self):
+        return self.__repr__()
+
+    """
+    Generates a datum from a filename
+    """
     def generate(self):
         # parse filename
-        j = filename2json(self.path)
+        j = filename2json.convert(self.path)
 
-        # store json as object variables
+        # store json as class variables
         if 'name' not in j:
             exit('error: could not parse user-specified name field')
         self.name = j['name']
@@ -84,19 +109,43 @@ class Datum:
             exit('error: could not parse t index field')
         self.t = j['t']
 
+    def tag_filename(self, string):
+        return self.path.stem + string + self.path.suffix
+
 class Dataset:
     def __init__(self, path):
         self.path = path
+        self.is_skewed = None
         self.settings = None
         self.data = []
         self.generate()
 
+    """
+    Prints class variables
+    """
+    def __repr__(self):
+        s = 'Dataset - %s' % (self.path)
+
+        for datum in self.data:
+            s += str(datum)
+        
+        return s
+
+    """
+    Prints class variables
+    """
+    def __str__(self):
+        return self.__repr__()
+
+    """
+    Generates a dataset from a directory path
+    """
     def generate(self):
         # get list of all files in path
         file_paths = [f for f in self.path.iterdir() if f.is_file()]
 
         # parse metadata
-        for f in files:
+        for f in file_paths:
             # parse TIFF filename
             if str(f).lower().endswith(('.tif', '.tiff')):
                 self.data.append(Datum(f))
@@ -105,8 +154,18 @@ class Dataset:
             if str(f).endswith('Settings.txt') and (self.settings == None):
                 self.settings = settings2json.convert(f)
 
-        return 
+        # store settings json as class variables
+        if 'waveform' not in self.settings:
+            exit('error: settings file did not contain a Waveform section')
+        if 'z-motion' not in self.settings['waveform']:
+            exit('error: settings file did not contain a Z motion field')
+        self.z_motion = self.settings['waveform']['z-motion']
 
-    def tag_filename(filename, string):
-        f = PurePath(filename)
-        return f.stem + string + f.suffix
+        if self.z_motion == 'Sample piezo':
+            if 's-piezo' not in self.settings['waveform']:
+                exit('error: settings file did not contain a S Piezo field')
+            if 'interval' not in self.settings['waveform']['s-piezo']:
+                exit('error: settings file did not contain a S Piezo Interval field')
+        self.steps = self.settings['waveform']['s-piezo']['interval']
+
+        return 

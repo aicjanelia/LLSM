@@ -35,6 +35,9 @@ if __name__ == '__main__':
     # create pipeline
     pipeline = config2pipeline.convert(args.input, args.verbose)
 
+    # build dataset
+    pipeline.build_dataset(args.dryrun, args.verbose)
+
     # execute pipeline
     pipeline.execute(args.dryrun, args.verbose)
 

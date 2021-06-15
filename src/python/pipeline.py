@@ -13,15 +13,18 @@ class Node:
 class Graph:
     def __init__(self):
         self.root = None
-        self.linked = False
+        self.is_linked = False
+        self.dataset = None
+        self.is_dataset_defined = False
         self.nodes = {}
+        self.node_stack = []
 
     """
     Prints graph information
     """
     def __repr__(self):
         s = ''
-        if self.linked:
+        if self.is_linked:
             s += 'Status: linked\n'
         else:
             s += 'Status: unlinked\n'
@@ -38,7 +41,7 @@ class Graph:
     Prints graph diagram
     """
     def __str__(self):
-        if self.linked:
+        if self.is_linked:
             s = 'Pipeline Diagram:\n\n'
             s += self._print_node(self.root, [], True)
             return s
@@ -105,30 +108,53 @@ class Graph:
             if node.parent_id is not None:
                 self.nodes[node.parent_id].children.append(node)
         
-        self.linked = True
+        self.is_linked = True
+
+    """
+    Builds a dataset from the pipeline root path
+    """
+    def build_dataset(self, dryrun=False, verbose=False):
+        if not self.is_linked:
+            exit('error: pipeline graph must be linked before building the dataset')
+
+        self.datasets = directory2datasets.convert(self.root.data['path'], dryrun, verbose)
+        self.is_dataset_defined = True
         
     """
     Executes the pipeline for the defined root node datasets
     """
     def execute(self, dryrun=False, verbose=False):
-        # generate datasets from root node
-        datasets = directory2datasets.convert(self.root['path'], dryrun, verbose)
-
-        # process each dataset
-        for dataset in datasets:
-            for datum in dataset:
-                
-            
+        if not self.is_dataset_defined:
+            exit('error: cannot execute pipeline before building the dataset')
         
-        # process images in new directories
-        processed_dirs = graph_processor.process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
+        # traverse graph and submit jobs
+        self.traverse_graph(self.root, dryrun, verbose)
+       
+        # # process images in new directories
+        # processed_dirs = graph_processor.process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
 
-        # update processed.json
-        processed.update(processed_dirs)
-        if not args.dryrun:
-            with processed_path.open(mode='w') as f:
-                f.write(json.dumps(processed, indent=4))
+        # # update processed.json
+        # processed.update(processed_dirs)
+        # if not args.dryrun:
+        #     with processed_path.open(mode='w') as f:
+        #         f.write(json.dumps(processed, indent=4))
 
-        if args.verbose:
-            print('processed.json...')
-            print(json.dumps(processed_json, indent=4))
+        # if args.verbose:
+        #     print('processed.json...')
+        #     print(json.dumps(processed_json, indent=4))
+
+    """
+    Recursively traverses graph and submit jobs
+    """
+    def traverse_graph(self, node, dryrun=False, verbose=False):
+        # submit jobs for current node
+        print(node.id)
+
+        # add child nodes to stack
+        for child_node in node.children:
+            self.node_stack.append(child_node)
+
+        # recurse if stack not empty
+        if self.node_stack:
+            self.traverse_graph(self.node_stack.pop(), dryrun, verbose)
+

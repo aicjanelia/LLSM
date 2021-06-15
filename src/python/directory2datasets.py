@@ -58,7 +58,11 @@ def convert(path, dryrun=False, verbose=False):
 
     datasets = []
     for d in dataset_dirs:
-        datasets.append(dataset.Dataset(d))
+        try:
+            datasets.append(dataset.Dataset(d))
+        except:
+            if verbose:
+                print('warning: skipping \'%s\'' % d)
 
     return datasets
 
