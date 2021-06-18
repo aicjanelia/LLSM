@@ -18,13 +18,13 @@ int main()
     auto start = std::chrono::high_resolution_clock::now();
     // read image
     std::string image_path("examples/cell2_ch1_CAM1_stack0001_488nm_0004529msec_0009990533msecAbs_000x_000y_000z_0000t.tif");
-    itk::SmartPointer<kImageType> image = ReadImageFile<kImageType>(image_path, true);
+    kImageType::Pointer image = ReadImageFile<kImageType>(image_path, true);
 
-    // itk::SmartPointer<kImageType> image_sub = ConvertImage<ImageTypeOut,kImageType>(clampFilter->GetOutput());
+    // kImageType::Pointer image_sub = ConvertImage<ImageTypeOut,kImageType>(clampFilter->GetOutput());
 
     // read PSF
     std::string psf_path("examples/488_PSF_piezoScan.tif");
-    itk::SmartPointer<kImageType> psf = ReadImageFile<kImageType>(psf_path, true);
+    kImageType::Pointer psf = ReadImageFile<kImageType>(psf_path, true);
 
     if (image == nullptr)
     {
@@ -45,7 +45,7 @@ int main()
     float fill_value = 0.0;//100.0 / std::numeric_limits<unsigned short>::max();
 
     // deskew
-    itk::SmartPointer<kImageType> deskew_img = Deskew(image, angle, stage_move_distance, xy_res, fill_value, true);
+    kImageType::Pointer deskew_img = Deskew(image, angle, stage_move_distance, xy_res, fill_value, true);
     image = NULL; // this will clean up the memory
     WriteImageFile<kImageType,ImageTypeOut>(deskew_img,"deskew-in-decon-test.tif", true);
 
@@ -60,11 +60,11 @@ int main()
     psf_spacing[2] = psf_z_res;
     psf->SetSpacing(psf_spacing);
 
-    itk::SmartPointer<kImageType> psf_resampled = Resampler(psf, deskew_img->GetSpacing(), true);
+    kImageType::Pointer psf_resampled = Resampler(psf, deskew_img->GetSpacing(), true);
 
     WriteImageFile<kImageType,ImageTypeOut>(psf_resampled,"deskew-psf-resampled.tif", true);
     
-    itk::SmartPointer<kImageType> decon_img = RichardsonLucy(sub_image, psf_resampled, 5, true);
+    kImageType::Pointer decon_img = RichardsonLucy(sub_image, psf_resampled, 5, true);
 
     // write image
     decon_img->SetSpacing(deskew_img->GetSpacing());

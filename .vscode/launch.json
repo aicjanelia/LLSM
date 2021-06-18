@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "reader-test-uninx",
             "type": "cppdbg",
@@ -24,6 +25,17 @@
             ]
         },
         {
+            "name": "reader-test-win",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/reader-test.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "internalConsole"
+        },
+        {
             "name": "writer-test-uninx",
             "type": "cppdbg",
             "request": "launch",
@@ -41,6 +53,17 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "writer-test-win",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/writer-test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "internalConsole"
         },
         {
             "name": "deskew-test-uninx",
@@ -79,6 +102,16 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "mip-test-win",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/mip.exe",
+            "args": ["-x", "-y", "-z", "-o", "c:\\users\\eric\\desktop\\mip.tif","Q:\\biology\\Moore\\TimeLapse2_GFPdsRed\\CPPdecon\\Cells_ch0_CAM1_stack0000_560nm_0000000msec_0003460872msecAbs_000x_000y_000z_0000t_decon.tif"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": []
         }
     ]
 }

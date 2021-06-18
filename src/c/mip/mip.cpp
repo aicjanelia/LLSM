@@ -1,19 +1,17 @@
-#include "deskew.h"
+#include "mip.h"
 #include "defines.h"
 #include "utils.h"
 #include "reader.h"
 #include "writer.h"
-#include <algorithm>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
   // parameters
-  float xy_res = UNSET_FLOAT;
-  float step = UNSET_FLOAT;
-  float angle = UNSET_FLOAT;
-  float fill_value = UNSET_FLOAT;
+  bool x_axis = UNSET_BOOL;
+  bool y_axis = UNSET_BOOL;
+  bool z_axis = UNSET_BOOL;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
@@ -22,10 +20,9 @@ int main(int argc, char** argv) {
   po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
-      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
-      ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
-      ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
-      ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
+      ("x-axis,x", po::value<bool>(&x_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate x-axis projection")
+      ("y-axis,y", po::value<bool>(&y_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate y-axis projection")
+      ("z-axis,z", po::value<bool>(&z_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate z-axis projection")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -51,14 +48,14 @@ int main(int argc, char** argv) {
 
     // print help message
     if (varsmap.count("help") || (argc == 1)) {
-      std::cerr << "deskew: removes skewing induced by sample scanning\n";
+      std::cerr << "mip: generates a maximum intensity projection along the specified axes\n";
       std::cerr << visible_opts << std::endl;
       return EXIT_FAILURE;
     }
 
     // print version number
     if (varsmap.count("version")) {
-      std::cerr << DESKEW_VERSION << std::endl;
+      std::cerr << MIP_VERSION << std::endl;
       return EXIT_FAILURE;
     }
     
@@ -66,11 +63,11 @@ int main(int argc, char** argv) {
     po::notify(varsmap);
 
   } catch (po::error& e) {
-    std::cerr << "deskew: " << e.what() << "\n\n";
+    std::cerr << "mip: " << e.what() << "\n\n";
     std::cerr << visible_opts << std::endl;
     return EXIT_FAILURE;
   } catch (...) {
-    std::cerr << "deskew: unknown error during command line parsing\n\n";
+    std::cerr << "mip: unknown error during command line parsing\n\n";
     std::cerr << visible_opts << std::endl;
     return EXIT_FAILURE;
   }
@@ -78,13 +75,13 @@ int main(int argc, char** argv) {
   // check files
   const char* in_path = varsmap["input"].as<std::string>().c_str();
   if (!IsFile(in_path)) {
-    std::cerr << "deskew: input path is not a file" << std::endl;
+    std::cerr << "mip: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
   const char* out_path = varsmap["output"].as<std::string>().c_str();
   if (IsFile(out_path)) {
     if (!overwrite) {
-      std::cerr << "deskew: output path already exists" << std::endl;
+      std::cerr << "mip: output path already exists" << std::endl;
       return EXIT_FAILURE;
     } else if (verbose) {
         std::cout << "overwriting: " << out_path << std::endl;
@@ -95,49 +92,60 @@ int main(int argc, char** argv) {
   unsigned int bits[] = {8, 16, 32};
   unsigned int* p = std::find(std::begin(bits), std::end(bits), bit_depth);
   if (p == std::end(bits)) {
-    std::cerr << "deskew: bit depth must be 8, 16, or 32" << std::endl;
+    std::cerr << "mip: bit depth must be 8, 16, or 32" << std::endl;
     return EXIT_FAILURE;
   }
 
-  // check angle
-  if (fabs(angle) > 360.0) {
-    std::cerr << "deskew: angle must be within [-360,360]" << std::endl;
+  // check at least one axis is true
+  if (!x_axis & !y_axis & !z_axis)
+  {
+    std::cerr << "mip: at least one axis projection (x, y, or z) must been enabled" << std::endl;
     return EXIT_FAILURE;
   }
 
   // print parameters
   if (verbose) {
     std::cout << "\nInput Parameters\n";
-    std::cout << "X/Y Resolution (um/px) = " << xy_res << "\n";
-    std::cout << "Step Size (um) = " << step << "\n";
-    std::cout << "Objective Angle (degrees) = " << angle <<"\n";
-    std::cout << "Fill Value = " << fill_value << "\n";
+    std::cout << "X-axis = " << x_axis << "\n";
+    std::cout << "Y-axis = " << y_axis << "\n";
+    std::cout << "Z-axis = " << z_axis << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
     std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
 
-  // deskew
+  // mip
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
-  kImageType::Pointer deskew_img = Deskew(img, angle, step, xy_res, (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
 
-  // write file
-  if (bit_depth == 8) {
-    using PixelTypeOut = unsigned char;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
-  } else if (bit_depth == 16) {
-    using PixelTypeOut = unsigned short;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
-  } else if (bit_depth == 32) {
-    using PixelTypeOut = float;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(deskew_img, out_path);
-  } else {
-    std::cerr << "deskew: unknown bit depth" << std::endl;
-    return EXIT_FAILURE;
+  bool axes[] = {y_axis, x_axis, z_axis};
+  std::string labels[] = {"_y", "_x", "_z"};
+  for (unsigned int i = 0; i < 3; ++i) 
+  {
+    if (axes[i])
+    {
+        std::string axis_out_path = AppendPath(out_path, labels[i]);
+        using ProjectionType = itk::Image<kPixelType, 2>;
+        ProjectionType::Pointer mip_img = MaxIntensityProjection(img, i, verbose);
+
+        // write file
+        if (bit_depth == 8) {
+            using PixelTypeOut = unsigned char;
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+        } else if (bit_depth == 16) {
+            using PixelTypeOut = unsigned short;
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+        } else if (bit_depth == 32) {
+            using PixelTypeOut = float;
+            using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+        } else {
+            std::cerr << "mip: unknown bit depth" << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
   }
 
   return EXIT_SUCCESS;

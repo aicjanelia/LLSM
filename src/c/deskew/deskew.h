@@ -1,16 +1,17 @@
 #pragma once
 
-
 #define DESKEW_VERSION "AIC Deskew version 0.1.0"
+#define _USE_MATH_DEFINES
 
 #include "defines.h"
+#include <cmath>
 #include <itkImage.h>
 #include <itkImageBase.h>
 #include <itkResampleImageFilter.h>
 #include "itkAffineTransform.h"
 #include "itkLinearInterpolateImageFunction.h"
 
-itk::SmartPointer<kImageType> Deskew(itk::SmartPointer<kImageType> img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
+kImageType::Pointer Deskew(kImageType::Pointer img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
 {
   // compute shift
   const double shift = step * cos(angle * M_PI/180.0) / xy_res;

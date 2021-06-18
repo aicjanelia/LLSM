@@ -10,11 +10,6 @@
 #define UNSET_BOOL false
 #define EPSILON 1e-5
 
-#define cimg_display 0
-#define cimg_verbosity 1
-#define cimg_use_tiff
-#define cimg_use_openmp 1
-
 // Globals
 constexpr unsigned int kDimensions = 3;
 using kPixelType = double;

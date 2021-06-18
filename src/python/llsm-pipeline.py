@@ -9,6 +9,8 @@ import os
 import re
 import json
 import math
+import time
+import datetime
 from pathlib import Path, PurePath
 from sys import exit
 import settings2json
@@ -127,6 +129,38 @@ def load_configs(path):
             if not p.is_file():
                 exit('error: laser %s psf file \'%s\' does not exist' % (key, p))
 
+    # sanitize mip configs
+    if 'mip' in configs:
+        supported_opts = ['x', 'y', 'z']
+        for key in list(configs['mip']):
+            if key not in supported_opts:
+                print(f'warning: mip option \'%s\' in config.json is not supported' % key)
+                del configs['mip'][key]
+
+        if 'x' in configs['mip']:
+            if not type(configs['mip']['x']) is bool:
+                exit(f'error: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
+            if configs['mip']['x']:
+                configs['mip']['x'] = {'flag': '-x'}
+            else:
+                del configs['mip']['x']
+        
+        if 'y' in configs['mip']:
+            if not type(configs['mip']['y']) is bool:
+                exit(f'error: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
+            if configs['mip']['y']:
+                configs['mip']['y'] = {'flag': '-y'}
+            else:
+                del configs['mip']['y']
+
+        if 'z' in configs['mip']:
+            if not type(configs['mip']['z']) is bool:
+                exit(f'error: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
+            if configs['mip']['z']:
+                configs['mip']['z'] = {'flag': '-z'}
+            else:
+                del configs['mip']['z']
+
     return configs
 
 def get_processed_json(path):
@@ -166,7 +200,10 @@ def tag_filename(filename, string):
 def params2cmd(params, cmd_name):
     cmd = cmd_name
     for key in params:
-        cmd += ' %s %s' % (params[key]['flag'], params[key]['arg'])
+        if 'arg' in params[key]:
+            cmd += f' %s %s' % (params[key]['flag'], params[key]['arg'])
+        else:
+            cmd += f' %s ' % (params[key]['flag'])
 
     return cmd
 
@@ -192,6 +229,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     }
     params_deskew = {}
     params_decon = {}
+    params_mip = {}
 
     # update default params with user defined configs
     if 'bsub' in configs:
@@ -200,11 +238,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
         params_deskew.update(configs['deskew'])
     if 'decon' in configs:
         params_decon.update(configs['decon'])
+    if 'mip' in configs:
+        params_mip.update(configs['mip'])
 
     # build commands
     cmd_bsub = params2cmd(params_bsub, 'bsub')
     cmd_deskew = params2cmd(params_deskew, 'deskew')
     cmd_decon = params2cmd(params_decon, 'decon')
+    cmd_mip = params2cmd(params_mip, 'mip')
 
     # parse PSF settings files
     if 'decon' in configs:
@@ -293,6 +334,25 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if not dryrun:
                 output_decon.mkdir(exist_ok=True)
 
+        # mip setup
+        mip = False
+        if params_mip:
+
+            mip = True
+
+            # mip output directory
+            output_mip = d / 'mip'
+            if not dryrun:
+                output_mip.mkdir(exist_ok=True)
+            if deskew:
+                output_deskew_mip = output_mip / 'deskew'
+                if not dryrun:
+                    output_deskew_mip.mkdir(exist_ok=True)
+            if decon:
+                output_decon_mip = output_mip / 'decon'
+                if not dryrun:
+                    output_decon_mip.mkdir(exist_ok=True)
+
         # process all files in directory
         for f in files:
             m = pattern.fullmatch(f)
@@ -305,6 +365,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     outpath = output_deskew / tag_filename(f, '_deskew')
                     tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
                     cmd.append(tmp)
+
+                    # create mips for deskew
+                    if mip:
+                        inpath = output_deskew / tag_filename(f, '_deskew')
+                        outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
+                        tmp = cmd_mip + f' -o %s %s;' % (outpath , inpath)
+                        cmd.append(tmp)
+
                 if decon:
                     if deskew:
                         inpath = output_deskew / tag_filename(f, '_deskew')
@@ -317,6 +385,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
+
+                    # create mips for decon
+                    if mip:
+                        inpath = output_decon / tag_filename(f, '_decon')
+                        outpath = output_decon_mip / tag_filename(f, '_decon_mip')
+                        tmp = cmd_mip + f' -o %s %s;' % (outpath , inpath)
+                        cmd.append(tmp)
+
                 if len(cmd) > 1:
                     cmd = ''.join(cmd)
                     cmd = cmd + '\"'
@@ -327,13 +403,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
         
         # update processed list
         d = str(d)
-        if deskew or decon:
-            processed[d] = {}
+        processed[d] = {}
+        processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
         if deskew:
             processed[d]['deskew'] = params_deskew
             processed[d]['deskew']['step'] = steps
         if decon:
             processed[d]['decon'] = params_decon
+        if decon:
+            processed[d]['decon'] = params_decon
+        if mip:
+            processed[d]['mip'] = params_mip 
 
     return  processed
 

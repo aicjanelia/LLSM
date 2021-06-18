@@ -6,7 +6,7 @@
 #include <itkLinearInterpolateImageFunction.h>
 
 // TODO make this templated
-itk::SmartPointer<kImageType> Resampler(itk::SmartPointer<kImageType> image, kImageType::SpacingType out_spacing, bool verbose=false)
+kImageType::Pointer Resampler(kImageType::Pointer image, kImageType::SpacingType out_spacing, bool verbose=false)
 {
   // set up resample filter
   using FilterType = itk::ResampleImageFilter<kImageType, kImageType>;
