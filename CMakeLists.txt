@@ -100,6 +100,5 @@ target_link_libraries(mip PRIVATE ${ITK_LIBRARIES})
 install(TARGETS deskew decon mip CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/llsm-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-file(RENAME ${PROJECT_SOURCE_DIR}/bin/llsm-pipeline.py ${PROJECT_SOURCE_DIR}/bin/llsm-pipeline)
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/settings2json.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-file(RENAME ${PROJECT_SOURCE_DIR}/bin/settings2json.py ${PROJECT_SOURCE_DIR}/bin/settings2json)
+
