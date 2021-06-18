@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "reader.h"
 #include "writer.h"
+#include "resampler.h"
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -12,17 +13,21 @@ int main(int argc, char** argv) {
   bool x_axis = UNSET_BOOL;
   bool y_axis = UNSET_BOOL;
   bool z_axis = UNSET_BOOL;
+  float xy_res = UNSET_FLOAT;
+  float z_res = UNSET_FLOAT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
   // declare the supported options
-  po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
+  po::options_description visible_opts("usage: mip [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
       ("x-axis,x", po::value<bool>(&x_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate x-axis projection")
       ("y-axis,y", po::value<bool>(&y_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate y-axis projection")
       ("z-axis,z", po::value<bool>(&z_axis)->default_value(false)->implicit_value(true)->zero_tokens(), "generate z-axis projection")
+      ("xy-rez,p", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
+      ("z-rez,q", po::value<float>(&z_res)->default_value(0.104f), "z resolution (um/px)")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -118,8 +123,22 @@ int main(int argc, char** argv) {
   // mip
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
 
-  bool axes[] = {y_axis, x_axis, z_axis};
-  std::string labels[] = {"_y", "_x", "_z"};
+  bool axes[] = {x_axis, y_axis, z_axis};
+  std::string labels[] = {"_x", "_y", "_z"};
+
+  // resample the image so the voxels are cubes before making the projections
+  kImageType::SpacingType img_spacing;
+
+  img_spacing[0] = xy_res;
+  img_spacing[1] = xy_res;
+  img_spacing[2] = z_res;
+  img->SetSpacing(img_spacing);
+
+  if (z_res != xy_res)
+  {
+    img = Resampler(img, xy_res, verbose);
+  }
+
   for (unsigned int i = 0; i < 3; ++i) 
   {
     if (axes[i])

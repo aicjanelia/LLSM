@@ -12,6 +12,7 @@ namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
   // parameters
+  float xy_res = UNSET_FLOAT;
   float kernel_zstep = UNSET_FLOAT;
   float img_zstep = UNSET_FLOAT;
   float subtract_constant = UNSET_FLOAT;
@@ -20,13 +21,13 @@ int main(int argc, char** argv) {
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
-
   // declare the supported options
   po::options_description visible_opts("usage: decon [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
       ("kernel,k", po::value<std::string>()->required(),"kernel file path")
       ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
+      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
       ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(1.0f),"z-step size of kernel")
       ("image-spacing,q", po::value<float>(&img_zstep)->default_value(1.0f),"z-step size of input image")
       ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant instensity value to subtract from input image")
@@ -124,7 +125,6 @@ int main(int argc, char** argv) {
   kImageType::Pointer kernel = ReadImageFile<kImageType>(kernel_path);
 
   // set spacing
-  float xy_res = 0.104;
   kImageType::SpacingType img_spacing;
 
   img_spacing[0] = xy_res;
