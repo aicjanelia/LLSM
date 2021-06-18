@@ -16,7 +16,7 @@ from sys import exit
 import settings2json
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Batch deskewing, deconvolution, andmip script for LLSM images.')
+    parser = argparse.ArgumentParser(description='Batch deskewing, deconvolution, and mip script for LLSM images.')
     parser.add_argument('input', type=Path, help='path to configuration JSON file')
     parser.add_argument('--dry-run', '-d', default=False, action='store_true', dest='dryrun',help='execute without submitting any bsub jobs')
     parser.add_argument('--verbose', '-v', default=False, action='store_true', dest='verbose',help='print details (including commands to bsub)')
@@ -249,23 +249,22 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
     # parse PSF settings files
     if 'decon' in configs:
-        root = Path(configs["paths"]["root"])
+        root = Path(configs['paths']['root'])
 
         psf_settings = {}
-        for key, val in configs['paths']['psf']['laser'].items():
-            psf_settings[key] = {}
-            filename, _ = os.path.splitext(val)
-            p = root / configs['paths']['psf']['dir'] / (filename + '_Settings.txt')
+        for laser, psf_filename in configs['paths']['psf']['laser'].items():
+            psf_settings[laser] = {}
+            psf_filename, _ = os.path.splitext(psf_filename)
+            p = root / configs['paths']['psf']['dir'] / (psf_filename + '_Settings.txt')
             if not p.is_file():
-                exit('error: laser %s psf file \'%s\' does not have a Settings file' % (key, p))
+                exit('error: laser %s psf file \'%s\' does not have a Settings file' % (laser, p))
    
-            settings = settings2json.parse_txt(p)
+            j = settings2json.parse_txt(p)
 
-            if settings['waveform']['z-motion'] == 'Sample piezo':
-                step = settings['waveform']['s-piezo']['interval'][0] 
-                psf_settings[key]['z-step'] = step * math.sin(31.8 * math.pi/180.0)
-            elif settings['waveform']['z-motion'] == 'Z galvo & piezo':
-                psf_settings[key]['z-step'] = settings['waveform']['z-pzt']['interval'][0] 
+            if j['waveform']['z-motion'] == 'Sample piezo':
+                exit('error: PSF is skewed and cannot be used for decon')
+            elif j['waveform']['z-motion'] == 'Z galvo & piezo':
+                psf_settings[laser]['z-step'] = j['waveform']['z-pzt']['interval'][0] 
             else:
                 exit('error: PSF z-motion cannot be determined for laser %s' % key)
 
@@ -342,16 +341,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
             # mip output directory
             output_mip = d / 'mip'
-            if not dryrun:
-                output_mip.mkdir(exist_ok=True)
             if deskew:
                 output_deskew_mip = output_mip / 'deskew'
                 if not dryrun:
-                    output_deskew_mip.mkdir(exist_ok=True)
+                    output_deskew_mip.mkdir(parents=True, exist_ok=True)
             if decon:
                 output_decon_mip = output_mip / 'decon'
                 if not dryrun:
-                    output_decon_mip.mkdir(exist_ok=True)
+                    output_decon_mip.mkdir(parents=True, exist_ok=True)
 
         # process all files in directory
         for f in files:
@@ -366,14 +363,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     step = settings['waveform']['s-piezo']['interval'][ch] 
                     step = step * math.sin(31.8 * math.pi/180.0)
 
-                    tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
+                    tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
                     cmd.append(tmp)
 
                     # create mips for deskew
                     if mip:
                         inpath = output_deskew / tag_filename(f, '_deskew')
                         outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
 
                 if decon:
