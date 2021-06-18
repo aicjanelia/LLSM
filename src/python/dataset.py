@@ -168,4 +168,4 @@ class Dataset:
                 exit('error: settings file did not contain a S Piezo Interval field')
         self.steps = self.settings['waveform']['s-piezo']['interval']
 
-        return 
+        # TODO: This section need a bit more attention. It is likely that the pipeline methods will need more information in the dataset object in order to work properly. That extra information will need to be parsed and stored in the dataset object here.

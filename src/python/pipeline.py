@@ -130,25 +130,14 @@ class Graph:
         # traverse graph and submit jobs
         self.traverse_graph(self.root, dryrun, verbose)
        
-        # # process images in new directories
-        # processed_dirs = graph_processor.process(unprocessed_dirs, configs, dryrun=args.dryrun, verbose=args.verbose)
-
-        # # update processed.json
-        # processed.update(processed_dirs)
-        # if not args.dryrun:
-        #     with processed_path.open(mode='w') as f:
-        #         f.write(json.dumps(processed, indent=4))
-
-        # if args.verbose:
-        #     print('processed.json...')
-        #     print(json.dumps(processed_json, indent=4))
+        # TODO: needs to output a processed.json to keep track of what files have been run through the pipeline and what parameters were used
 
     """
     Recursively traverses graph and submit jobs
     """
     def traverse_graph(self, node, dryrun=False, verbose=False):
         # submit jobs for current node
-        print(node.id)
+        self.submit_jobs(node, dryrun, verbose)
 
         # add child nodes to stack
         for child_node in node.children:
@@ -158,3 +147,9 @@ class Graph:
         if self.node_stack:
             self.traverse_graph(self.node_stack.pop(), dryrun, verbose)
 
+    """
+    Submit jobs for current node
+    """
+    def submit_jobs(self, node, dryrun=False, verbose=False):
+        # TODO: This is where I stopped. This function should submit a job for all datasets. The plan was to use dependencies within bsub to handle dependencies between nodes.
+        pass

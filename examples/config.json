@@ -1,8 +1,23 @@
 {
     "datasets": {
-        "root": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan"
+        "path": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan",
+        "bsub": {
+            "J": "llsm-pipeline",
+            "o": "/dev/null",
+            "We": 10,
+            "n": 2
+        }
     },
     "deskew": {
+        "parent": "datasets",
+        "module": "deskew",
+        "options": {
+            "xy-res": 0.104,
+            "fill": 0.0,
+            "bit-depth": 16
+        }
+    },
+    "deskew2": {
         "parent": "datasets",
         "module": "deskew",
         "options": {
@@ -28,16 +43,42 @@
             "bit-depth": 16,
             "subtract": 200.0,
             "psf": {
-                "path": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan20210222/Calibration",
+                "path": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan/hobsonc-20210222/Calibration/",
                 "laser": {
                     "560": "560_PSF.tif",
                     "488": "488_PSF.tif"
                 }
+            }
         },
         "bsub": {
             "o": "/dev/null",
             "We": 10,
             "n": 4
+        }
+    },
+    "decon2": {
+        "parent": "deskew",
+        "module": "decon",
+        "options": {
+            "n": 5,
+            "bit-depth": 16,
+            "subtract": 200.0,
+            "psf": {
+                "path": "/nrs/aic/instruments/llsm/pipeline-test/stage-scan/hobsonc-20210222/Calibration/",
+                "laser": {
+                    "560": "560_PSF.tif",
+                    "488": "488_PSF.tif"
+                }
+            }
+        }
+    },
+    "mip-decon2": {
+        "parent": "decon2",
+        "module": "mip",
+        "options": {
+            "x": true,
+            "y": true,
+            "z": true
         }
     },
     "mip-decon": {
