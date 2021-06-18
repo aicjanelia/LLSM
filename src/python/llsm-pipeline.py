@@ -134,12 +134,12 @@ def load_configs(path):
         supported_opts = ['x', 'y', 'z']
         for key in list(configs['mip']):
             if key not in supported_opts:
-                print(f'warning: mip option \'%s\' in config.json is not supported' % key)
+                print('warning: mip option \'%s\' in config.json is not supported' % key)
                 del configs['mip'][key]
 
         if 'x' in configs['mip']:
             if not type(configs['mip']['x']) is bool:
-                exit(f'error: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
+                exit('error: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
             if configs['mip']['x']:
                 configs['mip']['x'] = {'flag': '-x'}
             else:
@@ -147,7 +147,7 @@ def load_configs(path):
         
         if 'y' in configs['mip']:
             if not type(configs['mip']['y']) is bool:
-                exit(f'error: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
+                exit('error: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
             if configs['mip']['y']:
                 configs['mip']['y'] = {'flag': '-y'}
             else:
@@ -155,7 +155,7 @@ def load_configs(path):
 
         if 'z' in configs['mip']:
             if not type(configs['mip']['z']) is bool:
-                exit(f'error: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
+                exit('error: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
             if configs['mip']['z']:
                 configs['mip']['z'] = {'flag': '-z'}
             else:
@@ -366,14 +366,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     step = settings['waveform']['s-piezo']['interval'][ch] 
                     step = step * math.sin(31.8 * math.pi/180.0)
 
-                    tmp = cmd_deskew + f' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
+                    tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath , inpath)
                     cmd.append(tmp)
 
                     # create mips for deskew
                     if mip:
                         inpath = output_deskew / tag_filename(f, '_deskew')
                         outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
-                        tmp = cmd_mip + f' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
                 if decon:
@@ -393,7 +393,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_decon / tag_filename(f, '_decon')
                         outpath = output_decon_mip / tag_filename(f, '_decon_mip')
-                        tmp = cmd_mip + f' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
                 if len(cmd) > 1:
