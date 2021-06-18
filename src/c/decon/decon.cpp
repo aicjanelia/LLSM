@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
       ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
       ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(1.0f),"z-step size of kernel")
       ("image-spacing,q", po::value<float>(&img_zstep)->default_value(1.0f),"z-step size of input image")
-      ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant instensity value to subtract from input image")
+      ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant intensity value to subtract from input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
