@@ -44,7 +44,7 @@ For most cases, the `llsm-pipeline` command should be all that is needed. Howeve
 
 ## Deskew
 
-```bash
+```text
 deskew: removes skewing induced by sample scanning
 usage: deskew [options] path
 
@@ -66,7 +66,7 @@ The `deskew` function performs an affine transformation on a LLSM TIFF image to 
 
 ## Deconvolution
 
-```bash
+```text
 decon: deconvolves an image with a PSF or PSF parameters
 usage: decon [options] path
 
@@ -90,7 +90,7 @@ The `decon` function performs a Richardson-Lucy deconvolution on a deskewed TIFF
 
 ## Maximum Intensity Projection (MIP)
 
-```bash
+```text
 mip: generates a maximum intensity projection along the specified axes
 usage: mip [options] path
 
