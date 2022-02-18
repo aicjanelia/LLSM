@@ -212,7 +212,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_bsub = {
         'J': {
             'flag': '-J',
-            'arg': 'llsm-pipeline'
+            'arg': 'mosaic-pipeline'
         },
         'o': {
             'flag': '-o',
@@ -361,9 +361,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
                     step = settings['waveform']['x-stage-offset']['interval'][ch] 
-                    step = step * math.sin(-31.8 * math.pi/180.0) # Negative angle as opposite direction from LLSM
+                    step = step * math.sin(32.45 * math.pi/180.0) 
+                    angleUse = -32.45 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
 
-                    tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
+                    tmp = cmd_deskew + ' -w -s %s -a %s -o %s  %s;' % (steps[ch], angleUse, outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
 
                     # create mips for deskew
@@ -381,7 +382,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     outpath = output_decon / tag_filename(f, '_decon')
                     step = settings['waveform']['x-stage-offset']['interval'][ch] 
-                    step = step * math.sin(-31.8 * math.pi/180.0)
+                    step = step * math.sin(32.45 * math.pi/180.0) # Angle is 31.8 in LLSM but -32.45 for MOSAIC
 
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
@@ -390,7 +391,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_decon / tag_filename(f, '_decon')
                         outpath = output_decon_mip / tag_filename(f, '_decon_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath) # Negative angle not relevant for MIP, take abs
                         cmd.append(tmp)
 
                 if len(cmd) > 1:
