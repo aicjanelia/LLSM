@@ -6,11 +6,12 @@ project(llsm-pipeline VERSION 0.1 DESCRIPTION "Process lattice lightsheet images
 # ITK wants us to use include before declaing any targets.
 # Ref bottom of https://itk.org/Wiki/ITK/FAQ#NoFactoryException
 
-find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF ITKImageGrid ITKTransform ITKImageFunction)
+find_package(ITK CONFIG REQUIRED ITKCommon ITKIOImageBase ITKIOTIFF ITKImageGrid ITKTransform ITKImageFunction ITKConvolution)
 include(${ITK_USE_FILE})
 
 ######### Targets #########
 
+add_executable(crop src/c/crop/crop.cpp)
 add_executable(deskew src/c/deskew/deskew.cpp)
 # add_executable(deskew-test src/c/tests/deskew-test.cpp)
 add_executable(decon src/c/decon/decon.cpp)
@@ -21,6 +22,7 @@ add_executable(mip src/c/mip/mip.cpp)
 # add_executable(writer-test src/c/tests/writer-test.cpp)
 # add_executable(resampler-test src/c/tests/resampler-test.cpp)
 
+set_property(TARGET crop PROPERTY CXX_STANDARD 17)
 set_property(TARGET deskew PROPERTY CXX_STANDARD 17)
 # set_property(TARGET deskew-test PROPERTY CXX_STANDARD 17)
 set_property(TARGET decon PROPERTY CXX_STANDARD 17)
@@ -43,6 +45,9 @@ find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options)
 
 ######### Includes #########
 
+target_include_directories(crop PRIVATE ${PROJECT_SOURCE_DIR}/src/c/crop)
+target_include_directories(crop PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+
 target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
 target_include_directories(deskew PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 # target_include_directories(deskew-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/deskew)
@@ -63,6 +68,10 @@ target_include_directories(mip PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 # target_include_directories(resampler-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
 ######### Libraries #########
+
+target_link_libraries(crop PRIVATE Boost::filesystem)
+target_link_libraries(crop PRIVATE Boost::program_options)
+target_link_libraries(crop PRIVATE ${ITK_LIBRARIES})
 
 target_link_libraries(deskew PRIVATE Boost::filesystem)
 target_link_libraries(deskew PRIVATE Boost::program_options)
@@ -97,7 +106,7 @@ target_link_libraries(mip PRIVATE ${ITK_LIBRARIES})
 ######### Installs #########
 
 # install(TARGETS deskew deskew-test decon decon-test mip mip-test reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-install(TARGETS deskew decon mip CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS crop deskew decon mip CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/llsm-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/settings2json.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)

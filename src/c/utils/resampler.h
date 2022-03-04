@@ -4,6 +4,7 @@
 
 #include <itkResampleImageFilter.h>
 #include <itkLinearInterpolateImageFunction.h>
+#include <itkScaleTransform.h>
 
 // TODO make this templated
 kImageType::Pointer Resampler(kImageType::Pointer image, kImageType::SpacingType out_spacing, bool verbose=false)
@@ -26,6 +27,22 @@ kImageType::Pointer Resampler(kImageType::Pointer image, kImageType::SpacingType
     size[i] = in_size[i] * in_spacing[i] / out_spacing[i];
   }
   filter->SetSize(size);
+
+/*
+  using ScaleTransformType = itk::ScaleTransform<kPixelType, kDimensions>;
+  typename ScaleTransformType::Pointer scaleTransform = ScaleTransformType::New();
+
+  typename ScaleTransformType::ParametersType scaleTransformParameters = scaleTransform->GetParameters();
+  itk::Point<kPixelType, kDimensions> scaleTransformCenter;
+  for (unsigned int d = 0; d < kDimensions; ++d)
+  {
+    scaleTransformParameters[d] = size[d];
+    scaleTransformCenter[d] = 0;
+  }
+  scaleTransform->SetParameters(scaleTransformParameters);
+  scaleTransform->SetCenter(scaleTransformCenter);
+  filter->SetTransform(scaleTransform);
+*/
 
   // perform resample
   filter->SetInput(image);
