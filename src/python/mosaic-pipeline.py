@@ -445,8 +445,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
                     step = settings['waveform']['x-stage-offset']['interval'][ch] 
-                    step = step * math.sin(abs(configs['deskew']['angle']) * math.pi/180.0) 
-                    angleUse = configs['deskew']['angle'] # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+                    step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0) 
+                    angleUse = configs['deskew']['angle']['arg'] # Angle is 31.8 in LLSM but -32.45 for MOSAIC
 
                     tmp = cmd_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
