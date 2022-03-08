@@ -151,15 +151,15 @@ int main(int argc, char** argv) {
         if (bit_depth == 8) {
             using PixelTypeOut = unsigned char;
             using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
-            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path, verbose, false);
         } else if (bit_depth == 16) {
             using PixelTypeOut = unsigned short;
             using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
-            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path, verbose, false);
         } else if (bit_depth == 32) {
             using PixelTypeOut = float;
             using ImageTypeOut = itk::Image<PixelTypeOut, 2>;
-            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path);
+            WriteImageFile<ProjectionType,ImageTypeOut>(mip_img, axis_out_path, verbose, false);
         } else {
             std::cerr << "mip: unknown bit depth" << std::endl;
             return EXIT_FAILURE;
