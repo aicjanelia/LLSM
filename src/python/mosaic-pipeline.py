@@ -44,7 +44,7 @@ def load_configs(path):
 
     # sanitize bsub configs
     if 'bsub' in configs:
-        supported_opts = ['o', 'We', 'n']
+        supported_opts = ['o', 'We', 'n', 'P']
         for key in list(configs['bsub']):
             if key not in supported_opts:
                 print('warning: bsub option \'%s\' in config.json is not supported' % key)
@@ -65,13 +65,65 @@ def load_configs(path):
                 exit('error: bsub slot count \'%s\' in config.json is not an integer' % configs['bsub']['n'])
             configs['bsub']['n'] = {'flag': '-n', 'arg': configs['bsub']['n']}
 
+        if 'P' in configs['bsub']:
+            configs['bsub']['P'] = {'flag': '-P', 'arg': configs['bsub']['P']}
+
+    # sanitize crop configs
+    if 'crop' in configs:
+        supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight']
+        for key in list(configs['crop']):
+            if key not in supported_opts:
+                print('warning: crop option \'%s\' in config.json is not supported' % key)
+                del configs['crop'][key]
+
+        if not 'executable_path' in configs['crop']:
+            configs['crop']['executable_path'] = "crop"
+
+        if 'xy-res' in configs['crop']:
+            if not type(configs['crop']['xy-res']) is float:
+                exit('error: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
+            configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+        
+        cropSize = [0,0,0,0] # If missing a side, assume zero cropping
+        if "cropTop" in configs['crop']:
+            cropSize[0] = configs['crop']['cropTop']
+            del configs['crop']['cropTop']
+        if "cropBottom" in configs['crop']:
+            cropSize[1] = configs['crop']['cropBottom']
+            del configs['crop']['cropBottom']
+        if "cropLeft" in configs['crop']:
+            cropSize[2] = configs['crop']['cropLeft']
+            del configs['crop']['cropLeft']
+        if "cropRight" in configs['crop']:
+            cropSize[3] = configs['crop']['cropRight']
+            del configs['crop']['cropRight']
+        cropSize = [str(int) for int in cropSize]
+        cropSize = ",".join(cropSize)
+
+        configs['crop']['crop'] = {'flag': '-c', 'arg': cropSize}
+
+        if 'bit-depth' in configs['crop']:
+            if configs['crop']['bit-depth'] not in [8, 16, 32]:
+                exit('error: crop bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['crop']['bit-depth'])
+            configs['crop']['bit-depth'] = {'flag': '-b', 'arg': configs['crop']['bit-depth']}
+
     # sanitize deskew configs
     if 'deskew' in configs:
-        supported_opts = ['xy-res', 'fill', 'bit-depth']
+        supported_opts = ['xy-res', 'fill', 'bit-depth', 'angle', 'executable_path']
         for key in list(configs['deskew']):
             if key not in supported_opts:
                 print('warning: deskew option \'%s\' in config.json is not supported' % key)
                 del configs['deskew'][key]
+
+        if not 'executable_path' in configs['deskew']:
+            configs['deskew']['executable_path'] = "deskew"
+
+        if 'angle' in configs['deskew']:
+            if not type(configs['deskew']['angle']) is float:
+                exit('error: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
+        else:
+            configs['deskew']['angle'] = -32.45 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+        configs['deskew']['angle'] = {'flag': '-a', 'arg': configs['deskew']['angle']}
 
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
@@ -90,11 +142,19 @@ def load_configs(path):
 
     # sanitize decon configs
     if 'decon' in configs:
-        supported_opts = ['n', 'bit-depth', 'subtract']
+        supported_opts = ['xy-res','n', 'bit-depth', 'subtract', 'executable_path']
         for key in list(configs['decon']):
             if key not in supported_opts:
                 print('warning: decon option \'%s\' in config.json is not supported' % key)
                 del configs['decon'][key]
+
+        if not 'executable_path' in configs['decon']:
+            configs['decon']['executable_path'] = "decon"
+
+        if 'xy-res' in configs['decon']:
+            if not type(configs['decon']['xy-res']) is float:
+                exit('error: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
+            configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
 
         if 'n' in configs['decon']:
             if not type(configs['decon']['n']) is int:
@@ -131,11 +191,14 @@ def load_configs(path):
 
     # sanitize mip configs
     if 'mip' in configs:
-        supported_opts = ['x', 'y', 'z']
+        supported_opts = ['x', 'y', 'z', 'executable_path']
         for key in list(configs['mip']):
             if key not in supported_opts:
                 print('warning: mip option \'%s\' in config.json is not supported' % key)
                 del configs['mip'][key]
+
+        if not 'executable_path' in configs['mip']:
+            configs['mip']['executable_path'] = "mip"
 
         if 'x' in configs['mip']:
             if not type(configs['mip']['x']) is bool:
@@ -202,7 +265,7 @@ def params2cmd(params, cmd_name):
     for key in params:
         if 'arg' in params[key]:
             cmd += ' %s %s' % (params[key]['flag'], params[key]['arg'])
-        else:
+        elif 'flag' in params[key]:
             cmd += ' %s ' % (params[key]['flag'])
 
     return cmd
@@ -230,22 +293,32 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_deskew = {}
     params_decon = {}
     params_mip = {}
+    params_crop = {}
 
-    # update default params with user defined configs
+    cmd_bsub = None
+    cmd_crop = None
+    cmd_deskew = None
+    cmd_decon = None
+    cmd_mip = None
+
+    #print(configs['crop']['executable_path'])
+
+    # update default params with user defined configs and build commands
     if 'bsub' in configs:
         params_bsub.update(configs['bsub'])
+        cmd_bsub = params2cmd(params_bsub, 'bsub')
+    if 'crop' in configs:
+        params_crop.update(configs['crop'])
+        cmd_crop = params2cmd(params_crop, configs['crop']['executable_path'])
     if 'deskew' in configs:
         params_deskew.update(configs['deskew'])
+        cmd_deskew = params2cmd(params_deskew, configs['deskew']['executable_path'])
     if 'decon' in configs:
         params_decon.update(configs['decon'])
+        cmd_decon = params2cmd(params_decon, configs['decon']['executable_path'])
     if 'mip' in configs:
         params_mip.update(configs['mip'])
-
-    # build commands
-    cmd_bsub = params2cmd(params_bsub, 'bsub')
-    cmd_deskew = params2cmd(params_deskew, 'deskew')
-    cmd_decon = params2cmd(params_decon, 'decon')
-    cmd_mip = params2cmd(params_mip, 'mip')
+        cmd_mip = params2cmd(params_mip, configs['mip']['executable_path'])
 
     # parse PSF settings files
     if 'decon' in configs:
@@ -293,6 +366,23 @@ def process(dirs, configs, dryrun=False, verbose=False):
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
                 json.dump(settings, path, indent=4)
+
+        # crop setup
+        crop = False
+        if params_crop: #settings['waveform']['z-motion'] == 'X stage':
+            if 'x-stage-offset' in settings['waveform']:
+                stepCrop = settings['waveform']['x-stage-offset']['interval']
+            elif 'xz-stage-offset' in settings['waveform']:
+                stepCrop = settings['waveform']['xz-stage-offset']['interval']
+            else:
+                exit('error: settings file did not contain an valid step parameter for cropping')
+
+            crop = True
+
+            # crop output directory
+            output_crop = d / 'crop'
+            if not dryrun:
+                output_crop.mkdir(exist_ok=True)
 
         # deskew setup
         deskew = False
@@ -357,14 +447,22 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 ch = int(m.group(1))
                 cmd = [cmd_bsub, ' \"']
 
-                if deskew:
+                if crop:
                     inpath = d / f
+                    outpath = output_crop / tag_filename(f, '_crop')
+                    tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath)
+                    cmd.append(tmp)
+
+                if deskew:
+                    if crop:
+                        inpath = output_crop / tag_filename(f, '_crop')
+                    else:
+                        inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
                     step = settings['waveform']['x-stage-offset']['interval'][ch] 
-                    step = step * math.sin(32.45 * math.pi/180.0) 
-                    angleUse = -32.45 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+                    step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0) 
 
-                    tmp = cmd_deskew + ' -w -s %s -a %s -o %s  %s;' % (steps[ch], angleUse, outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
+                    tmp = cmd_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
                     cmd.append(tmp)
 
                     # create mips for deskew
@@ -377,12 +475,18 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if decon:
                     if deskew:
                         inpath = output_deskew / tag_filename(f, '_deskew')
+                    elif crop:
+                        inpath = output_crop / tag_filename(f, '_crop')
                     else:
                         inpath = d / f
 
                     outpath = output_decon / tag_filename(f, '_decon')
-                    step = settings['waveform']['x-stage-offset']['interval'][ch] 
-                    step = step * math.sin(32.45 * math.pi/180.0) # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+
+                    if deskew:
+                        step = settings['waveform']['x-stage-offset']['interval'][ch] 
+                        step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0) 
+                    else:
+                        step = settings['waveform']['xz-stage-offset']['interval'][ch]
 
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
@@ -391,7 +495,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_decon / tag_filename(f, '_decon')
                         outpath = output_decon_mip / tag_filename(f, '_decon_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath) # Negative angle not relevant for MIP, take abs
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
                 if len(cmd) > 1:
@@ -406,11 +510,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
         d = str(d)
         processed[d] = {}
         processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
+        if crop:
+            processed[d]['crop'] = params_crop
         if deskew:
             processed[d]['deskew'] = params_deskew
             processed[d]['deskew']['step'] = steps
-        if decon:
-            processed[d]['decon'] = params_decon
         if decon:
             processed[d]['decon'] = params_decon
         if mip:
