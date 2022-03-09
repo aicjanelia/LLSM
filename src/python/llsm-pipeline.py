@@ -70,7 +70,7 @@ def load_configs(path):
 
 # sanitize crop configs
     if 'crop' in configs:
-        supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path']
+        supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight']
         for key in list(configs['crop']):
             if key not in supported_opts:
                 print('warning: crop option \'%s\' in config.json is not supported' % key)
@@ -84,8 +84,23 @@ def load_configs(path):
                 exit('error: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
             configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
         
-        if 'crop' in configs['crop']:
-            configs['crop']['crop'] = {'flag': '-c', 'arg': configs['crop']['crop']}
+        cropSize = [0,0,0,0] # If missing a side, assume zero cropping
+        if "cropTop" in configs['crop']:
+            cropSize[0] = configs['crop']['cropTop']
+            del configs['crop']['cropTop']
+        if "cropBottom" in configs['crop']:
+            cropSize[1] = configs['crop']['cropBottom']
+            del configs['crop']['cropBottom']
+        if "cropLeft" in configs['crop']:
+            cropSize[2] = configs['crop']['cropLeft']
+            del configs['crop']['cropLeft']
+        if "cropRight" in configs['crop']:
+            cropSize[3] = configs['crop']['cropRight']
+            del configs['crop']['cropRight']
+        cropSize = [str(int) for int in cropSize]
+        cropSize = ",".join(cropSize)
+
+        configs['crop']['crop'] = {'flag': '-c', 'arg': cropSize}
 
         if 'bit-depth' in configs['crop']:
             if configs['crop']['bit-depth'] not in [8, 16, 32]:
@@ -225,7 +240,7 @@ def get_dirs(path, excludes):
         root = Path(root)
 
         # update directories to prevent us from traversing processed data
-        #dirs[:] = [d for d in dirs if str(root / d) not in excludes]
+        dirs[:] = [d for d in dirs if str(root / d) not in excludes]
 
         # check if root contains a Settings.txt file
         for f in files:
@@ -343,22 +358,21 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # save settings json
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
-                json.dump(settings, path, indent=4)
-
+                json.dump(settings, path, indent=4)          
+                
         # crop setup
         crop = False
-        if settings['waveform']['z-motion'] == 'X stage':
-            if 'x-stage-offset' not in settings['waveform']:
-                exit('error: settings file did not contain a X Stage Offset field')
-            if 'interval' not in settings['waveform']['x-stage-offset']:
-                exit('error: settings file did not contain a X Stage Offset Interval field')
+        if params_crop:
+            if 's-piezo' in settings['waveform']:
+                stepCrop = settings['waveform']['s-piezo']['interval']
+            elif 'z-pzt' in settings['waveform']:
+                stepCrop = settings['waveform']['z-pzt']['interval']
+            else:
+                exit('error: settings file did not contain an valid step parameter for cropping')
 
             crop = True
 
-            # get step sizes
-            steps = settings['waveform']['x-stage-offset']['interval']
-
-            # deskew output directory
+            # crop output directory
             output_crop = d / 'crop'
             if not dryrun:
                 output_crop.mkdir(exist_ok=True)
@@ -429,7 +443,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if crop:
                     inpath = d / f
                     outpath = output_crop / tag_filename(f, '_crop')
-                    tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
+                    tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
 
                 if deskew:
@@ -439,8 +453,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = d / f
                     outpath = output_deskew / tag_filename(f, '_deskew')
                     step = settings['waveform']['s-piezo']['interval'][ch] 
-                    step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0)
-                    angleUse = configs['deskew']['angle']['arg'] # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+                    step = step * math.sin(31.8 * math.pi/180.0)
 
                     tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
                     cmd.append(tmp)
@@ -461,8 +474,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = d / f
 
                     outpath = output_decon / tag_filename(f, '_decon')
-                    step = settings['waveform']['s-piezo']['interval'][ch] 
-                    step = step * math.sin(31.8 * math.pi/180.0)
+
+                    if deskew:
+                        step = settings['waveform']['s-piezo']['interval'][ch] 
+                        step = step * math.sin(31.8 * math.pi/180.0) 
+                    else:
+                        step = settings['waveform']['z-pzt']['interval'][ch]
 
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                     cmd.append(tmp)
