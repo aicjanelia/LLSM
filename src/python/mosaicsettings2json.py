@@ -132,7 +132,19 @@ def parse_txt(path):
             data[sctn]['laser'].append(int(g_parts[1])) 
             data[sctn]['power'].append(float(g_parts[2]))
             data[sctn]['exp'].append(int(g_parts[3])) 
-            # Note: MOSAIC settings file lists Laser2, Power2, etc., but if separate channel imaging, the next channel will still be listed as a second line (as with LLSM)
+            if not g_parts[4]=='OFF': # If a second laser is acquired simultaneously, keep the information
+                data[sctn]['laser'].append(int(g_parts[4])) 
+                data[sctn]['power'].append(float(g_parts[5]))
+                data[sctn]['exp'].append(int(g_parts[3])) 
+
+                if not g_parts[6]=='OFF': # If a third laser is acquired simultaneously, keep the information
+                    data[sctn]['laser'].append(int(g_parts[6])) 
+                    data[sctn]['power'].append(float(g_parts[7]))
+                    data[sctn]['exp'].append(int(g_parts[3]))
+
+            # MOSAIC settings file format is: Excitation Filter, Laser, Power (%), Exp(ms), Laser2, Power2 (%), Laser3, Power3 (%)
+            # If separate channels, Laser2 will say 'OFF', etc.
+            # If simultaneous imaging, it will list the second laser line and power, but not another exposure, hence reusing g_parts[3]
 
     return data
 

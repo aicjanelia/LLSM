@@ -301,8 +301,6 @@ def process(dirs, configs, dryrun=False, verbose=False):
     cmd_decon = None
     cmd_mip = None
 
-    #print(configs['crop']['executable_path'])
-
     # update default params with user defined configs and build commands
     if 'bsub' in configs:
         params_bsub.update(configs['bsub'])
@@ -353,7 +351,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if f.endswith('Settings.txt'):
                 print('parsing \'%s\'...' % f)
                 settings = mosaicsettings2json.parse_txt(d / f)
-                pattern = re.compile(f.split('_')[0] + '.*_ch(\d+).*\.tif')
+                #pattern = re.compile(f.split('_')[0] + '.*_ch(\d+).*\.tif') # Works unless using simultaneous acquisition
+                pattern = re.compile(f.split('_')[0] + '.*_((CamA_ch(\d+))|(CamB_ch(\d+))).*\.tif')
                 break
 
         # check for z-motion settings
@@ -440,11 +439,28 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if not dryrun:
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
 
-        # process all files in directory
+        # sort unique channels to deal with simultanous acquisition file naming conventions
+        chList = []
         for f in files:
             m = pattern.fullmatch(f)
             if m:
-                ch = int(m.group(1))
+                if m.group(1) not in chList:
+                    chList.append(m.group(1))
+        sortVals = list(chList) 
+        for idx, name in enumerate(chList):
+            sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
+        sortVals = sorted(sortVals)
+        for idx, name in enumerate(sortVals):
+            chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
+        for idx, chName in enumerate(chList):
+            print(chName + '=' + str(settings['waveform']['laser'][idx]))
+
+        # process all files in directory
+        for f in files:
+            m = pattern.fullmatch(f)            
+            if m:
+                chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
                 cmd = [cmd_bsub, ' \"']
 
                 if crop:
@@ -488,7 +504,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         step = settings['waveform']['xz-stage-offset']['interval'][ch]
 
-                    tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
+                    tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[chLaser], psfsteps[chLaser], step, outpath, inpath)
                     cmd.append(tmp)
 
                     # create mips for decon
