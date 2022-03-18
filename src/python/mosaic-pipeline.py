@@ -452,8 +452,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
         sortVals = sorted(sortVals)
         for idx, name in enumerate(sortVals):
             chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
+        configs['parsing'] = {}
         for idx, chName in enumerate(chList):
             print(chName + '=' + str(settings['waveform']['laser'][idx]))
+            configs['parsing'][settings['waveform']['laser'][idx]] = chName
+        param_parsing = {}
+        param_parsing.update(configs['parsing'])
 
         # process all files in directory
         for f in files:
@@ -526,6 +530,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         d = str(d)
         processed[d] = {}
         processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
+        processed[d]['parsing'] = param_parsing
         if crop:
             processed[d]['crop'] = params_crop
         if deskew:
