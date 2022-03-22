@@ -440,6 +440,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
 
         # sort unique channels to deal with simultanous acquisition file naming conventions
+        # very clunky approach at the moment to deal with potentially awkward acquisition choices
         chList = []
         for f in files:
             m = pattern.fullmatch(f)
@@ -450,13 +451,43 @@ def process(dirs, configs, dryrun=False, verbose=False):
         for idx, name in enumerate(chList):
             sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
         sortVals = sorted(sortVals)
+        chNum = list(chList)
         for idx, name in enumerate(sortVals):
             chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
+            chNum[idx] = int(name[0])
         configs['parsing'] = {}
-        for idx, chName in enumerate(chList):
-            print(chName + '=' + str(settings['waveform']['laser'][idx]))
-            configs['parsing'][settings['waveform']['laser'][idx]] = chName
         param_parsing = {}
+        chUnique = []
+        for c in chNum:
+            if c not in chUnique:
+                chUnique.append(c)
+        laserUse = list(chNum)
+        for c in chUnique:
+            lasersC = []
+            nameC = []
+            for idx, ch in enumerate(settings['waveform']['ch']):
+                if ch == c:
+                    lasersC.append(idx)
+            for idx, ch in enumerate(chNum):
+                if ch == c:
+                    nameC.append(idx)              
+            if len(lasersC) == 1:
+                # In this case, map all the names to the single laser
+                chName = []
+                for n in nameC:
+                    laserUse[n] = lasersC[0]
+                    print(chList[n] + '=' + str(settings['waveform']['laser'][lasersC[0]]))
+                    chName.append(chList[n])
+                configs['parsing'][settings['waveform']['laser'][lasersC[0]]] = chName
+            elif len(lasersC) == len(nameC):
+                # In this case, map the names to the lasers in order
+                for idx, n in enumerate(nameC):
+                    laserUse[n] = lasersC[idx]
+                    print(chList[n] + '=' + str(settings['waveform']['laser'][lasersC[idx]]))
+                    configs['parsing'][settings['waveform']['laser'][lasersC[idx]]] = chList[n]
+            else:
+                # Other combinations of MOSAIC settings are not yet expected
+                exit('Error: Unexpected naming convention')
         param_parsing.update(configs['parsing'])
 
         # process all files in directory
@@ -464,6 +495,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             m = pattern.fullmatch(f)            
             if m:
                 chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                chLaser = laserUse[chLaser] # Pull from the list above as some channels may share lasers, etc.
                 ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
                 cmd = [cmd_bsub, ' \"']
 
@@ -508,6 +540,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         step = settings['waveform']['xz-stage-offset']['interval'][ch]
 
+                    # print(m.group(1),psfpaths[chLaser]) # uncomment this to check on the parsing
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[chLaser], psfsteps[chLaser], step, outpath, inpath)
                     cmd.append(tmp)
 
