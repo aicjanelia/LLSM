@@ -438,6 +438,15 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 output_decon_mip = output_mip / 'decon'
                 if not dryrun:
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
+            if not deskew: # In this case, want mips of the 'original' data before decon
+                if crop:
+                    output_crop_mip = output_mip / 'crop'
+                    if not dryrun:
+                        output_crop_mip.mkdir(parents=True, exist_ok=True)
+                else:
+                    output_original_mip = output_mip / 'original'
+                    if not dryrun:
+                        output_original_mip.mkdir(parents=True, exist_ok=True)
 
         # sort unique channels to deal with simultanous acquisition file naming conventions
         # very clunky approach at the moment to deal with potentially awkward acquisition choices
@@ -504,6 +513,19 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     outpath = output_crop / tag_filename(f, '_crop')
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath)
                     cmd.append(tmp)
+
+                if not deskew and mip:
+                    step = settings['waveform']['xz-stage-offset']['interval'][ch]
+                    if crop:
+                        inpath = output_crop / tag_filename(f, '_crop')
+                        outpath = output_crop_mip / tag_filename(f, '_crop_mip')
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        cmd.append(tmp)
+                    else:
+                        inpath = d / f
+                        outpath = output_original_mip / tag_filename(f, '_mip')
+                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        cmd.append(tmp)                          
 
                 if deskew:
                     if crop:
