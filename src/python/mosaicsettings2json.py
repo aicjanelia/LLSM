@@ -42,7 +42,7 @@ def parse_txt(path):
     data = {}
 
     # read file content to memory
-    f = path.open(mode='r')
+    f = path.open(mode='r',encoding="latin-1") #2022-04-14 software update changed the settings file encoding. This general option should read both old and new files
     txt = f.read()
     f.close()
 
