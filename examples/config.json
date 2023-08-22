@@ -9,6 +9,9 @@
             }
         }
     },
+    "bdv": {
+        "bdv_save": true
+    },
     "deskew": {
         "xy-res": 0.104,
         "fill": 0.0,
