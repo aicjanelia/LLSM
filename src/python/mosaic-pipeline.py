@@ -224,6 +224,15 @@ def load_configs(path):
             else:
                 del configs['mip']['z']
 
+    # sanitize bdv configs
+    # (config flag for saving the output files in a BigDataViewer-compatible scheme)
+    if 'bdv' in configs:
+        supported_opts = ['bdv_save']
+        for key in list(configs['bdv']):
+            if key not in supported_opts:
+                print('warning: bdv option \'%s\' in config.json is not supported' % key)
+                del configs['bdv'][key]
+
     return configs
 
 def get_processed_json(path):
@@ -270,6 +279,16 @@ def params2cmd(params, cmd_name):
 
     return cmd
 
+# split strings at desired phrases (CamA, ch, t, etc.) to grab filename info
+# clunky but it works
+def string_finder(old_str, old_phrases):
+    vars = []
+    for str in old_phrases:
+        new_str = old_str.partition(str)[2]
+        new_str1 = new_str.partition('_')[0]
+        vars.append(new_str1)
+    return dict(zip(old_phrases,vars))
+
 def process(dirs, configs, dryrun=False, verbose=False):
     processed = {}
     params_bsub = {
@@ -294,6 +313,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_decon = {}
     params_mip = {}
     params_crop = {}
+    params_bdv = {}
 
     cmd_bsub = None
     cmd_crop = None
@@ -317,6 +337,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
     if 'mip' in configs:
         params_mip.update(configs['mip'])
         cmd_mip = params2cmd(params_mip, configs['mip']['executable_path'])
+    if 'bdv' in configs:
+        params_bdv.update(configs['bdv'])
+    #     cmd_mip = params2cmd(params_mip, configs['bdv']['executable_path'])
 
     # parse PSF settings files
     if 'decon' in configs:
@@ -337,7 +360,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             elif j['waveform']['z-motion'] == 'Z galvo & DO XZ stage':
                 psf_settings[laser]['z-step'] = j['waveform']['xz-stage-offset']['interval'][0] 
             else:
-                exit('error: PSF z-motion cannot be determined for laser %s' % key)
+                exit('error: PSF z-motion cannot be determined for laser %s' % laser)
 
     # process each directory
     for d in dirs:
@@ -365,6 +388,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
                 json.dump(settings, path, indent=4)
+
+        # bdv_file setup
+        bdv_file = False
+        if params_bdv:
+            bdv_file = True
 
         # crop setup
         crop = False
@@ -457,7 +485,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if m.group(1) not in chList:
                     chList.append(m.group(1))
         sortVals = list(chList) 
+        N_ch_CamA = 0
         for idx, name in enumerate(chList):
+            # count number of CamA channels to offset CamB channel numbers
+            temp = re.findall(r'CamA',name)
+            if bool(temp):
+                N_ch_CamA += 1
             sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
         sortVals = sorted(sortVals)
         chNum = list(chList)
@@ -465,7 +498,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
             chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
             chNum[idx] = int(name[0])
         configs['parsing'] = {}
+        configs['bdv_parsing'] = {}
         param_parsing = {}
+        param_bdv_parsing = {}
         chUnique = []
         for c in chNum:
             if c not in chUnique:
@@ -482,22 +517,35 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     nameC.append(idx)              
             if len(lasersC) == 1:
                 # In this case, map all the names to the single laser
+                # Arbitrarily use CamB_ch += N_ch_CamA to avoid same channel names
+                # The new naming scheme is stored in processed_config (use --verbose)
                 chName = []
                 for n in nameC:
                     laserUse[n] = lasersC[0]
                     print(chList[n] + '=' + str(settings['waveform']['laser'][lasersC[0]]))
                     chName.append(chList[n])
                 configs['parsing'][settings['waveform']['laser'][lasersC[0]]] = chName
+                temp = re.findall(r'CamA', chList[n])
+                if bool(temp):
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamA',r'Cam0',chList[n])
+                else:
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+str(int(chList[n][-1])+N_ch_CamA))
             elif len(lasersC) == len(nameC):
                 # In this case, map the names to the lasers in order
                 for idx, n in enumerate(nameC):
                     laserUse[n] = lasersC[idx]
                     print(chList[n] + '=' + str(settings['waveform']['laser'][lasersC[idx]]))
                     configs['parsing'][settings['waveform']['laser'][lasersC[idx]]] = chList[n]
+                    temp = re.findall(r"CamA", chList[n])
+                    if bool(temp):
+                        configs['bdv_parsing'][settings['waveform']['laser'][lasersC[idx]]] = re.sub(r'CamA',r'Cam0',chList[n])
+                    else:
+                        configs['bdv_parsing'][settings['waveform']['laser'][lasersC[idx]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+str(int(chList[n][-1])+N_ch_CamA))
             else:
                 # Other combinations of MOSAIC settings are not yet expected
                 exit('Error: Unexpected naming convention')
         param_parsing.update(configs['parsing'])
+        param_parsing.update(configs['bdv_parsing'])
 
         # process all files in directory
         for f in files:
@@ -508,9 +556,23 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
                 cmd = [cmd_bsub, ' \"']
 
+                # Read filename and convert the outpath name to BDV format
+                # Chose 'scan_Cam_X_ch_X_t_XXXX.tif' as convention
+                if bdv_file:
+                    attributes = [r'Cam',r'ch',r'stack']
+                    details = string_finder(f,attributes)
+                    temp = re.finall(r'CamA',f)
+                    if bool(temp):
+                        dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+'_t_'+details['stack']+'.tif'
+                    else:
+                        dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+'_t_'+details['stack']+'.tif'
+                    out_f = f'{dst}'
+                else:
+                    out_f = f
+
                 if crop:
                     inpath = d / f
-                    outpath = output_crop / tag_filename(f, '_crop')
+                    outpath = output_crop / tag_filename(out_f, '_crop')
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath)
                     cmd.append(tmp)
 
@@ -518,12 +580,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     step = settings['waveform']['xz-stage-offset']['interval'][ch]
                     if crop:
                         inpath = output_crop / tag_filename(f, '_crop')
-                        outpath = output_crop_mip / tag_filename(f, '_crop_mip')
+                        outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
                     else:
                         inpath = d / f
-                        outpath = output_original_mip / tag_filename(f, '_mip')
+                        outpath = output_original_mip / tag_filename(out_f, '_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)                          
 
@@ -532,7 +594,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = output_crop / tag_filename(f, '_crop')
                     else:
                         inpath = d / f
-                    outpath = output_deskew / tag_filename(f, '_deskew')
+                    outpath = output_deskew / tag_filename(out_f, '_deskew')
                     step = settings['waveform']['x-stage-offset']['interval'][ch] 
                     step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0) 
 
@@ -542,7 +604,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     # create mips for deskew
                     if mip:
                         inpath = output_deskew / tag_filename(f, '_deskew')
-                        outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
+                        outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
 
@@ -554,7 +616,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         inpath = d / f
 
-                    outpath = output_decon / tag_filename(f, '_decon')
+                    outpath = output_decon / tag_filename(out_f, '_decon')
 
                     if deskew:
                         step = settings['waveform']['x-stage-offset']['interval'][ch] 
@@ -569,7 +631,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     # create mips for decon
                     if mip:
                         inpath = output_decon / tag_filename(f, '_decon')
-                        outpath = output_decon_mip / tag_filename(f, '_decon_mip')
+                        outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
@@ -586,6 +648,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         processed[d] = {}
         processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
         processed[d]['parsing'] = param_parsing
+        processed[d]['bdv_parsing'] = param_bdv_parsing
         if crop:
             processed[d]['crop'] = params_crop
         if deskew:
