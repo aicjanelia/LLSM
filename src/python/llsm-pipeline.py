@@ -1,4 +1,5 @@
-#! /misc/local/python-3.8.2/bin/python3
+#! /usr/bin/python3
+
 """
 llsm-pipeline
 This program is the entry point for the LLSM pipeline.

@@ -1,4 +1,4 @@
-#! /misc/local/python-3.8.2/bin/python3
+#! /usr/bin/python3
 
 import argparse
 from pickletools import int4

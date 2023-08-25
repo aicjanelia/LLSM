@@ -1,4 +1,4 @@
-#! /misc/local/python-3.8.2/bin/python3
+#! /usr/bin/python3
 """
 mosaic-pipeline
 This program is the entry point for the MOSAIC pipeline.
