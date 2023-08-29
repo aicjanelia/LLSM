@@ -13,6 +13,7 @@ import time
 import datetime
 from pathlib import Path, PurePath
 from sys import exit
+import sys
 import mosaicsettings2json
 
 def parse_args():
@@ -669,6 +670,7 @@ if __name__ == '__main__':
     # load config file
     configs = load_configs(args.input)
     print(configs)
+    sys.stdout.flush()
 
     # get dictionary of processed files
     root_dir = Path(configs['paths']['root'])
