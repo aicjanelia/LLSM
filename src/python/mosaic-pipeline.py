@@ -579,7 +579,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if not deskew and mip:
                     step = settings['waveform']['xz-stage-offset']['interval'][ch]
                     if crop:
-                        inpath = output_crop / tag_filename(f, '_crop')
+                        inpath = output_crop / tag_filename(out_f, '_crop')
                         outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
@@ -591,7 +591,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                 if deskew:
                     if crop:
-                        inpath = output_crop / tag_filename(f, '_crop')
+                        inpath = output_crop / tag_filename(out_f, '_crop')
                     else:
                         inpath = d / f
                     outpath = output_deskew / tag_filename(out_f, '_deskew')
@@ -603,16 +603,16 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     # create mips for deskew
                     if mip:
-                        inpath = output_deskew / tag_filename(f, '_deskew')
+                        inpath = output_deskew / tag_filename(out_f, '_deskew')
                         outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
 
                 if decon:
                     if deskew:
-                        inpath = output_deskew / tag_filename(f, '_deskew')
+                        inpath = output_deskew / tag_filename(out_f, '_deskew')
                     elif crop:
-                        inpath = output_crop / tag_filename(f, '_crop')
+                        inpath = output_crop / tag_filename(out_f, '_crop')
                     else:
                         inpath = d / f
 
@@ -630,7 +630,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     # create mips for decon
                     if mip:
-                        inpath = output_decon / tag_filename(f, '_decon')
+                        inpath = output_decon / tag_filename(out_f, '_decon')
                         outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
