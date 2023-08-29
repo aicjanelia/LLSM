@@ -669,8 +669,12 @@ if __name__ == '__main__':
 
     # load config file
     configs = load_configs(args.input)
-    print(configs)
-    sys.stdout.flush()
+    original_stdout = sys.stdout
+    with open('output.txt','w') as file:
+        sys.stdout = file
+        print(configs)
+        sys.stdout.flush()
+    sys.stdout = original_stdout
 
     # get dictionary of processed files
     root_dir = Path(configs['paths']['root'])
