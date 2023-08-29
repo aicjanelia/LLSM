@@ -233,8 +233,6 @@ def load_configs(path):
                 print('warning: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
 
-    print(configs)
-
     return configs
 
 def get_processed_json(path):
@@ -670,6 +668,7 @@ if __name__ == '__main__':
 
     # load config file
     configs = load_configs(args.input)
+    print(configs)
 
     # get dictionary of processed files
     root_dir = Path(configs['paths']['root'])
