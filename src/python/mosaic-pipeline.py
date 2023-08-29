@@ -392,6 +392,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # bdv_file setup
         bdv_file = False
         if params_bdv:
+            print('saving in bdv naming format...')
             bdv_file = True
 
         # crop setup
