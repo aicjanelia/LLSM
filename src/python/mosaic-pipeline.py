@@ -561,7 +561,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if bdv_file:
                     attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
-                    temp = re.finall(r'CamA',f)
+                    temp = re.findall(r'CamA',f)
                     if bool(temp):
                         dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+'_t_'+details['stack']+'.tif'
                     else:
