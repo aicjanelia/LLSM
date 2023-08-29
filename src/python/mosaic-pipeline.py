@@ -233,6 +233,8 @@ def load_configs(path):
                 print('warning: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
 
+    print(configs)
+
     return configs
 
 def get_processed_json(path):
