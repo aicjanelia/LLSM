@@ -481,11 +481,20 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # sort unique channels to deal with simultanous acquisition file naming conventions
         # very clunky approach at the moment to deal with potentially awkward acquisition choices
         chList = []
+        # parsing tile naming
+        tiles = []
+        pattern_tile = re.compile(r'(_(\d{1,})x_(\d{1,})y_(\d{1,})z_)')
         for f in files:
             m = pattern.fullmatch(f)
             if m:
                 if m.group(1) not in chList:
                     chList.append(m.group(1))
+        # construct list of tile names
+            mm = re.findall(pattern_tile,f)
+            if mm:
+                if mm[0][0] not in tiles:
+                    tiles.append(mm[0][0])
+        tiles_dict = {tiles[i]:('_tile_'+str(i)) for i in range(len(tiles))}
         sortVals = list(chList) 
         N_ch_CamA = 0
         for idx, name in enumerate(chList):
@@ -501,6 +510,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             chNum[idx] = int(name[0])
         configs['parsing'] = {}
         configs['bdv_parsing'] = {}
+        configs['bdv_parsing']['tile_names'] = tiles_dict
         param_parsing = {}
         param_bdv_parsing = {}
         chUnique = []
@@ -559,15 +569,19 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 cmd = [cmd_bsub, ' \"']
 
                 # Read filename and convert the outpath name to BDV format
-                # Chose 'scan_Cam_X_ch_X_t_XXXX.tif' as convention
+                # Chose 'scan_Cam_X_ch_X_tile_X_t_XXXX.tif' as convention
                 if bdv_file:
                     attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
                     temp = re.findall(r'CamA',f)
+                # find corresponding tile name
+                    tile_temp = re.findall(pattern_tile, f)
+                    if tile_temp[0][0] in tiles_dict:
+                        tile = tiles_dict[tile_temp[0][0]]
                     if bool(temp):
-                        dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
                     else:
-                        dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
                     out_f = f'{dst}'
                 else:
                     out_f = f
