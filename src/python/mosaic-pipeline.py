@@ -483,7 +483,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         chList = []
         # parsing tile naming
         tiles = []
-        pattern_tile = re.compile(r'(_(\d{1,})x_(\d{1,})y_(\d{1,})z_)')
+        pattern_tile = re.compile(r'(\_(?:[-]*\d{1,}?){1}x\_(?:[-]*\d{1,}?){1}y\_(?:[-]*\d{1,}?)z_)')
         for f in files:
             m = pattern.fullmatch(f)
             if m:
@@ -492,8 +492,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # construct list of tile names
             mm = re.findall(pattern_tile,f)
             if mm:
-                if mm[0][0] not in tiles:
-                    tiles.append(mm[0][0])
+                if mm[0] not in tiles:
+                    tiles.append(mm[0])
         tiles_dict = {tiles[i]:('_tile_'+str(i)) for i in range(len(tiles))}
         sortVals = list(chList) 
         N_ch_CamA = 0
@@ -576,13 +576,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     temp = re.findall(r'CamA',f)
                 # find corresponding tile name
                     tile_temp = re.findall(pattern_tile, f)
-                    if tile_temp[0][0] in tiles_dict:
-                        tile = tiles_dict[tile_temp[0][0]]
+                    
+                    if tile_temp[0] in tiles_dict:
+                        tile = tiles_dict[tile_temp[0]]
+                    else:
+                        tile = '_tile_0'
                     if bool(temp):
                         dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
                     else:
                         dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
                     out_f = f'{dst}'
+                    
                 else:
                     out_f = f
 
