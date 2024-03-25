@@ -228,11 +228,19 @@ def load_configs(path):
     # sanitize bdv configs
     # (config flag for saving the output files in a BigDataViewer-compatible scheme)
     if 'bdv' in configs:
-        supported_opts = ['bdv_save']
+        supported_opts = ['bdv_save', 'type']
         for key in list(configs['bdv']):
             if key not in supported_opts:
                 print('warning: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
+        if 'bdv_save' in configs['bdv']:
+            if not type(configs['bdv']['bdv_save']) is bool:
+                exit('error: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])
+        
+        if 'type' in configs['bdv']:
+            if not type(configs['bdv']['type']) is str:
+                exit('error: type flag \'%s\' in config.json is not string' % configs['bdv']['type'])
+                
 
     return configs
 
@@ -392,9 +400,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # bdv_file setup
         bdv_file = False
+        attributes = []
         if params_bdv:
             print('saving in bdv naming format...')
             bdv_file = True
+            scan_type = configs['bdv']['type']
+            if scan_type == 'scan':
+                attributes = [r'Cam',r'ch',r'stack']
+            elif scan_type == 'tile':
+                attributes = [r'Cam',r'ch',r'Iter_']
+            else:
+                attributes = [r'Cam',r'ch',r'stack']
 
         # crop setup
         crop = False
@@ -571,20 +587,23 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 # Read filename and convert the outpath name to BDV format
                 # Chose 'scan_Cam_X_ch_X_tile_X_t_XXXX.tif' as convention
                 if bdv_file:
-                    attributes = [r'Cam',r'ch',r'stack']
+                    # attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
                     temp = re.findall(r'CamA',f)
                 # find corresponding tile name
                     tile_temp = re.findall(pattern_tile, f)
-                    
                     if tile_temp[0] in tiles_dict:
                         tile = tiles_dict[tile_temp[0]]
+                    # Keep tile_0 if not
                     else:
                         tile = '_tile_0'
+
                     if bool(temp):
-                        dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
+                        # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam_'+re.sub('A','0',details[attributes[0]])+'_ch_'+details[attributes[1]]+tile+'_t_'+details[attributes[-1]]+'.tif'
                     else:
-                        dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
+                        # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam_'+re.sub('B','1',details[attributes[0]])+'_ch_'+str(int(details[attributes[1]])+N_ch_CamA)+tile+'_t_'+details[attributes[-1]]+'.tif'
                     out_f = f'{dst}'
                     
                 else:
