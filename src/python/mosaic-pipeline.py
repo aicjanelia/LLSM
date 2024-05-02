@@ -409,6 +409,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 attributes = [r'Cam',r'ch',r'stack']
             elif scan_type == 'tile':
                 attributes = [r'Cam',r'ch',r'Iter_']
+            elif scan_type == 'bdv':
+                attributes = [r'Cam_',r'ch_',r't_']
+                pattern = re.compile(f.split('_')[0] + '.*_(ch_(\d+)).*\.tif')
             else:
                 attributes = [r'Cam',r'ch',r'stack']
 
@@ -500,6 +503,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # parsing tile naming
         tiles = []
         pattern_tile = re.compile(r'(\_(?:[-]*\d{1,}?){1}x\_(?:[-]*\d{1,}?){1}y\_(?:[-]*\d{1,}?)z_)')
+        if bdv_file:
+            if scan_type == 'bdv': # In this case, we have a different file structure
+                pattern_tile = re.compile(f.split('_')[0] + '.*_(tile_(\d+)).*\.tif')
+
         for f in files:
             m = pattern.fullmatch(f)
             if m:
@@ -508,6 +515,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # construct list of tile names
             mm = re.findall(pattern_tile,f)
             if mm:
+                if len(mm[0]) >  1: # for the bdv case
+                    mm[0] = mm[0][0]
                 if mm[0] not in tiles:
                     tiles.append(mm[0])
         tiles_dict = {tiles[i]:('_tile_'+str(i)) for i in range(len(tiles))}
@@ -577,9 +586,16 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # process all files in directory
         for f in files:
-            m = pattern.fullmatch(f)            
+            m = pattern.fullmatch(f) 
             if m:
-                chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                #chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                if bdv_file:
+                    if scan_type == 'bdv':
+                        chLaser = int(m.group(1)[-1]) # This assumes the channel ordering makes sense from prior processing -- is that right?
+                    else:
+                        chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                else:
+                    chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
                 chLaser = laserUse[chLaser] # Pull from the list above as some channels may share lasers, etc.
                 ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
                 cmd = [cmd_bsub, ' \"']
