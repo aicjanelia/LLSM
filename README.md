@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11106928.svg)](https://doi.org/10.5281/zenodo.11106928) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+
 # Lattice Light-Sheet Microscope (LLSM) Pipeline
 
 This repository contains pipeline code for handling AIC's LLSM data. The pipeline consists of three discrete modules: (1) deskewing, (2) deconvolution, and (3) maximum intensity projection. The pipeline is accessed via the command line using the `llsm-pipeline` command. Each pipeline module compiles to a separate binary that can be directly executed by calling `deskew`, `decon`, or `mip` on the command line. Use the `-h` option with any command to get a list of supported arguments.
