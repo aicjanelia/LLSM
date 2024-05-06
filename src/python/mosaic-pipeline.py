@@ -531,11 +531,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # construct list of tile names
             mm = re.findall(pattern_tile,f)
             if mm:
-                if len(mm[0]) >  1: # for the bdv case
+                if scan_type == 'bdv':
                     mm[0] = mm[0][0]
                 if mm[0] not in tiles:
                     tiles.append(mm[0])
         tiles_dict = {tiles[i]:('_tile_'+str(i)) for i in range(len(tiles))}
+
         sortVals = list(chList) 
         N_ch_CamA = 0
         for idx, name in enumerate(chList):
