@@ -8,7 +8,7 @@
 #include <itkImageBase.h>
 #include <itkExtractImageFilter.h>
 
-kImageType::Pointer Crop(kImageType::Pointer img, float z_step, float xy_res, int top, int bottom, int left, int right, bool verbose=false)
+kImageType::Pointer Crop(kImageType::Pointer img, float z_step, float xy_res, int top, int bottom, int left, int right, int front, int back, bool verbose=false)
 {
     // calculate and set output size
     kImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
@@ -16,18 +16,18 @@ kImageType::Pointer Crop(kImageType::Pointer img, float z_step, float xy_res, in
     if (verbose)
     {
         std::cout << "Input Dimensions (px) = " << size[0] << " x " << size[1] << " x " << size[2] << "\n";
-        std::cout << "Output Dimensions (px) = " << size[0] - left - right << " x " << size[1] - top - bottom << " x " << size[2] << "\n";
+        std::cout << "Output Dimensions (px) = " << size[0] - left - right << " x " << size[1] - top - bottom << " x " << size[2] - front - back << "\n";
     }
     
     kImageType::IndexType desiredStart;
     desiredStart.SetElement(0, left);
     desiredStart.SetElement(1, top);
-    desiredStart.SetElement(2, 0);
+    desiredStart.SetElement(2, front);
 
     kImageType::SizeType desiredSize;
     desiredSize.SetElement(0, size[0] - left - right);
     desiredSize.SetElement(1, size[1] - top - bottom);
-    desiredSize.SetElement(2, size[2]);
+    desiredSize.SetElement(2, size[2] - front - back);
 
     kImageType::RegionType desiredRegion(desiredStart, desiredSize);
 

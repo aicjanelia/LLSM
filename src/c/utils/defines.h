@@ -14,3 +14,4 @@
 constexpr unsigned int kDimensions = 3;
 using kPixelType = double;
 using kImageType = itk::Image<kPixelType, kDimensions>;
+using kSliceType = itk::Image<kPixelType, 2>;

@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
   po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
-      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
-      ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
+      ("xy-rez,x", po::value<float>(&xy_res)->default_value(-1.0f), "x/y resolution (um/px)")
+      ("step,s", po::value<float>(&step)->default_value(-1.0f), "step/interval (um)")
       ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
       ("output,o", po::value<std::string>()->required(),"output file path")
@@ -120,8 +120,17 @@ int main(int argc, char** argv) {
 
   // deskew
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
-  kImageType::Pointer deskew_img = Deskew(img, angle, step, xy_res, (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
 
+  kImageType::SpacingType img_spacing = img->GetSpacing();
+  if (xy_res > 0.0) {
+    img_spacing[0] = xy_res;
+    img_spacing[1] = xy_res;
+  }
+  if (step > 0.0)
+    img_spacing[2] = step;
+
+  kImageType::Pointer deskew_img = Deskew(img, angle, img_spacing[2], img_spacing[0], (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
+  
   // write file
   if (bit_depth == 8) {
     using PixelTypeOut = unsigned char;

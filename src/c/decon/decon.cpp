@@ -27,9 +27,9 @@ int main(int argc, char** argv) {
       ("help,h", "display this help message")
       ("kernel,k", po::value<std::string>()->required(),"kernel file path")
       ("iterations,n", po::value<unsigned int>(&iterations)->required(),"deconvolution iterations")
-      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
-      ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(1.0f),"z-step size of kernel")
-      ("image-spacing,q", po::value<float>(&img_zstep)->default_value(1.0f),"z-step size of input image")
+      ("xy-rez,x", po::value<float>(&xy_res)->default_value(-1.0f), "x/y resolution (um/px)")
+      ("kernel-spacing,p", po::value<float>(&kernel_zstep)->default_value(-1.0f),"z-step size of kernel")
+      ("image-spacing,q", po::value<float>(&img_zstep)->default_value(-1.0f),"z-step size of input image")
       ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant intensity value to subtract from input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
@@ -125,22 +125,25 @@ int main(int argc, char** argv) {
   kImageType::Pointer kernel = ReadImageFile<kImageType>(kernel_path);
 
   // set spacing
-  kImageType::SpacingType img_spacing;
+  kImageType::SpacingType img_spacing = img->GetSpacing();
+  kImageType::SpacingType kernel_spacing = kernel->GetSpacing();
 
-  img_spacing[0] = xy_res;
-  img_spacing[1] = xy_res;
-  img_spacing[2] = img_zstep;
+  if (xy_res > 0.0) {
+    img_spacing[0] = xy_res;
+    img_spacing[1] = xy_res;
+    kernel_spacing[0] = xy_res;
+    kernel_spacing[1] = xy_res;
+  }
+  if (img_zstep > 0.0)
+    img_spacing[2] = img_zstep;
+  if (kernel_zstep > 0.0)
+    kernel_spacing[2] = kernel_zstep;
+  
   img->SetSpacing(img_spacing);
-
-  kImageType::SpacingType kernel_spacing;
-
-  kernel_spacing[0] = xy_res;
-  kernel_spacing[1] = xy_res;
-  kernel_spacing[2] = kernel_zstep;
   kernel->SetSpacing(kernel_spacing);
 
   // resample kernel
-  if (img_zstep != kernel_zstep)
+  if (img_spacing[2] != kernel_spacing[2])
   {
     kernel = Resampler(kernel, img_spacing, verbose);
   }
@@ -154,6 +157,8 @@ int main(int argc, char** argv) {
 
   // decon
   kImageType::Pointer decon_img = RichardsonLucy(img, kernel, iterations, verbose);
+
+  decon_img->SetSpacing(img_spacing);
 
   // write file
   if (bit_depth == 8) {

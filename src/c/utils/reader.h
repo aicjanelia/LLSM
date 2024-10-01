@@ -148,11 +148,13 @@ itk::SmartPointer<TImage> ReadImageFile(std::string file_path, bool verbose=fals
   switch (pixel_type)
   {
   case itk::IOPixelEnum::SCALAR:
+    /*
     if (image_dimension != kDimensions)
     {
       std::cerr << "Need 3-D image!" << std::endl;
       return nullptr;
     }
+    */
     return ReadImage<kDimensions, TImage>(file_path.c_str(), component_type);
 
   default:

@@ -22,10 +22,10 @@ int main(int argc, char** argv) {
   po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
-      ("crop,c", po::value<std::string>()->default_value("0,0,0,0"),"boundary pixel numbers (top,bottom,left,right)")
+      ("crop,c", po::value<std::string>()->default_value("0,0,0,0,0,0"),"boundary pixel numbers (top,bottom,left,right,front,back)")
       ("output,o", po::value<std::string>()->required(),"output file path")
-      ("xy-rez,x", po::value<float>(&xy_res)->default_value(0.104f), "x/y resolution (um/px)")
-      ("step,s", po::value<float>(&step)->required(), "step/interval (um)")
+      ("xy-rez,x", po::value<float>(&xy_res)->default_value(-1.0f), "x/y resolution (um/px)")
+      ("step,s", po::value<float>(&step)->default_value(-1.0f), "step/interval (um)")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
@@ -108,9 +108,9 @@ int main(int argc, char** argv) {
     getline( ss, substr, ',' );
     crop_params.push_back( stoi(substr) );
   }
-  if (crop_params.size() < 4)
+  if (crop_params.size() < 6)
   {
-      for (int i = crop_params.size(); i < 4; i++)
+      for (int i = crop_params.size(); i < 6; i++)
         crop_params.push_back(0);
   }
 
@@ -121,6 +121,8 @@ int main(int argc, char** argv) {
     std::cout << "Cropping: Bottom = " << crop_params[1] << "\n";
     std::cout << "Cropping: Left = " << crop_params[2] << "\n";
     std::cout << "Cropping: Right = " << crop_params[3] << "\n";
+    std::cout << "Cropping: Front = " << crop_params[4] << "\n";
+    std::cout << "Cropping: Back = " << crop_params[5] << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
@@ -131,7 +133,16 @@ int main(int argc, char** argv) {
 
   // crop
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
-  kImageType::Pointer cropped_img = Crop(img, step, xy_res, crop_params[0], crop_params[1], crop_params[2], crop_params[3], verbose);
+  kImageType::SpacingType img_spacing = img->GetSpacing();
+  if (xy_res > 0.0) {
+    img_spacing[0] = xy_res;
+    img_spacing[1] = xy_res;
+  }
+  if (step > 0.0)
+    img_spacing[2] = step;
+  kImageType::Pointer cropped_img = Crop(img, img_spacing[2], img_spacing[0], crop_params[0], crop_params[1], crop_params[2], crop_params[3], crop_params[4], crop_params[5], verbose);
+
+  cropped_img->SetSpacing(img_spacing);
 
   // write file
   if (bit_depth == 8) {
