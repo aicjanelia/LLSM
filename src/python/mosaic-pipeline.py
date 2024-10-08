@@ -24,10 +24,10 @@ def parse_args():
     args = parser.parse_args()
 
     if not args.input.is_file():
-        exit('error: \'%s\' does not exist' % args.input)
+        exit('ERROR: \'%s\' does not exist' % args.input)
 
     if not args.input.suffix == '.json':
-        print('warning: \'%s\' does not appear to be a settings file\n' % args.input)
+        print('WARNING: \'%s\' does not appear to be a settings file\n' % args.input)
 
     return args
 
@@ -36,45 +36,53 @@ def load_configs(path):
         try:
             configs = json.load(f)
         except json.JSONDecodeError as e:
-            exit('error: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
+            exit('ERROR: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
 
     # sanitize root path
     root = Path(configs["paths"]["root"])
     if not root.is_dir():
-        exit('error: root path \'%s\' does not exist' % root)
+        exit('ERROR: root path \'%s\' does not exist' % root)
 
     # sanitize bsub configs
     if 'bsub' in configs:
-        supported_opts = ['o', 'We', 'n', 'P']
+        supported_opts = ['o', 'We', 'n', 'P','W']
         for key in list(configs['bsub']):
             if key not in supported_opts:
-                print('warning: bsub option \'%s\' in config.json is not supported' % key)
+                print('WARNING: bsub option \'%s\' in config.json is not supported' % key)
                 del configs['bsub'][key]
 
         if 'o' in configs['bsub']:
             if not Path(configs['bsub']['o']).is_dir:
-                exit('error: bsub output directory \'%s\' in config.json is not a valid path' % configs['bsub']['o'])
+                exit('ERROR: bsub output directory \'%s\' in config.json is not a valid path' % configs['bsub']['o'])
             configs['bsub']['o'] = {'flag': '-o', 'arg': configs['bsub']['o']}
         
         if 'We' in configs['bsub']:
             if not type(configs['bsub']['We']) is int:
-                exit('error: bsub estimated wait time \'%s\' in config.json is not an integer' % configs['bsub']['We'])
+                exit('ERROR: bsub estimated wait time \'%s\' in config.json is not an integer' % configs['bsub']['We'])
             configs['bsub']['We'] = {'flag': '-We', 'arg': configs['bsub']['We']}
         
         if 'n' in configs['bsub']:
             if not type(configs['bsub']['n']) is int:
-                exit('error: bsub slot count \'%s\' in config.json is not an integer' % configs['bsub']['n'])
+                exit('ERROR: bsub slot count \'%s\' in config.json is not an integer' % configs['bsub']['n'])
             configs['bsub']['n'] = {'flag': '-n', 'arg': configs['bsub']['n']}
 
         if 'P' in configs['bsub']:
             configs['bsub']['P'] = {'flag': '-P', 'arg': configs['bsub']['P']}
+
+        if 'W' in configs['bsub']:
+            if not type(configs['bsub']['W']) is int:
+                exit('ERROR: bsub hard run time limit \'%s\' in config.json is not an integer' % configs['bsub']['We'])
+            configs['bsub']['W'] = {'flag': '-W', 'arg': configs['bsub']['W']}
+        else:
+            print('WARNING: Automatic hard run time limit set to 8 h. Add a W value to bsub in your config file to allow files to process longer than 8 h.')
+            configs['bsub']['W'] = {'flag': '-W', 'arg': 8*60}
 
     # sanitize crop configs
     if 'crop' in configs:
         supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight']
         for key in list(configs['crop']):
             if key not in supported_opts:
-                print('warning: crop option \'%s\' in config.json is not supported' % key)
+                print('WARNING: crop option \'%s\' in config.json is not supported' % key)
                 del configs['crop'][key]
 
         if not 'executable_path' in configs['crop']:
@@ -82,7 +90,7 @@ def load_configs(path):
 
         if 'xy-res' in configs['crop']:
             if not type(configs['crop']['xy-res']) is float:
-                exit('error: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
+                exit('ERROR: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
             configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
         
         cropSize = [0,0,0,0] # If missing a side, assume zero cropping
@@ -105,7 +113,7 @@ def load_configs(path):
 
         if 'bit-depth' in configs['crop']:
             if configs['crop']['bit-depth'] not in [8, 16, 32]:
-                exit('error: crop bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['crop']['bit-depth'])
+                exit('ERROR: crop bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['crop']['bit-depth'])
             configs['crop']['bit-depth'] = {'flag': '-b', 'arg': configs['crop']['bit-depth']}
 
     # sanitize deskew configs
@@ -113,7 +121,7 @@ def load_configs(path):
         supported_opts = ['xy-res', 'fill', 'bit-depth', 'angle', 'executable_path']
         for key in list(configs['deskew']):
             if key not in supported_opts:
-                print('warning: deskew option \'%s\' in config.json is not supported' % key)
+                print('WARNING: deskew option \'%s\' in config.json is not supported' % key)
                 del configs['deskew'][key]
 
         if not 'executable_path' in configs['deskew']:
@@ -121,24 +129,24 @@ def load_configs(path):
 
         if 'angle' in configs['deskew']:
             if not type(configs['deskew']['angle']) is float:
-                exit('error: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
+                exit('ERROR: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
         else:
             configs['deskew']['angle'] = -32.45 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
         configs['deskew']['angle'] = {'flag': '-a', 'arg': configs['deskew']['angle']}
 
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
-                exit('error: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
+                exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
             configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
         if 'fill' in configs['deskew']:
             if not type(configs['deskew']['fill']) is float:
-                exit('error: deskew background fill value \'%s\' in config.json is not a float' % configs['deskew']['fill'])
+                exit('ERROR: deskew background fill value \'%s\' in config.json is not a float' % configs['deskew']['fill'])
             configs['deskew']['fill'] = {'flag': '-f', 'arg': configs['deskew']['fill']}
 
         if 'bit-depth' in configs['deskew']:
             if configs['deskew']['bit-depth'] not in [8, 16, 32]:
-                exit('error: deskew bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['deskew']['bit-depth'])
+                exit('ERROR: deskew bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['deskew']['bit-depth'])
             configs['deskew']['bit-depth'] = {'flag': '-b', 'arg': configs['deskew']['bit-depth']}
 
     # sanitize decon configs
@@ -146,7 +154,7 @@ def load_configs(path):
         supported_opts = ['xy-res','n', 'bit-depth', 'subtract', 'executable_path']
         for key in list(configs['decon']):
             if key not in supported_opts:
-                print('warning: decon option \'%s\' in config.json is not supported' % key)
+                print('WARNING: decon option \'%s\' in config.json is not supported' % key)
                 del configs['decon'][key]
 
         if not 'executable_path' in configs['decon']:
@@ -154,48 +162,48 @@ def load_configs(path):
 
         if 'xy-res' in configs['decon']:
             if not type(configs['decon']['xy-res']) is float:
-                exit('error: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
+                exit('ERROR: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
             configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
 
         if 'n' in configs['decon']:
             if not type(configs['decon']['n']) is int:
-                exit('error: decon iteration number (n) \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['n'])
+                exit('ERROR: decon iteration number (n) \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['n'])
             configs['decon']['n'] = {'flag': '-n', 'arg': configs['decon']['n']}
         
         if 'bit-depth' in configs['decon']:
             if configs['decon']['bit-depth'] not in [8, 16, 32]:
-                exit('error: decon bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['bit-depth'])
+                exit('ERROR: decon bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon']['bit-depth'])
             configs['decon']['bit-depth'] = {'flag': '-b', 'arg': configs['decon']['bit-depth']}
 
         if 'subtract' in configs['decon']:
             if not type(configs['decon']['subtract']) is float:
-                exit('error: decon subtract value \'%s\' in config.json must be a float' % configs['decon']['subtract'])
+                exit('ERROR: decon subtract value \'%s\' in config.json must be a float' % configs['decon']['subtract'])
             configs['decon']['subtract'] = {'flag': '-s', 'arg': configs['decon']['subtract']}
 
         if 'psf' not in configs['paths']:
-            exit('error: decon enabled, but no psf parameters found in config file')
+            exit('ERROR: decon enabled, but no psf parameters found in config file')
 
         if 'dir' in configs['paths']['psf']:
             partial_path = root / configs['paths']['psf']['dir']
         else:
             configs['paths']['psf']['dir'] = None
             partial_path = root
-            print('warning: no psf directory provided... using \'%s\'' % root)
+            print('WARNING: no psf directory provided... using \'%s\'' % root)
         
         if 'laser' not in configs['paths']['psf']:
-            exit('error: no psf files provided')
+            exit('ERROR: no psf files provided')
 
         for key, val in configs['paths']['psf']['laser'].items():
             p = partial_path / val
             if not p.is_file():
-                exit('error: laser %s psf file \'%s\' does not exist' % (key, p))
+                exit('ERROR: laser %s psf file \'%s\' does not exist' % (key, p))
 
     # sanitize mip configs
     if 'mip' in configs:
         supported_opts = ['x', 'y', 'z', 'executable_path']
         for key in list(configs['mip']):
             if key not in supported_opts:
-                print('warning: mip option \'%s\' in config.json is not supported' % key)
+                print('WARNING: mip option \'%s\' in config.json is not supported' % key)
                 del configs['mip'][key]
 
         if not 'executable_path' in configs['mip']:
@@ -203,7 +211,7 @@ def load_configs(path):
 
         if 'x' in configs['mip']:
             if not type(configs['mip']['x']) is bool:
-                exit('error: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
+                exit('ERROR: mip x projection \'%s\' in config.json is not a true or false' % configs['mip']['x'])
             if configs['mip']['x']:
                 configs['mip']['x'] = {'flag': '-x'}
             else:
@@ -211,7 +219,7 @@ def load_configs(path):
         
         if 'y' in configs['mip']:
             if not type(configs['mip']['y']) is bool:
-                exit('error: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
+                exit('ERROR: mip y projection \'%s\' in config.json is not a true or false' % configs['mip']['y'])
             if configs['mip']['y']:
                 configs['mip']['y'] = {'flag': '-y'}
             else:
@@ -219,7 +227,7 @@ def load_configs(path):
 
         if 'z' in configs['mip']:
             if not type(configs['mip']['z']) is bool:
-                exit('error: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
+                exit('ERROR: mip z projection \'%s\' in config.json is not a true or false' % configs['mip']['z'])
             if configs['mip']['z']:
                 configs['mip']['z'] = {'flag': '-z'}
             else:
@@ -231,15 +239,15 @@ def load_configs(path):
         supported_opts = ['bdv_save', 'type']
         for key in list(configs['bdv']):
             if key not in supported_opts:
-                print('warning: bdv option \'%s\' in config.json is not supported' % key)
+                print('WARNING: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
         if 'bdv_save' in configs['bdv']:
             if not type(configs['bdv']['bdv_save']) is bool:
-                exit('error: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])
+                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])
         
         if 'type' in configs['bdv']:
             if not type(configs['bdv']['type']) is str:
-                exit('error: type flag \'%s\' in config.json is not string' % configs['bdv']['type'])
+                exit('ERROR: type flag \'%s\' in config.json is not string' % configs['bdv']['type'])
                 
 
     return configs
@@ -250,7 +258,7 @@ def get_processed_json(path):
             try:
                 processed = json.load(f)
             except json.JSONDecodeError as e:
-                exit('error: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
+                exit('ERROR: \'%s\' is not formatted as a proper JSON file...\n%s' % (path, e))
         
         return processed
     else:
@@ -385,16 +393,16 @@ def process(dirs, configs, dryrun=False, verbose=False):
             psf_filename, _ = os.path.splitext(psf_filename)
             p = root / configs['paths']['psf']['dir'] / (psf_filename + '_Settings.txt')
             if not p.is_file():
-                exit('error: laser %s psf file \'%s\' does not have a Settings file' % (laser, p))
+                exit('ERROR: laser %s psf file \'%s\' does not have a Settings file' % (laser, p))
    
             j = mosaicsettings2json.parse_txt(p)
 
             if j['waveform']['z-motion'] == 'X stage':
-                exit('error: PSF is skewed and cannot be used for decon')
+                exit('ERROR: PSF is skewed and cannot be used for decon')
             elif j['waveform']['z-motion'] == 'Z galvo & DO XZ stage':
                 psf_settings[laser]['z-step'] = j['waveform']['xz-stage-offset']['interval'][0] 
             else:
-                exit('error: PSF z-motion cannot be determined for laser %s' % laser)
+                exit('ERROR: PSF z-motion cannot be determined for laser %s' % laser)
 
     # process each directory
     for d in dirs:
@@ -414,9 +422,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # check for z-motion settings
         if 'waveform' not in settings:
-            exit('error: settings file did not contain a Waveform section')
+            exit('ERROR: settings file did not contain a Waveform section')
         if 'z-motion' not in settings['waveform']:
-            exit('error: settings file did not contain a Z motion field')
+            exit('ERROR: settings file did not contain a Z motion field')
 
         # save settings json
         if not dryrun:
@@ -448,7 +456,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             elif 'xz-stage-offset' in settings['waveform']:
                 stepCrop = settings['waveform']['xz-stage-offset']['interval']
             else:
-                exit('error: settings file did not contain an valid step parameter for cropping')
+                exit('ERROR: settings file did not contain an valid step parameter for cropping')
 
             crop = True
 
@@ -461,9 +469,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
         deskew = False
         if settings['waveform']['z-motion'] == 'X stage':
             if 'x-stage-offset' not in settings['waveform']:
-                exit('error: settings file did not contain a X Stage Offset field')
+                exit('ERROR: settings file did not contain a X Stage Offset field')
             if 'interval' not in settings['waveform']['x-stage-offset']:
-                exit('error: settings file did not contain a X Stage Offset Interval field')
+                exit('ERROR: settings file did not contain a X Stage Offset Interval field')
 
             deskew = True
 
@@ -479,7 +487,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         decon = False
         if params_decon:
             if 'laser' not in settings['waveform']:
-                exit('error: settings file did not contain a Laser field')
+                exit('ERROR: settings file did not contain a Laser field')
 
             decon = True
 
@@ -606,7 +614,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         configs['bdv_parsing'][settings['waveform']['laser'][lasersC[idx]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+str(int(chList[n][-1])+N_ch_CamA))
             else:
                 # Other combinations of MOSAIC settings are not yet expected
-                exit('Error: Unexpected naming convention')
+                exit('ERROR: Unexpected naming convention')
         param_parsing.update(configs['parsing'])
         param_parsing.update(configs['bdv_parsing'])
 
@@ -748,8 +756,8 @@ if __name__ == '__main__':
 
     # load config file
     configs = load_configs(args.input)
-    if args.dryrun:
-        print(configs)
+    # if args.dryrun:
+    #     print(configs)
 
     # get dictionary of processed files
     root_dir = Path(configs['paths']['root'])
