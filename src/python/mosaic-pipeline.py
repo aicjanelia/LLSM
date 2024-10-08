@@ -79,7 +79,7 @@ def load_configs(path):
 
     # sanitize crop configs
     if 'crop' in configs:
-        supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight']
+        supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight','cropFront','cropBack']
         for key in list(configs['crop']):
             if key not in supported_opts:
                 print('WARNING: crop option \'%s\' in config.json is not supported' % key)
@@ -93,7 +93,7 @@ def load_configs(path):
                 exit('ERROR: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
             configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
         
-        cropSize = [0,0,0,0] # If missing a side, assume zero cropping
+        cropSize = [0,0,0,0,0,0] # If missing a side, assume zero cropping
         if "cropTop" in configs['crop']:
             cropSize[0] = configs['crop']['cropTop']
             del configs['crop']['cropTop']
@@ -106,6 +106,12 @@ def load_configs(path):
         if "cropRight" in configs['crop']:
             cropSize[3] = configs['crop']['cropRight']
             del configs['crop']['cropRight']
+        if "cropFront" in configs['crop']:
+            cropSize[4] = configs['crop']['cropFront']
+            del configs['crop']['cropFront']
+        if "cropBack" in configs['crop']:
+            cropSize[5] = configs['crop']['cropBack']
+            del configs['crop']['cropBack']
         cropSize = [str(int) for int in cropSize]
         cropSize = ",".join(cropSize)
 

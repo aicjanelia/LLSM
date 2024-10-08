@@ -12,6 +12,14 @@
     "bdv": {
         "bdv_save": true
     },
+    "crop": {
+        "cropTop": 10,
+        "cropBottom": 0,
+        "cropLeft": 15,
+        "cropRight": 5,
+        "cropFront": 100,
+        "cropBack": 50
+    },
     "deskew": {
         "xy-res": 0.104,
         "fill": 0.0,
