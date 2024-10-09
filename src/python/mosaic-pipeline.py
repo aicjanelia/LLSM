@@ -242,19 +242,14 @@ def load_configs(path):
     # sanitize bdv configs
     # (config flag for saving the output files in a BigDataViewer-compatible scheme)
     if 'bdv' in configs:
-        supported_opts = ['bdv_save', 'type']
+        supported_opts = ['bdv_save']
         for key in list(configs['bdv']):
             if key not in supported_opts:
                 print('WARNING: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
         if 'bdv_save' in configs['bdv']:
             if not type(configs['bdv']['bdv_save']) is bool:
-                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])
-        
-        if 'type' in configs['bdv']:
-            if not type(configs['bdv']['type']) is str:
-                exit('ERROR: type flag \'%s\' in config.json is not string' % configs['bdv']['type'])
-                
+                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])                
 
     return configs
 
@@ -443,16 +438,24 @@ def process(dirs, configs, dryrun=False, verbose=False):
         if params_bdv:
             print('saving in bdv naming format...')
             bdv_file = True
-            scan_type = configs['bdv']['type']
-            if scan_type == 'scan':
-                attributes = [r'Cam',r'ch',r'stack']
-            elif scan_type == 'tile':
-                attributes = [r'Cam',r'ch',r'Iter_']
-            elif scan_type == 'bdv':
+        for f in files:
+            bdv_pattern = re.compile('scan_Cam(\d+)_ch(\d+)_tile(\d+)_t(\d+).*\.tif')
+            m = bdv_pattern.fullmatch(f)
+            if m:
+                scan_type = 'bdv'
                 attributes = [r'Cam_',r'ch_',r't_']
-                pattern = re.compile(f.split('_')[0] + '.*_(ch_(\d+)).*\.tif')
-            else:
+                pattern = pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))).*\.tif')
+                break
+            m = pattern.fullmatch(f)
+            if m:
+                temp = re.findall(r'Iter',f)
+                if bool(temp):
+                    scan_type = 'tile'
+                    attributes = [r'Cam',r'ch',r'Iter_']
+                    break                
+                scan_type = 'scan' # if not tile or bdv, general case
                 attributes = [r'Cam',r'ch',r'stack']
+        print('scan type is ' + scan_type)
 
         # crop setup
         crop = False
@@ -573,7 +576,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
         chNum = list(chList)
         for idx, name in enumerate(sortVals):
             chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
-            chNum[idx] = int(name[0])
+            if scan_type == 'bdv':
+                chNum[idx] = idx
+            else:
+                chNum[idx] = int(name[0])
         configs['parsing'] = {}
         configs['bdv_parsing'] = {}
         configs['bdv_parsing']['tile_names'] = tiles_dict
@@ -629,21 +635,17 @@ def process(dirs, configs, dryrun=False, verbose=False):
         for f in files:
             m = pattern.fullmatch(f) 
             if m:
-                #chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
-                if bdv_file:
-                    if scan_type == 'bdv':
-                        chLaser = int(m.group(1)[-1]) # This assumes the channel ordering makes sense from prior processing -- is that right?
-                    else:
-                        chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
-                else:
-                    chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
+                chLaser = chList.index(m.group(1)) # This is the relevant index for parameters based on the laser, i.e., PSFs
                 chLaser = laserUse[chLaser] # Pull from the list above as some channels may share lasers, etc.
-                ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
+                if scan_type == 'bdv':
+                    ch = int(chLaser)
+                else:
+                    ch = int(m.group(1)[-1]) # This is the relevant index for things like stage scanning, etc.
                 cmd = [cmd_bsub, ' \"']
 
                 # Read filename and convert the outpath name to BDV format
                 # Use 'scan_CamX_chX_tileX_tXXXX.tif' as convention
-                if bdv_file:
+                if bdv_file & (scan_type != 'bdv'):
                     # attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
                     temp = re.findall(r'CamA',f)
