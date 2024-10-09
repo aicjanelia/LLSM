@@ -1,6 +1,6 @@
 {
     "paths": {
-        "root": "/nrs/aic/instruments/llsm/pipeline-test/chad",
+        "root": "/nrs/aic/instruments/llsm/pipeline-test/",
         "psf": {
             "dir": "20210222/Calibration",
             "laser": {
