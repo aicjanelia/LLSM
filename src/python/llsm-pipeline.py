@@ -251,17 +251,42 @@ def get_processed_json(path):
 def get_dirs(path, excludes):
     unprocessed_dirs = []
 
-    for root, dirs, files in os.walk(path):
+    # for root, dirs, files in os.walk(path):
+    #     root = Path(root)
+
+    #     # update directories to prevent us from traversing processed data
+    #     dirs[:] = [d for d in dirs if str(root/d) not in excludes]
+
+    #     # check if current dir contains a Settings.txt file
+    #     for f in files:
+    #         if f.endswith('Settings.txt'):
+    #             # print(root)
+    #             unprocessed_dirs.append(root)
+    #             break
+
+    # Manually check the upper level path
+    files = os.listdir(path)
+    # check if current dir contains a Settings.txt file
+    for f in files:
+        if f.endswith('Settings.txt'):
+            unprocessed_dirs.append(path)
+            break
+
+    # Now walk the rest of the path
+    for root, dirs, files in os.walk(path,topdown=False):
         root = Path(root)
 
         # update directories to prevent us from traversing processed data
         dirs[:] = [d for d in dirs if str(root / d) not in excludes]
 
-        # check if root contains a Settings.txt file
-        for f in files:
-            if f.endswith('Settings.txt'):
-                unprocessed_dirs.append(root)
-                break
+        # check the good directories for settings files
+        for d in dirs:
+            files = os.listdir(root/d)
+            # check if current dir contains a Settings.txt file
+            for f in files:
+                if f.endswith('Settings.txt'):
+                    unprocessed_dirs.append(root/d)
+                    break
 
     return unprocessed_dirs
 
