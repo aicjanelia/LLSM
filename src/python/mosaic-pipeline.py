@@ -272,6 +272,15 @@ def get_dirs(path, excludes):
     #             unprocessed_dirs.append(root)
     #             break
 
+    # Manually check the upper level path
+    files = os.listdir(path)
+    # check if current dir contains a Settings.txt file
+    for f in files:
+        if f.endswith('Settings.txt'):
+            unprocessed_dirs.append(path)
+            break
+
+    # Now walk the rest of the path
     for root, dirs, files in os.walk(path,topdown=False):
         root = Path(root)
 
@@ -763,8 +772,8 @@ if __name__ == '__main__':
         with processed_path.open(mode='w') as f:
             f.write(json.dumps(processed_json, indent=4))
 
-    if args.verbose:
-        print('processed.json...')
-        print(json.dumps(processed_json, indent=4))
+    # if args.verbose:
+    #     print('processed.json...')
+    #     print(json.dumps(processed_json, indent=4))
 
     print('Done')
