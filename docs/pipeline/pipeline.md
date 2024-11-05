@@ -4,12 +4,18 @@ layout: default
 nav_order: 2
 ---
 
-## Pipeline
+# Overview
+
+This pipeline was designed to be used with the high performance computing cluster at Janelia Research Campus.  Using the overview pipeline commands requires that jobs can be submitted to an LSF cluster, but individual modules can always be used directly on the command line.  Additionally, the commands need to be on your path to be used directly. (For new AIC members, this requires a one-time set up for your cluster account.)
+
+The main input into either `llsm-pipeline` or `mosaic-pipeline` is a configuration JSON file. This configuration file is a structured way of informing the pipeline of which modules will be used, what the relevant file paths are, and any necessary parameters.
+
+## Usage
 
 ```
 usage: llsm-pipeline [-h] [--dry-run] [--verbose] input
 
-Batch deskewing, deconvolution, and mip script for LLSM images.
+Batch processing script for LLSM images.
 
 positional arguments:
   input          path to configuration JSON file
