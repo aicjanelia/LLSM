@@ -17,7 +17,7 @@ import sys
 import mosaicsettings2json
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Batch deskewing, deconvolution, and mip script for MOSAIC images.')
+    parser = argparse.ArgumentParser(description='Batch processing script for MOSAIC images.')
     parser.add_argument('input', type=Path, help='path to configuration JSON file')
     parser.add_argument('--dry-run', '-d', default=False, action='store_true', dest='dryrun',help='execute without submitting any bsub jobs')
     parser.add_argument('--verbose', '-v', default=False, action='store_true', dest='verbose',help='print details (including commands to bsub)')
@@ -775,7 +775,7 @@ if __name__ == '__main__':
 
     # get all directories containing a Settings files
     excludes = list(processed_json)
-    if configs['paths']['psf']['dir'] != None:
+    if 'psf' in configs['paths']:
         excludes.append(str(root_dir / configs['paths']['psf']['dir']))
 
     unprocessed_dirs = get_dirs(root_dir, excludes)
