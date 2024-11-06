@@ -143,7 +143,9 @@ def load_configs(path):
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
                 exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
-            configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
+        else:
+            configs['deskew']['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
+        configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
         if 'fill' in configs['deskew']:
             if not type(configs['deskew']['fill']) is float:
@@ -372,7 +374,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             elif j['waveform']['z-motion'] == 'Z galvo & piezo':
                 psf_settings[laser]['z-step'] = j['waveform']['z-pzt']['interval'][0] 
             else:
-                exit('ERROR: PSF z-motion cannot be determined for laser %s' % key)
+                exit('ERROR: PSF z-motion cannot be determined for laser %s' % laser)
 
     # process each directory
     for d in dirs:

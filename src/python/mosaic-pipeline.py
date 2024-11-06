@@ -143,7 +143,9 @@ def load_configs(path):
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
                 exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
-            configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
+        else:
+            configs['deskew']['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
+        configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
         if 'fill' in configs['deskew']:
             if not type(configs['deskew']['fill']) is float:
