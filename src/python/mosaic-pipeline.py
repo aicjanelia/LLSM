@@ -478,7 +478,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # deskew setup
         deskew = False
-        if settings['waveform']['z-motion'] == 'X stage':
+        if params_deskew:
             if 'x-stage-offset' not in settings['waveform']:
                 exit('ERROR: settings file did not contain a X Stage Offset field')
             if 'interval' not in settings['waveform']['x-stage-offset']:
@@ -493,6 +493,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
             output_deskew = d / 'deskew'
             if not dryrun:
                 output_deskew.mkdir(exist_ok=True)
+        else:
+            if settings['waveform']['z-motion'] == 'X stage':
+                print('WARNING: deskew is not enabled, but acquisition was stage scanned.')
 
         # decon setup
         decon = False

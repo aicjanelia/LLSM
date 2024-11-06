@@ -421,7 +421,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # deskew setup
         deskew = False
-        if settings['waveform']['z-motion'] == 'Sample piezo':
+        if params_deskew:
             if 's-piezo' not in settings['waveform']:
                 exit('ERROR: settings file did not contain a S Piezo field')
             if 'interval' not in settings['waveform']['s-piezo']:
@@ -436,6 +436,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
             output_deskew = d / 'deskew'
             if not dryrun:
                 output_deskew.mkdir(exist_ok=True)
+        else:
+            if settings['waveform']['z-motion'] == 'Sample piezo':
+                print('WARNING: deskew is not enabled, but acquisition was stage scanned.')
 
         # decon setup
         decon = False
