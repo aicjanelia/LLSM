@@ -29,7 +29,7 @@ This is an example portion of a configuration file to use deconvolution.
             "488": "cropped_488_PSF.tif"
         }
     }
-},
+}
 "decon": {
     "n": 5,
     "bit-depth": 16,
