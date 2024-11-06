@@ -29,9 +29,9 @@ For most cases, the `llsm-pipeline` \ `mosaic-pipeline` command should be all th
 
 # Usage
 
-### Example command
+### Command Line Example
 ```
-llsm-pipeline -d /nrs/aic/instruments/llsm/pipeline-test/config.json
+llsm-pipeline -d /aic/instruments/llsm/pipeline-test/config.json
 ```
 
 ### LLSM Options

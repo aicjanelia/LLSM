@@ -6,10 +6,17 @@ nav_order: 2
 ---
 
 # Configuration File
+{: .no_toc }
 
 The configuration file controls how the pipeline runs all requested modules. JSON formatting rules (e.g., using `{ }` and `,` appropriately) apply. If you work with an appropriate IDE (e.g., [Visual Studio Code](https://code.visualstudio.com/)), it can help highlight any errors you might have made in your JSON syntax.
 
 One configuration file can be used to process multiple experiments. For documentation purposes, it is often ideal to have one `config.json` file for a given project that is stored with the rest of the project's files.
+
+## Table of Contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
 
 ## Paths
 
@@ -42,7 +49,7 @@ The value of n in `decon` is not related to the bsub command, but rather is the 
 The true/false values in `mip` determine if projections will be made along the x, y, and/or z axes. Setting all values to true is recommended.
 
 ## Bsub
-The `bsub` section determines how jobs will be sent to the LSF cluster and is the section most specific to using the Janelia set up. A job is created for each individual tiff file, so thus there is one job for each timepoint and each channel.
+The `bsub` section determines how jobs will be sent to the LSF cluster and is the section most specific to using the Janelia set up. A job is created for each individual tiff file, so thus there is one job for each time point and each channel.
 
 ### _job output_
 If no output path, `o`, is specified, an email will be generated for every individual job, which corresponds to each individual tif, and can number in the thousands. This should be avoided! Setting `o` to `"/dev/null"` will result in no output being sent. If you are troubleshooting, you can specify a path to a file (e.g., `"/nrs/aic/instruments/llsm/pipeline-test/output.txt"`) that can be viewed as the processing progresses.
@@ -60,9 +67,9 @@ Each slot has 15 GB of memory. The maximal memory is used by the deconvolution m
 ```json
 {
     "paths": {
-        "root": "/nrs/aic/instruments/llsm/pipeline-test/",
+        "root": "/aic/instruments/llsm/pipeline-test/",
         "psf": {
-            "dir": "20210222/Calibration",
+            "dir": "Calibration",
             "laser": {
                 "560": "560_PSF.tif",
                 "488": "488_PSF.tif"
