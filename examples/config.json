@@ -1,6 +1,6 @@
 {
     "paths": {
-        "root": "/nrs/aic/instruments/llsm/pipeline-test/chad",
+        "root": "/nrs/aic/instruments/llsm/pipeline-test/",
         "psf": {
             "dir": "20210222/Calibration",
             "laser": {
@@ -11,6 +11,14 @@
     },
     "bdv": {
         "bdv_save": true
+    },
+    "crop": {
+        "cropTop": 10,
+        "cropBottom": 0,
+        "cropLeft": 15,
+        "cropRight": 5,
+        "cropFront": 100,
+        "cropBack": 50
     },
     "deskew": {
         "xy-res": 0.104,
@@ -30,6 +38,7 @@
     "bsub": {
         "o": "/dev/null",
         "We": 10,
-        "n": 4
+        "n": 4,
+        "W": 480
     }
 }
