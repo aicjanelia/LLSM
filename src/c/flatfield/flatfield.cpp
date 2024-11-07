@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
   }
 
   // read data
-  kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
+  kImageType::Pointer img = ReadImageFile<kImageType>(in_path, false, false);
 
   //itk::Image<kPixelType, 2>::Pointer dark_tmp = ReadImageFile<itk::Image<kPixelType, 2>>(dark_path);
 
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
   image_io->SetFileName(dark_path);
   image_io->ReadImageInformation();
   const itk::IOComponentEnum component_type = image_io->GetComponentType();
-  kSliceType::Pointer dark = ReadImage<2, itk::Image<kPixelType, 2>>(dark_path, component_type);
+  kSliceType::Pointer dark = ReadImage<2, itk::Image<kPixelType, 2>>(dark_path, component_type, false);
   //kImageType::Pointer dark = Convert2DImageTo3D<kPixelType>(dark_tmp);
 
   //itk::Image<kPixelType, 2>::Pointer n_img_tmp = ReadImageFile<itk::Image<kPixelType, 2>>(n_path);
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
   image_io2->SetFileName(n_path);
   image_io2->ReadImageInformation();
   const itk::IOComponentType component_type2 = image_io2->GetComponentType();
-  kSliceType::Pointer n_img = ReadImage<2, itk::Image<kPixelType, 2>>(n_path, component_type2);
+  kSliceType::Pointer n_img = ReadImage<2, itk::Image<kPixelType, 2>>(n_path, component_type2, false);
   //kImageType::Pointer n_img = Convert2DImageTo3D<kPixelType>(n_img_tmp);
 
   // set spacing
@@ -162,6 +162,16 @@ int main(int argc, char** argv) {
   dark->SetSpacing(slice_spacing);
   n_img->SetSpacing(slice_spacing);
 
+
+  using MinMaxFilterType = itk::MinimumMaximumImageFilter<kSliceType>;
+  MinMaxFilterType::Pointer minMaxFilter = MinMaxFilterType::New();
+  minMaxFilter->SetInput(n_img);
+  minMaxFilter->Update();
+  // Get the maximum pixel value
+  auto maxPixelValue = minMaxFilter->GetMaximum();
+  // Print the maximum pixel value
+  std::cout << "Maximum pixel value: " << maxPixelValue << std::endl;
+
   // flatfield
   kImageType::Pointer corrected_img = FlatfieldCorrection(img, dark, n_img, verbose);
 
@@ -171,15 +181,15 @@ int main(int argc, char** argv) {
   if (bit_depth == 8) {
     using PixelTypeOut = unsigned char;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path, false, true, false);
   } else if (bit_depth == 16) {
     using PixelTypeOut = unsigned short;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path, false, true, false);
   } else if (bit_depth == 32) {
     using PixelTypeOut = float;
     using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path);
+    WriteImageFile<kImageType,ImageTypeOut>(corrected_img, out_path, false, true, false);
   } else {
     std::cerr << "flatfield: unknown bit depth" << std::endl;
     return EXIT_FAILURE;

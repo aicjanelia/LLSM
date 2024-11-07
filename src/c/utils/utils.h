@@ -65,27 +65,42 @@ void GetRange(double &min_val, double &max_val)
 }
 
 template <class TImageIn, class TImageOut>
-typename TImageOut::Pointer ConvertImage(typename TImageIn::Pointer image_in)
+typename TImageOut::Pointer ConvertImage(typename TImageIn::Pointer image_in, bool scale=true)
 {
   if constexpr (std::is_same<TImageIn, TImageOut>::value)
     return image_in;
 
-  double input_min, input_max, output_min, output_max;
-
-  GetRange<typename TImageIn::PixelType>(input_min, input_max);
   typename TImageOut::Pointer image_out = TImageOut::New();
-  GetRange<typename TImageOut::PixelType>(output_min, output_max);
 
-  using FilterType = itk::IntensityWindowingImageFilter<TImageIn, TImageOut>;
-  typename FilterType::Pointer filter = FilterType::New();
-  filter->SetInput(image_in);
-  filter->SetWindowMinimum(input_min);
-  filter->SetWindowMaximum(input_max);
-  filter->SetOutputMinimum(output_min);
-  filter->SetOutputMaximum(output_max);
-  filter->Update();
+  if (scale)
+  {
+    double input_min, input_max, output_min, output_max;
 
-  image_out = filter->GetOutput();
+    GetRange<typename TImageIn::PixelType>(input_min, input_max);
+
+    GetRange<typename TImageOut::PixelType>(output_min, output_max);
+
+    using FilterType = itk::IntensityWindowingImageFilter<TImageIn, TImageOut>;
+    typename FilterType::Pointer filter = FilterType::New();
+    filter->SetInput(image_in);
+    filter->SetWindowMinimum(input_min);
+    filter->SetWindowMaximum(input_max);
+    filter->SetOutputMinimum(output_min);
+    filter->SetOutputMaximum(output_max);
+    filter->Update();
+
+    image_out = filter->GetOutput();
+  }
+  else
+  {
+    using CastFilterType = itk::CastImageFilter<TImageIn, TImageOut>;
+    typename CastFilterType::Pointer castFilter = CastFilterType::New();
+    castFilter->SetInput(image_in);
+    castFilter->Update();
+
+    image_out = castFilter->GetOutput();
+  }
+
   if constexpr (TImageIn::ImageDimension > 2 && TImageOut::ImageDimension > 2)
   {
     image_out->SetSpacing(image_in->GetSpacing());

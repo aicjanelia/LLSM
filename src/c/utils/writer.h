@@ -8,9 +8,9 @@
 #include <itkImageFileWriter.h>
 
 template <class TImageIn, class TImageOut>
-void WriteImageFile(typename TImageIn::Pointer image_in, std::string out_path, bool verbose=false, bool fix_spacings=true)
+void WriteImageFile(typename TImageIn::Pointer image_in, std::string out_path, bool verbose=false, bool fix_spacings=true, bool scale=true)
 {
-  typename TImageOut::Pointer image_output = ConvertImage<TImageIn,TImageOut>(image_in);
+  typename TImageOut::Pointer image_output = ConvertImage<TImageIn,TImageOut>(image_in, scale);
 
   // This is a hack because the ITK Tiff writer only writes out the XY resolution in inches
   if (fix_spacings)
