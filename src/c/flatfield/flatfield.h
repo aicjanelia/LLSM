@@ -10,6 +10,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkPasteImageFilter.h"
 #include "itkUnaryFunctorImageFilter.h"
+#include "itkMinimumMaximumImageFilter.h"
 
 #define FLATFIELD_VERSION "AIC flatfield correction version 0.1.0"
 

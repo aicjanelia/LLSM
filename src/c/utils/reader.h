@@ -8,7 +8,7 @@
 #include <itkImageIOBase.h>
 
 template <class TImageIn, class TImageOut>
-typename TImageOut::Pointer ReadAndConvertImage(const char *file_path)
+typename TImageOut::Pointer ReadAndConvertImage(const char *file_path, bool scale=true)
 {
   using ImageReaderType = itk::ImageFileReader<TImageIn>;
 
@@ -25,11 +25,11 @@ typename TImageOut::Pointer ReadAndConvertImage(const char *file_path)
     return nullptr;
   }
 
-  return ConvertImage<TImageIn,TImageOut>(reader->GetOutput());
+  return ConvertImage<TImageIn,TImageOut>(reader->GetOutput(), scale);
 }
 
 template <unsigned int VDimension, class TImageOut>
-typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOComponentEnum component_type)
+typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOComponentEnum component_type, bool scale=true)
 {
   switch (component_type)
   {
@@ -43,7 +43,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = unsigned char;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::CHAR:
@@ -51,7 +51,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = char;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::USHORT:
@@ -59,7 +59,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = unsigned short;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::SHORT:
@@ -67,7 +67,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = short;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::UINT:
@@ -75,7 +75,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = unsigned int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::INT:
@@ -83,7 +83,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::ULONG:
@@ -91,7 +91,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = unsigned long int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::LONG:
@@ -99,7 +99,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = long int;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::FLOAT:
@@ -107,7 +107,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = float;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
 
   case itk::IOComponentEnum::DOUBLE:
@@ -115,7 +115,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
     using PixelType = double;
     using ImageType = itk::Image<PixelType, VDimension>;
 
-    return ReadAndConvertImage<ImageType, TImageOut>(file_path);
+    return ReadAndConvertImage<ImageType, TImageOut>(file_path, scale);
   }
   }
 
@@ -123,7 +123,7 @@ typename TImageOut::Pointer ReadImage(const char *file_path, const itk::IOCompon
 }
 
 template <class TImage>
-itk::SmartPointer<TImage> ReadImageFile(std::string file_path, bool verbose=false)
+itk::SmartPointer<TImage> ReadImageFile(std::string file_path, bool verbose=false, bool scale=true)
 {
   itk::ImageIOBase::Pointer image_io = itk::ImageIOFactory::CreateImageIO(file_path.c_str(), itk::CommonEnums::IOFileMode::ReadMode);
 
@@ -155,7 +155,7 @@ itk::SmartPointer<TImage> ReadImageFile(std::string file_path, bool verbose=fals
       return nullptr;
     }
     */
-    return ReadImage<kDimensions, TImage>(file_path.c_str(), component_type);
+    return ReadImage<kDimensions, TImage>(file_path.c_str(), component_type, scale);
 
   default:
     std::cerr << "not implemented yet!" << std::endl;
