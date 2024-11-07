@@ -91,7 +91,11 @@ def load_configs(path):
         if 'xy-res' in configs['crop']:
             if not type(configs['crop']['xy-res']) is float:
                 exit('ERROR: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
-            configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+        else:
+            configs['crop']['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
+        # configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+        # Don't actually want to crop to use the xy res because that leads to deskew problems.
+        # Keep the variable so that MIPs can complete correctly, but don't add it as an argument.
         
         cropSize = [0,0,0,0,0,0] # If missing a side, assume zero cropping
         if "cropTop" in configs['crop']:
@@ -138,12 +142,14 @@ def load_configs(path):
                 exit('ERROR: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
         else:
             configs['deskew']['angle'] = 31.8 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+            print('WARNING: Using default LLSM angle of 31.8 for deskewing')
         configs['deskew']['angle'] = {'flag': '-a', 'arg': configs['deskew']['angle']}
 
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
                 exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
         else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deskewing')
             configs['deskew']['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
         configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
@@ -159,7 +165,7 @@ def load_configs(path):
 
     # sanitize decon configs
     if 'decon' in configs:
-        supported_opts = ['n', 'bit-depth', 'subtract', 'executable_path']
+        supported_opts = ['xy-res','n', 'bit-depth', 'subtract', 'executable_path']
         for key in list(configs['decon']):
             if key not in supported_opts:
                 print('WARNING: decon option \'%s\' in config.json is not supported' % key)
@@ -167,6 +173,14 @@ def load_configs(path):
 
         if not 'executable_path' in configs['decon']:
             configs['decon']['executable_path'] = "decon"
+
+        if 'xy-res' in configs['decon']:
+            if not type(configs['decon']['xy-res']) is float:
+                exit('ERROR: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
+        else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deconvolution')
+            configs['decon']['xy-res'] = 0.104
+        configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
 
         if 'n' in configs['decon']:
             if not type(configs['decon']['n']) is int:
@@ -477,6 +491,15 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 output_decon_mip = output_mip / 'decon'
                 if not dryrun:
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
+            if not deskew: # In this case, want mips of the 'original' data before decon
+                if crop:
+                    output_crop_mip = output_mip / 'crop'
+                    if not dryrun:
+                        output_crop_mip.mkdir(parents=True, exist_ok=True)
+                else:
+                    output_original_mip = output_mip / 'original'
+                    if not dryrun:
+                        output_original_mip.mkdir(parents=True, exist_ok=True)
 
         # process all files in directory
         for f in files:
@@ -490,6 +513,29 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     outpath = output_crop / tag_filename(f, '_crop')
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
+
+                if not deskew and mip:
+                    #  get the appropriate spacing
+                    if 'z-pzt' in settings['waveform']:
+                        step = settings['waveform']['z-pzt']['interval'][ch]
+                    else:
+                        print('WARNING: deskew is not enabled, but MIPs are being prepared for stage scanned images with default LLSM angle of 31.8.')
+                        step = settings['waveform']['s-piezo']['interval'][ch] 
+                        step = step * math.sin(abs(31.8* math.pi/180.0))                     
+
+                    # prepare appropriate mips
+                    if crop:
+                        xyRes = configs['xy-res']
+                        inpath = output_crop / tag_filename(f, '_crop')
+                        outpath = output_crop_mip / tag_filename(f, '_crop_mip')
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                        cmd.append(tmp)
+                    else:
+                        xyRes = 0.104 # For no cropping, use default
+                        inpath = d / f
+                        outpath = output_original_mip / tag_filename(f, '_mip')
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                        cmd.append(tmp) 
 
                 if deskew:
                     if crop:

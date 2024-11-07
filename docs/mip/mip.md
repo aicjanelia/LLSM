@@ -31,7 +31,7 @@ In the configuration file, simply specify which axes to create (`true`) or ignor
 ### Command Line Example
 When directly using the mip module on the command line, you must specify the input and output files. You should also input the axes to project over (`-x -y -z`). The following example makes MIPs in all three dimensions for a deskewed image. Specify the pixel sizes to output properly scaled projections.
 ```c
-mip -x  -y  -z  -x 0.104 -q 0.21462536238843902 -o /path/to/experiment/mip/deskew/scan_Cam1_ch0_tile0_t0000_deskew_mip.tif /path/to/experiment/deskew/scan_Cam1_ch0_tile0_t0000_deskew.tif
+mip -x  -y  -z  -p 0.104 -q 0.21462536238843902 -o /path/to/experiment/mip/deskew/scan_Cam1_ch0_tile0_t0000_deskew_mip.tif /path/to/experiment/deskew/scan_Cam1_ch0_tile0_t0000_deskew.tif
 ```
 
 ### MIP Options

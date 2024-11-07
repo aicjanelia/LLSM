@@ -88,10 +88,17 @@ def load_configs(path):
         if not 'executable_path' in configs['crop']:
             configs['crop']['executable_path'] = "crop"
 
-        if 'xy-res' in configs['crop']:
+        if 'xy-res' in configs['crop']:            
             if not type(configs['crop']['xy-res']) is float:
                 exit('ERROR: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
-            configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+
+            configs['xy-res'] = configs['crop']['xy-res']
+            del configs['crop']['xy-res']
+        else:
+            configs['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
+        # configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+        # Don't actually want to crop to use the xy res because that leads to deskew problems.
+        # Keep the variable so that MIPs can complete correctly, but don't add it as an argument.
         
         cropSize = [0,0,0,0,0,0] # If missing a side, assume zero cropping
         if "cropTop" in configs['crop']:
@@ -137,13 +144,15 @@ def load_configs(path):
             if not type(configs['deskew']['angle']) is float:
                 exit('ERROR: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
         else:
-            configs['deskew']['angle'] = -32.45 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+            configs['deskew']['angle'] = 147.55 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+            print('WARNING: Using default MOSAIC angle of 147.55 for deskewing')
         configs['deskew']['angle'] = {'flag': '-a', 'arg': configs['deskew']['angle']}
 
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
                 exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
         else:
+            print('WARNING: Using default MOSAIC pixel size of 0.108 um/pixel for deskewing')
             configs['deskew']['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
         configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
@@ -171,7 +180,11 @@ def load_configs(path):
         if 'xy-res' in configs['decon']:
             if not type(configs['decon']['xy-res']) is float:
                 exit('ERROR: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
-            configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
+            # configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
+        else:
+            print('WARNING: Using default MOSAIC pixel size of 0.108 um/pixel for deconvolution')
+            configs['decon']['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
+        configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
 
         if 'n' in configs['decon']:
             if not type(configs['decon']['n']) is int:
@@ -680,16 +693,26 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     cmd.append(tmp)
 
                 if not deskew and mip:
-                    step = settings['waveform']['xz-stage-offset']['interval'][ch]
+                    #  get the appropriate spacing
+                    if 'xz-stage-offset' in settings['waveform']:
+                        step = settings['waveform']['xz-stage-offset']['interval'][ch]
+                    else:
+                        print('WARNING: deskew is not enabled, but MIPs are being prepared for stage scanned images with default MOSAIC angle of 147.55.')
+                        step = settings['waveform']['x-stage-offset']['interval'][ch] 
+                        step = step * math.sin(abs(147.55* math.pi/180.0))                     
+
+                    # prepare appropriate mips
                     if crop:
+                        xyRes = configs['xy-res']
                         inpath = output_crop / tag_filename(out_f, '_crop')
                         outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
                         cmd.append(tmp)
                     else:
+                        xyRes = 0.108 # For no cropping, use default
                         inpath = d / f
                         outpath = output_original_mip / tag_filename(out_f, '_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
                         cmd.append(tmp)                          
 
                 if deskew:
@@ -708,7 +731,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if mip:
                         inpath = output_deskew / tag_filename(out_f, '_deskew')
                         outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        xyRes = configs['deskew']['xy-res']['arg']
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes, step, outpath, inpath)
                         cmd.append(tmp)
 
                 if decon:
@@ -725,7 +749,13 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         step = settings['waveform']['x-stage-offset']['interval'][ch] 
                         step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0) 
                     else:
-                        step = settings['waveform']['xz-stage-offset']['interval'][ch]
+                        #  get the appropriate spacing
+                        if 'xz-stage-offset' in settings['waveform']:
+                            step = settings['waveform']['xz-stage-offset']['interval'][ch]
+                        else:
+                            print('WARNING: deskew is not enabled, but the deconvolution will use the default MOSAIC angle of 147.55 for step size.')
+                            step = settings['waveform']['x-stage-offset']['interval'][ch] 
+                            step = step * math.sin(abs(147.55* math.pi/180.0)) 
 
                     # print(m.group(1),psfpaths[chLaser]) # uncomment this to check on the parsing
                     tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[chLaser], psfsteps[chLaser], step, outpath, inpath)
@@ -733,9 +763,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     # create mips for decon
                     if mip:
+                        xyRes = configs['decon']['xy-res']['arg']
                         inpath = output_decon / tag_filename(out_f, '_decon')
                         outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath , inpath)
                         cmd.append(tmp)
 
                 if len(cmd) > 1:
