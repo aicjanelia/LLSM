@@ -41,7 +41,7 @@ def parse_txt(path):
     data = {}
 
     # read file content to memory
-    f = path.open(mode='r')
+    f = path.open(mode='r',encoding="latin-1",errors="replace") #This general option should read both old and new files. If there is still an error, replace the character with a ?
     txt = f.read()
     f.close()
 

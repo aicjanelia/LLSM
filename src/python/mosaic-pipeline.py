@@ -180,7 +180,6 @@ def load_configs(path):
         if 'xy-res' in configs['decon']:
             if not type(configs['decon']['xy-res']) is float:
                 exit('ERROR: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
-            # configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
         else:
             print('WARNING: Using default MOSAIC pixel size of 0.108 um/pixel for deconvolution')
             configs['decon']['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
@@ -397,7 +396,6 @@ def process(dirs, configs, dryrun=False, verbose=False):
         cmd_mip = params2cmd(params_mip, configs['mip']['executable_path'])
     if 'bdv' in configs:
         params_bdv.update(configs['bdv'])
-    #     cmd_mip = params2cmd(params_mip, configs['bdv']['executable_path'])
 
     # parse PSF settings files
     if 'decon' in configs:
@@ -557,7 +555,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     if not dryrun:
                         output_original_mip.mkdir(parents=True, exist_ok=True)
 
-        # sort unique channels to deal with simultanous acquisition file naming conventions
+        # sort unique channels to deal with simultaneous acquisition file naming conventions
         # very clunky approach at the moment to deal with potentially awkward acquisition choices
         chList = []
         # parsing tile naming
@@ -825,8 +823,8 @@ if __name__ == '__main__':
         with processed_path.open(mode='w') as f:
             f.write(json.dumps(processed_json, indent=4))
 
-    # if args.verbose:
-    #     print('processed.json...')
-    #     print(json.dumps(processed_json, indent=4))
+    if args.verbose:
+        print('processed.json...')
+        print(json.dumps(processed_json, indent=4))
 
     print('Done')
