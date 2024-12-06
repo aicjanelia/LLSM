@@ -142,6 +142,9 @@ int main(int argc, char** argv) {
     img_spacing[2] = step;
   kImageType::Pointer cropped_img = Crop(img, img_spacing[2], img_spacing[0], crop_params[0], crop_params[1], crop_params[2], crop_params[3], crop_params[4], crop_params[5], verbose);
 
+  img_spacing[0] = 1.0;
+  img_spacing[1] = 1.0;
+  img_spacing[2] = 1.0;
   cropped_img->SetSpacing(img_spacing);
 
   // write file

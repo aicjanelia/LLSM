@@ -175,6 +175,9 @@ int main(int argc, char** argv) {
   // flatfield
   kImageType::Pointer corrected_img = FlatfieldCorrection(img, dark, n_img, verbose);
 
+  img_spacing[0] = 1.0;
+  img_spacing[1] = 1.0;
+  img_spacing[2] = 1.0;
   corrected_img->SetSpacing(img_spacing);
 
   // write file

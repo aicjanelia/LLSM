@@ -146,6 +146,11 @@ int main(int argc, char** argv) {
         std::string axis_out_path = AppendPath(out_path, labels[i]);
         using ProjectionType = itk::Image<kPixelType, 2>;
         ProjectionType::Pointer mip_img = MaxIntensityProjection(img, i, verbose);
+        ProjectionType::SpacingType mip_spacing;
+
+        mip_spacing[0] = 1.0;
+        mip_spacing[1] = 1.0;
+        mip_img->SetSpacing(mip_spacing);
 
         // write file
         if (bit_depth == 8) {

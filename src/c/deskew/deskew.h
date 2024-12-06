@@ -13,6 +13,8 @@
 
 kImageType::Pointer Deskew(kImageType::Pointer img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
 {
+  img->SetSpacing((1.0, 1.0, 1.0));
+
   // compute shift
   const double shift = step * cos(angle * M_PI/180.0) / xy_res;
 
