@@ -91,7 +91,14 @@ def load_configs(path):
         if 'xy-res' in configs['crop']:
             if not type(configs['crop']['xy-res']) is float:
                 exit('ERROR: crop xy resolution \'%s\' in config.json is not a float' % configs['crop']['xy-res'])
-            configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+                
+            configs['xy-res'] = configs['crop']['xy-res']
+            del configs['crop']['xy-res']
+        else:
+            configs['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
+        # configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
+        # Don't actually want to crop to use the xy res because that leads to deskew problems.
+        # Keep the variable so that MIPs can complete correctly, but don't add it as an argument.
         
         cropSize = [0,0,0,0,0,0] # If missing a side, assume zero cropping
         if "cropTop" in configs['crop']:
@@ -138,12 +145,16 @@ def load_configs(path):
                 exit('ERROR: deskew angle \'%s\' in config.json is not a float' % configs['deskew']['angle'])
         else:
             configs['deskew']['angle'] = 31.8 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+            print('WARNING: Using default LLSM angle of 31.8 for deskewing')
         configs['deskew']['angle'] = {'flag': '-a', 'arg': configs['deskew']['angle']}
 
         if 'xy-res' in configs['deskew']:
             if not type(configs['deskew']['xy-res']) is float:
                 exit('ERROR: deskew xy resolution \'%s\' in config.json is not a float' % configs['deskew']['xy-res'])
-            configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
+        else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deskewing')
+            configs['deskew']['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
+        configs['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['deskew']['xy-res']}
         
         if 'fill' in configs['deskew']:
             if not type(configs['deskew']['fill']) is float:
@@ -157,7 +168,7 @@ def load_configs(path):
 
     # sanitize decon configs
     if 'decon' in configs:
-        supported_opts = ['n', 'bit-depth', 'subtract', 'executable_path']
+        supported_opts = ['xy-res','n', 'bit-depth', 'subtract', 'executable_path']
         for key in list(configs['decon']):
             if key not in supported_opts:
                 print('WARNING: decon option \'%s\' in config.json is not supported' % key)
@@ -165,6 +176,14 @@ def load_configs(path):
 
         if not 'executable_path' in configs['decon']:
             configs['decon']['executable_path'] = "decon"
+
+        if 'xy-res' in configs['decon']:
+            if not type(configs['decon']['xy-res']) is float:
+                exit('ERROR: decon xy resolution \'%s\' in config.json is not a float' % configs['decon']['xy-res'])
+        else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deconvolution')
+            configs['decon']['xy-res'] = 0.104
+        configs['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon']['xy-res']}
 
         if 'n' in configs['decon']:
             if not type(configs['decon']['n']) is int:
@@ -233,6 +252,18 @@ def load_configs(path):
                 configs['mip']['z'] = {'flag': '-z'}
             else:
                 del configs['mip']['z']
+
+    # sanitize bdv configs
+    # (config flag for saving the output files in a BigDataViewer-compatible scheme)
+    if 'bdv' in configs:
+        supported_opts = ['bdv_save']
+        for key in list(configs['bdv']):
+            if key not in supported_opts:
+                print('WARNING: bdv option \'%s\' in config.json is not supported' % key)
+                del configs['bdv'][key]
+        if 'bdv_save' in configs['bdv']:
+            if not type(configs['bdv']['bdv_save']) is bool:
+                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])    
 
     return configs
 
@@ -305,6 +336,16 @@ def params2cmd(params, cmd_name):
 
     return cmd
 
+# split strings at desired phrases (CamA, ch, t, etc.) to grab filename info
+# clunky but it works
+def string_finder(old_str, old_phrases):
+    vars = []
+    for str in old_phrases:
+        new_str = old_str.partition(str)[2]
+        new_str1 = new_str.partition('_')[0]
+        vars.append(new_str1)
+    return dict(zip(old_phrases,vars))
+
 def process(dirs, configs, dryrun=False, verbose=False):
     processed = {}
     params_bsub = {
@@ -329,6 +370,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_decon = {}
     params_mip = {}
     params_crop = {}
+    params_bdv = {}
 
     cmd_bsub = None
     cmd_crop = None
@@ -352,6 +394,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
     if 'mip' in configs:
         params_mip.update(configs['mip'])
         cmd_mip = params2cmd(params_mip, configs['mip']['executable_path'])
+    if 'bdv' in configs:
+        params_bdv.update(configs['bdv'])
 
     # parse PSF settings files
     if 'decon' in configs:
@@ -372,7 +416,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             elif j['waveform']['z-motion'] == 'Z galvo & piezo':
                 psf_settings[laser]['z-step'] = j['waveform']['z-pzt']['interval'][0] 
             else:
-                exit('ERROR: PSF z-motion cannot be determined for laser %s' % key)
+                exit('ERROR: PSF z-motion cannot be determined for laser %s' % laser)
 
     # process each directory
     for d in dirs:
@@ -398,7 +442,33 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # save settings json
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
-                json.dump(settings, path, indent=4)          
+                json.dump(settings, path, indent=4)
+
+        # bdv_file setup
+        bdv_file = False
+        attributes = []
+        if params_bdv:
+            print('saving in bdv naming format...')
+            bdv_file = True
+        for f in files:
+            bdv_pattern = re.compile('scan_Cam(\d+)_ch(\d+)_tile(\d+)_t(\d+).*\.tif')
+            m = bdv_pattern.fullmatch(f)
+            if m:
+                scan_type = 'bdv'
+                attributes = [r'Cam_',r'ch_',r't_']
+                pattern = pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))).*\.tif')
+                break
+            m = pattern.fullmatch(f)
+            if m:
+                temp = re.findall(r'Iter',f)
+                if bool(temp):
+                    exit('ERROR: llsm-pipeline does not currently support tiled naming conventions.')
+                    scan_type = 'tile'                    
+                    attributes = [r'Cam',r'ch',r'Iter_']
+                    break                
+                scan_type = 'scan' # if not tile or bdv, general case
+                attributes = [r'Cam',r'ch',r'stack']
+        print('scan type is ' + scan_type)          
                 
         # crop setup
         crop = False
@@ -419,7 +489,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
         # deskew setup
         deskew = False
-        if settings['waveform']['z-motion'] == 'Sample piezo':
+        if params_deskew:
             if 's-piezo' not in settings['waveform']:
                 exit('ERROR: settings file did not contain a S Piezo field')
             if 'interval' not in settings['waveform']['s-piezo']:
@@ -434,6 +504,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
             output_deskew = d / 'deskew'
             if not dryrun:
                 output_deskew.mkdir(exist_ok=True)
+        else:
+            if settings['waveform']['z-motion'] == 'Sample piezo':
+                print('WARNING: deskew is not enabled, but acquisition was stage scanned.')
 
         # decon setup
         decon = False
@@ -472,6 +545,45 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 output_decon_mip = output_mip / 'decon'
                 if not dryrun:
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
+            if not deskew: # In this case, want mips of the 'original' data before decon
+                if crop:
+                    output_crop_mip = output_mip / 'crop'
+                    if not dryrun:
+                        output_crop_mip.mkdir(parents=True, exist_ok=True)
+                else:
+                    output_original_mip = output_mip / 'original'
+                    if not dryrun:
+                        output_original_mip.mkdir(parents=True, exist_ok=True)
+   
+        # parsing tile naming
+        tiles = []
+        pattern_tile = re.compile(r'(\_(?:[-]*\d{1,}?){1}x\_(?:[-]*\d{1,}?){1}y\_(?:[-]*\d{1,}?)z_)')
+        if bdv_file:
+            if scan_type == 'bdv': # In this case, we have a different file structure
+                pattern_tile = re.compile(f.split('_')[0] + '.*_(tile(\d+)).*\.tif')
+        for f in files:
+            # construct list of tile names
+            mm = re.findall(pattern_tile,f)
+            if mm:
+                if scan_type == 'bdv':
+                    mm[0] = mm[0][0]
+                if mm[0] not in tiles:
+                    tiles.append(mm[0])
+        tiles_dict = {tiles[i]:('_tile'+str(i)) for i in range(len(tiles))}
+
+        # 2024-11-08 RML: as far as I can tell, the LLSM can collect on both cameras, 
+        # but it sequentially numbers the channels unlike the MOSAIC. This means some 
+        # of the channel sorting and camera counting necessary in the mosaic-pipeline
+        #  is not useful here. This assumption could be challenged by future 
+        # experimental setups...
+
+        configs['parsing'] = {}
+        configs['bdv_parsing'] = {}
+        configs['bdv_parsing']['tile_names'] = tiles_dict
+        param_parsing = {}
+        param_bdv_parsing = {}       
+        param_parsing.update(configs['parsing'])
+        param_parsing.update(configs['bdv_parsing'])
 
         # process all files in directory
         for f in files:
@@ -480,18 +592,66 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 ch = int(m.group(1))
                 cmd = [cmd_bsub, ' \"']
 
+                # Read filename and convert the outpath name to BDV format
+                # Use 'scan_CamX_chX_tileX_tXXXX.tif' as convention
+                if bdv_file & (scan_type != 'bdv'):
+                    # attributes = [r'Cam',r'ch',r'stack']
+                    details = string_finder(f,attributes)
+                    # find corresponding tile name
+                    tile_temp = re.findall(pattern_tile, f)
+                    if tile_temp[0] in tiles_dict:
+                        tile = tiles_dict[tile_temp[0]]
+                    # Keep tile_0 if not
+                    else:
+                        tile = '_tile0'
+
+                    if bool(re.findall(r'CamA',f)):
+                        # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam'+re.sub('A','0',details[attributes[0]])+'_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                    elif bool(re.findall(r'CamB',f)):
+                        # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
+                        dst = f'scan_Cam'+re.sub('B','1',details[attributes[0]])+'_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                    else: # If only one camera used, there won't be a camera A/B
+                        dst = f'scan_Cam1_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'                        
+                    out_f = f'{dst}'                    
+                else:
+                    out_f = f
+
                 if crop:
                     inpath = d / f
-                    outpath = output_crop / tag_filename(f, '_crop')
+                    outpath = output_crop / tag_filename(out_f, '_crop')
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
 
+                if not deskew and mip:
+                    #  get the appropriate spacing
+                    if 'z-pzt' in settings['waveform']:
+                        step = settings['waveform']['z-pzt']['interval'][ch]
+                    else:
+                        print('WARNING: deskew is not enabled, but MIPs are being prepared for stage scanned images with default LLSM angle of 31.8.')
+                        step = settings['waveform']['s-piezo']['interval'][ch] 
+                        step = step * math.sin(abs(31.8* math.pi/180.0))                     
+
+                    # prepare appropriate mips
+                    if crop:
+                        xyRes = configs['xy-res']
+                        inpath = output_crop / tag_filename(out_f, '_crop')
+                        outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                        cmd.append(tmp)
+                    else:
+                        xyRes = 0.104 # For no cropping, use default
+                        inpath = d / f
+                        outpath = output_original_mip / tag_filename(out_f, '_mip')
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                        cmd.append(tmp) 
+
                 if deskew:
                     if crop:
-                        inpath = output_crop / tag_filename(f, '_crop')
+                        inpath = output_crop / tag_filename(out_f, '_crop')
                     else:
                         inpath = d / f
-                    outpath = output_deskew / tag_filename(f, '_deskew')
+                    outpath = output_deskew / tag_filename(out_f, '_deskew')
                     step = settings['waveform']['s-piezo']['interval'][ch] 
                     step = step * math.sin(31.8 * math.pi/180.0)
 
@@ -500,20 +660,20 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     # create mips for deskew
                     if mip:
-                        inpath = output_deskew / tag_filename(f, '_deskew')
-                        outpath = output_deskew_mip / tag_filename(f, '_deskew_mip')
+                        inpath = output_deskew / tag_filename(out_f, '_deskew')
+                        outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
                         cmd.append(tmp)
 
                 if decon:
                     if deskew:
-                        inpath = output_deskew / tag_filename(f, '_deskew')
+                        inpath = output_deskew / tag_filename(out_f, '_deskew')
                     elif crop:
-                        inpath = output_crop / tag_filename(f, '_crop')
+                        inpath = output_crop / tag_filename(out_f, '_crop')
                     else:
                         inpath = d / f
 
-                    outpath = output_decon / tag_filename(f, '_decon')
+                    outpath = output_decon / tag_filename(out_f, '_decon')
 
                     if deskew:
                         step = settings['waveform']['s-piezo']['interval'][ch] 
@@ -526,8 +686,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
 
                     # create mips for decon
                     if mip:
-                        inpath = output_decon / tag_filename(f, '_decon')
-                        outpath = output_decon_mip / tag_filename(f, '_decon_mip')
+                        inpath = output_decon / tag_filename(out_f, '_decon')
+                        outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
                         tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
                         cmd.append(tmp)
 
@@ -543,13 +703,13 @@ def process(dirs, configs, dryrun=False, verbose=False):
         d = str(d)
         processed[d] = {}
         processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
+        processed[d]['parsing'] = param_parsing
+        processed[d]['bdv_parsing'] = param_bdv_parsing
         if crop:
             processed[d]['crop'] = params_crop
         if deskew:
             processed[d]['deskew'] = params_deskew
             processed[d]['deskew']['step'] = steps
-        if decon:
-            processed[d]['decon'] = params_decon
         if decon:
             processed[d]['decon'] = params_decon
         if mip:
