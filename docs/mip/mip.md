@@ -9,7 +9,7 @@ nav_order: 7
 The `mip` module is run together with the other processing modules and will create MIPs for key modules that are run. For example, if running both `deskew` and `decon`, MIPs will be made for both. The subfolder created by `mip` will contain subfolders indicating which input images were used to create them (e.g., a `decon` subfolder). Inside this folder will be files that end with `mip_x`, `mip_y`, and `mip_z`. The dimension in the file name is the axes over which the images have been projected.
 
 
-| Modules Enabled | MIPs created |
+| Modules Enabled | MIPs Created |
 | ----- | ----- |
 | mip only | input images |
 | flatfield| flatfield |

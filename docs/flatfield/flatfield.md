@@ -24,7 +24,7 @@ When averaging the collected calibration images, it is best to use ImageJ's 32-b
 
 To use, run the `flatfield_inputs.ijm` macro. A GUI will open, as shown in the figure below. You can specify the darkfield image in multiple ways: (i) use the `Browse` button to find the stack of darkfield images, (ii) copy the full path into the box, or (iii) simply drag and drop the image file onto the darkfield line of the GUI. Repeat this process for the flatfield stacks. Any channel entries without files will be ignored. The macro will average the stacks and save a file called *DarkAverage.tif* in the same folder as the input darkfield stack. The macro will then continue to perform the $I_N$ calculation, saving one *I_N_###.tif* file per channel in the same folder, with *###* specified by the values in the Channel input line of the macro GUI. These files can then be specified in the paths section of the pipeline configuration file to run the flatfield correction module.
 
-![](FlatFieldGUI.png)
+![](https://github.com/aicjanelia/LLSM/blob/master/docs/flatfield/FlatFieldGUI.png)
 
 ## Reference
 $^1$ Hobson, C. M., Guo, M., Vishwasrao, H. D., Wu, Y., Shroff, H. and Chew, T.-L. (2022). Practical considerations for quantitative light sheet fluorescence microscopy. Nat Methods 1-12. [doi:10.1038/s41592-022-01632-x](https://doi.org/10.1038/s41592-022-01632-x)
@@ -35,20 +35,22 @@ $^1$ Hobson, C. M., Guo, M., Vishwasrao, H. D., Wu, Y., Shroff, H. and Chew, T.-
 This is an example portion of a configuration file that sets up the inputs to the flatfield module and enables the module.
 
 ```json
-"paths": {
-    "root": "/aic/instruments/llsm/pipeline-test/",
-    "flatfield": {
-        "dir": "Calibration",
-        "dark": "DarkAverage.tif",
-        "laser": {
-            "488": "I_N_488.tif",
-            "560": "I_N_560.tif"
-        }
-    }
-},
-"flatfield": {
-    "bit-depth": 16
-} 
+{
+  "paths": {
+      "root": "/aic/instruments/llsm/pipeline-test/",
+      "flatfield": {
+          "dir": "Calibration",
+          "dark": "DarkAverage.tif",
+          "laser": {
+              "488": "I_N_488.tif",
+              "560": "I_N_560.tif"
+          }
+      }
+  },
+  "flatfield": {
+      "bit-depth": 16
+  }
+}
 ```
 
 ### Command Line Example
