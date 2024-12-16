@@ -77,6 +77,57 @@ def load_configs(path):
             print('WARNING: Automatic hard run time limit set to 8 h. Add a W value to bsub in your config file to allow files to process longer than 8 h.')
             configs['bsub']['W'] = {'flag': '-W', 'arg': 8*60}
 
+    # sanitize flatfield configs
+    if 'flatfield' in configs:
+        supported_opts = ['xy-res', 'bit-depth', 'executable_path']
+        for key in list(configs['flatfield']):
+            if key not in supported_opts:
+                print('WARNING: flatfield option \'%s\' in config.json is not supported' % key)
+                del configs['flatfield'][key]
+
+        if not 'executable_path' in configs['flatfield']:
+            configs['flatfield']['executable_path'] = "flatfield"
+
+        if 'xy-res' in configs['flatfield']:            
+            if not type(configs['flatfield']['xy-res']) is float:
+                exit('ERROR: flatfield xy resolution \'%s\' in config.json is not a float' % configs['flatfield']['xy-res'])
+            configs['xy-res'] = configs['flatfield']['xy-res']
+            del configs['flatfield']['xy-res']
+        else:
+            configs['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
+        # Don't actually want to flatfield to use the xy res because that leads to deskew problems.
+        # Keep the variable so that MIPs can complete correctly, but don't add it as an argument.
+
+        if 'bit-depth' in configs['flatfield']:
+            if configs['flatfield']['bit-depth'] not in [8, 16, 32]:
+                exit('ERROR: flatfield bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['flatfield']['bit-depth'])
+            configs['flatfield']['bit-depth'] = {'flag': '-b', 'arg': configs['flatfield']['bit-depth']}
+
+        # check files
+        if 'flatfield' not in configs['paths']:
+            exit('ERROR: flatfield enabled, but no flatfield file parameters found in paths')
+
+        if 'dir' in configs['paths']['flatfield']:
+            flat_path = root / configs['paths']['flatfield']['dir']
+        else:
+            configs['paths']['flatfield']['dir'] = None
+            flat_path = root
+            print('WARNING: no flatfield directory provided... using \'%s\'' % root)
+
+        if 'dark' not in configs['paths']['flatfield']:
+            exit('ERROR: not dark image provided for flatfield correction')
+        p = flat_path / configs['paths']['flatfield']['dark']
+        if not p.is_file():
+                exit('ERROR: dark image file \'%s\' does not exist' % (p))
+        
+        if 'laser' not in configs['paths']['flatfield']:
+            exit('ERROR: no normalized flatfield images found in config')
+
+        for key, val in configs['paths']['flatfield']['laser'].items():
+            p = flat_path / val
+            if not p.is_file():
+                exit('ERROR: laser %s normalized flatfield file \'%s\' does not exist' % (key, p))
+
     # sanitize crop configs
     if 'crop' in configs:
         supported_opts = ['xy-res', 'crop', 'bit-depth', 'executable_path','cropTop','cropBottom','cropLeft','cropRight','cropFront','cropBack']
@@ -371,9 +422,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_mip = {}
     params_crop = {}
     params_bdv = {}
+    params_flatfield = {}
 
     cmd_bsub = None
     cmd_crop = None
+    cmd_flatfield = None
     cmd_deskew = None
     cmd_decon = None
     cmd_mip = None
@@ -382,6 +435,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
     if 'bsub' in configs:
         params_bsub.update(configs['bsub'])
         cmd_bsub = params2cmd(params_bsub, 'bsub')
+    if 'flatfield' in configs:
+        params_flatfield.update(configs['flatfield'])
+        cmd_flatfield = params2cmd(params_flatfield,configs['flatfield']['executable_path'])
     if 'crop' in configs:
         params_crop.update(configs['crop'])
         cmd_crop = params2cmd(params_crop, configs['crop']['executable_path'])
@@ -470,9 +526,35 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 attributes = [r'Cam',r'ch',r'stack']
         print('scan type is ' + scan_type)
 
+        # flatfield setup
+        flatfield = False
+        if params_flatfield:
+            if 'laser' not in settings['waveform']:
+                exit('ERROR: settings file did not contain a Laser field')
+
+            if 'x-stage-offset' in settings['waveform']:
+                stepFlatfield = settings['waveform']['x-stage-offset']['interval']
+            elif 'xz-stage-offset' in settings['waveform']:
+                stepFlatfield = settings['waveform']['xz-stage-offset']['interval']
+            else:
+                exit('ERROR: settings file did not contain an valid step parameter for flatfield')
+
+            flatfield = True
+
+            root = Path(configs['paths']['root'])
+            flatpaths = []
+            for laser in settings['waveform']['laser']:
+                filename = configs['paths']['flatfield']['laser'][str(laser)]
+                flatpaths.append(root / configs['paths']['flatfield']['dir'] / filename )
+
+            # flatfield output directory
+            output_flatfield = d / 'flatfield'
+            if not dryrun:
+                output_flatfield.mkdir(exist_ok=True)
+
         # crop setup
         crop = False
-        if params_crop: #settings['waveform']['z-motion'] == 'X stage':
+        if params_crop:
             if 'x-stage-offset' in settings['waveform']:
                 stepCrop = settings['waveform']['x-stage-offset']['interval']
             elif 'xz-stage-offset' in settings['waveform']:
@@ -550,6 +632,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     output_crop_mip = output_mip / 'crop'
                     if not dryrun:
                         output_crop_mip.mkdir(parents=True, exist_ok=True)
+                elif flatfield:
+                    output_flatfield_mip = output_mip / 'flatfield'
+                    if not dryrun:
+                        output_flatfield_mip.mkdir(parents=True, exist_ok=True)
                 else:
                     output_original_mip = output_mip / 'original'
                     if not dryrun:
@@ -684,13 +770,26 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 else:
                     out_f = f
 
-                if crop:
+                if flatfield:
                     inpath = d / f
-                    outpath = output_crop / tag_filename(out_f, '_crop')
+                    outpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                    root = Path(configs['paths']['root'])
+                    flatpath = root / configs['paths']['flatfield']['dir']
+                    darkpath =  flatpath / configs['paths']['flatfield']['dark']
+                    normpath = flatpaths[ch]
+                    tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], outpath, inpath)
+                    cmd.append(tmp)
+
+                if crop:
+                    if flatfield:
+                        inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                    else:
+                        inpath = d / f
+                    outpath = output_crop / tag_filename(out_f, '_crop')                    
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath)
                     cmd.append(tmp)
 
-                if not deskew and mip:
+                if not deskew and mip: # don't need all of all the mips if deskewing, so only create useful ones to save file space
                     #  get the appropriate spacing
                     if 'xz-stage-offset' in settings['waveform']:
                         step = settings['waveform']['xz-stage-offset']['interval'][ch]
@@ -706,6 +805,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
                         tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
                         cmd.append(tmp)
+                    elif flatfield:
+                        xyRes = configs['xy-res']
+                        inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                        outpath = output_flatfield_mip / tag_filename(out_f, '_flatfield_mip')
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                        cmd.append(tmp)
                     else:
                         xyRes = 0.108 # For no cropping, use default
                         inpath = d / f
@@ -716,6 +821,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if deskew:
                     if crop:
                         inpath = output_crop / tag_filename(out_f, '_crop')
+                    elif flatfield:
+                        inpath = inpath = output_flatfield / tag_filename(out_f, '_flatfield')
                     else:
                         inpath = d / f
                     outpath = output_deskew / tag_filename(out_f, '_deskew')
@@ -738,6 +845,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = output_deskew / tag_filename(out_f, '_deskew')
                     elif crop:
                         inpath = output_crop / tag_filename(out_f, '_crop')
+                    elif flatfield:
+                        inpath = inpath = output_flatfield / tag_filename(out_f, '_flatfield')
                     else:
                         inpath = d / f
 
@@ -781,6 +890,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
         processed[d]['time'] = datetime.datetime.fromtimestamp(time.time()).isoformat()
         processed[d]['parsing'] = param_parsing
         processed[d]['bdv_parsing'] = param_bdv_parsing
+        if flatfield:
+            processed[d]['flatfield'] = params_flatfield
         if crop:
             processed[d]['crop'] = params_crop
         if deskew:
