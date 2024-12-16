@@ -80,12 +80,12 @@ Excitation Filter, Laser, Power (%), Exp(ms), Laser2, Power2 (%), Laser3, Power3
 
 
 ## Processed Files
-Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images.
+Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images. Modules are run in the order `flatfield > crop > deskew > decon`.
 
 ### _Maximum Intensity Projections (MIPs)_
 Maximum Intensity Projections take the maximum intensity across one axis of an image to turn a 3D image into a 2D image. This can be useful for quickly reviewing images without needing to load the full experiment into memory. See more about this in the [MIP documentation](https://aicjanelia.github.io/LLSM/mip/mip.html). In general, analysis should be done on the 3D images, and thus the `mip` folder should not be used for analysis.
 
-MIPs are created for each module that is used, so inside the `mip` folder will be additional subfolders corresponding to modules (e.g., `deskew` and `decon`). The folder name indicates which input image was used to create the MIP. MIPs can be created by taking the maximum along the x, y, or z axes, and file names will reflect this by ending with `_x`, `_y`, and `_z` respectively.
+MIPs are created for key modules that are used, so inside the `mip` folder will be additional subfolders corresponding to modules (e.g., `deskew` and `decon`). The folder name indicates which input image was used to create the MIP. MIPs can be created by taking the maximum along the x, y, or z axes, and file names will reflect this by ending with `_x`, `_y`, and `_z` respectively.
 
 ## BDV Saving
 The raw image file names contain informative metadata, but the long complex names can make converting to other file formats (e.g., Imaris) difficult. When bdv saving is enabled in the [configuration file](https://aicjanelia.github.io/LLSM/pipeline/config.html), the raw images will keep their informative names, but all processed files will have simplified names that are inspired by the [Automatic Loader in BigSticher](https://imagej.net/plugins/bigstitcher/autoloader), which runs on BigDataViewer (bdv). The simplified version keeps track of cameras, channels, tiles, and time points as simple numeric values (e.g., the specific laser line is removed). An example of the naming convention is shown below for a raw image that was run through the crop module.

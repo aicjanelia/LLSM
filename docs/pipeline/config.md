@@ -34,7 +34,10 @@ PSFs are required for running the deconvolution module. In prior versions of the
 This optional section determines the naming convention for output files. It defaults to false if the section is not provided. To learn more see [File Organization](https://aicjanelia.github.io/LLSM/pipeline/bdv_save.html).
 
 ## Individual Modules
-Individual modules are requested by adding their own section to the JSON file.  The [example json file](#example-configjson) requests cropping, deskewing, deconvolution, and the generation of MIP files. More details on the parameters for each are provided in the discussion of each module, but a high-level overview is provided here.  If all modules are requested, they are run in the order of `crop > deskew > decon`, with mips created at each stage as appropriate.
+Individual modules are requested by adding their own section to the JSON file.  The [example json file](#example-configjson) requests flatfield correction, cropping, deskewing, deconvolution, and the generation of MIP files. More details on the parameters for each are provided in the discussion of each module, but a high-level overview is provided here.  If all modules are requested, they are run in the order of `flatfield > crop > deskew > decon`, with MIPs created at each stage as described in [MIP](https://aicjanelia.github.io/LLSM/mip/mip.html).
+
+### _flatfield_
+To use the flatfield correction, paths to an average darkfield image and one normalized flatfield image per channel must be included in the paths section. These inputs are described further in [Flatfield Inputs](https://aicjanelia.github.io/LLSM/flatfield/flatfield.html#flatfield-inputs). Adding the paths does not enable this module; the module is enabled by adding a flatfield section with the image bit-depth.
 
 ### _crop_
 For each side of the image that cropping is desired, the number of pixels to remove from that side is a parameter. For example, `"cropTop": 10` removes 10 pixels from the top of the image. Any sides that are not provide are assumed to be zero. Other optional parameters are described further in [Cropping]().
@@ -74,10 +77,21 @@ Each slot has 15 GB of memory. The maximal memory is used by the deconvolution m
                 "560": "560_PSF.tif",
                 "488": "488_PSF.tif"
             }
+        },
+        "flatfield": {
+            "dir": "Calibration",
+            "dark": "DarkAverage.tif",
+            "laser": {
+                "488": "I_N_488.tif",
+                "560": "I_N_560.tif"
+            }
         }
     },
     "bdv": {
         "bdv_save": true
+    },
+    "flatfield": {
+        "bit-depth": 16
     },
     "crop": {
         "cropTop": 10,

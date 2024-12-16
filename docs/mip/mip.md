@@ -1,12 +1,25 @@
 ---
 title: Maximum Intensity Projection
 layout: default
-nav_order: 6
+nav_order: 7
 ---
 
 # Maximum Intensity Projection (MIP)
 
-The `mip` module is run together with the other processing modules and will create MIPs for any modules that are run. For example, if running both `deskew` and `decon`, MIPs will be made for both. The subfolder created by `mip` will contain subfolders indicating which input images were used to create them (e.g., a `decon` subfolder). Inside this folder will be files that end with `mip_x`, `mip_y`, and `mip_z`. The dimension in the file name is the axes over which the images have been projected.
+The `mip` module is run together with the other processing modules and will create MIPs for key modules that are run. For example, if running both `deskew` and `decon`, MIPs will be made for both. The subfolder created by `mip` will contain subfolders indicating which input images were used to create them (e.g., a `decon` subfolder). Inside this folder will be files that end with `mip_x`, `mip_y`, and `mip_z`. The dimension in the file name is the axes over which the images have been projected.
+
+
+| Modules Enabled | MIPs created |
+| ----- | ----- |
+| mip only | input images |
+| flatfield| flatfield |
+| crop | crop |
+| crop + flatfield | crop |
+| (crop and/or flatfield or none) + deskew | deskew |
+| decon + mip | input images & decon |
+| flatfield + decon | flatfield & decon |
+| crop +/- flatfield + decon | crop & decon |
+| (crop and/or flatfield or none) + deskew + decon | deskew & decon |
 
 ## Viewing MIPs
 
