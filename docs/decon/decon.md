@@ -31,19 +31,20 @@ If using the pipeline, the image and PSF z-steps will be automatically parsed. I
  Once the skewed PSF files are created, the deconvolution module is run on the input files (or flatfield or crop files, as appropriate to the configuration file). The decon-first deconvolution command **assumes that the input images and the PSF have the same Z spacing**, regardless of what is recorded in the PSF settings file. To distinguish from the normal pipeline ordering, these files will be saved in a folder called *decon_before_deskew*.  After deconvolution, the deconvolved files are then deskewed and saved in *deskew_after_decon*. If MIPs are requested, they will be made for the *deskew_after_decon* files.
 
 ### _Pipeline Ordering_
+
 | Modules in Configuration File | Decon Input File | Cluster Job Processing Steps |
 | ------ | ------ | ------ |
-| decon | input images | input > decon |
-| flatfield + decon | flatfield | input > flatfield > decon |
-| crop + decon | crop | input > crop > decon |
-| flatfield + crop + decon | crop | input > flatfield > crop > decon |
-| (crop and/or flatfield or none) + deskew + decon | deskew | input (> flatfield > crop) > deskew > decon |
-| decon-first | input images | input > decon > deskew |
-| flatfield + decon-first | flatfield | input > flatfield > decon > deskew |
-| crop + decon-first | crop | input > crop > decon > deskew |
-| flatfield + crop + decon-first | crop | input > flatfield > crop > decon > desekw |
-| (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | input (> flatfield > crop) > decon > deskew followed by (input, flatfield, or crop) > deskew |
-| (crop and/or flatfield or none) + decon-first + deskew + decon | input (or flatfield or crop) followed by deskew | input (> flatfield > crop) > decon > deskew followed by (input, flatfield, or crop) > deskew > decon |
+| decon | input images | (1) decon |
+| flatfield + decon | flatfield | (1) flatfield, (2) decon |
+| crop + decon | crop | (1) crop, (2) decon |
+| flatfield + crop + decon | crop | (1) flatfield, (2) crop, (3) decon |
+| (crop and/or flatfield or none) + deskew + decon | deskew | (1) crop and/or flatfield or none, (2) deskew, (3) decon |
+| decon-first | input images | (1) decon, (2) deskew |
+| flatfield + decon-first | flatfield | (1) flatfield, (2) decon, (3) deskew |
+| crop + decon-first | crop | (1) crop, (2) decon, (3) deskew |
+| flatfield + crop + decon-first | crop | (1) flatfield, (2) crop, (3) decon, (4) desekw |
+| (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | (1) crop and/or flatfield or none, (2) decon, (3) deskew, (4) deskew with input from 1 |
+| (crop and/or flatfield or none) + decon-first + deskew + decon | input (or flatfield or crop) for (1) and deskew for (5) | (1) crop and/or flatfield or none, (2) decon, (3) deskew, (4) deskew with input from 1, (5) decon |
 
 
 # Usage
