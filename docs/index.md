@@ -8,6 +8,7 @@ nav_order: 1
 The Advanced Imaging Center (AIC) uses this pipeline for pre-processing of images created on our LLSM or MOSAIC systems. The pipeline consists of multiple discrete modules that are accessed via the command line using either the `llsm-pipeline` or `mosaic-pipeline` commands. Which modules to implement are controlled by a configuration JSON file. The main difference in the two pipelines is the parsing of filenames and acquisition settings metadata.
 
 Each of the modules compiles to a separate binary that can also be directly executed by calling it on the command line. These modules are:
+- Flatfield Correction
 - Cropping
 - Deskewing
 - Deconvolution

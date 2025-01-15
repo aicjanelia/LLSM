@@ -15,6 +15,7 @@ import datetime
 from pathlib import Path, PurePath
 from sys import exit
 import settings2json
+from time import sleep
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Batch processing script for LLSM images.')
@@ -179,6 +180,107 @@ def load_configs(path):
             if configs['crop']['bit-depth'] not in [8, 16, 32]:
                 exit('ERROR: crop bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['crop']['bit-depth'])
             configs['crop']['bit-depth'] = {'flag': '-b', 'arg': configs['crop']['bit-depth']}
+
+    # sanitize decon-first configs
+    if 'decon-first' in configs:
+        if not 'decon' in configs['decon-first']:
+            exit('ERROR: provide deconvolution parameters for deconvolution followed by deskewing (''decon-first'')')
+        if not 'deskew' in configs['decon-first']:
+            exit('ERROR: provide deskewing parameters for deconovolution followed by desekewing (''decon-first'')')
+
+        # deskew configs for decon-first
+        supported_opts = ['xy-res', 'fill', 'bit-depth', 'angle', 'executable_path']
+        for key in list(configs['decon-first']['deskew']):
+            if key not in supported_opts:
+                print('WARNING: decon-first deskew option \'%s\' in config.json is not supported' % key)
+                del configs['decon-first']['deskew'][key]
+
+        if not 'executable_path' in configs['decon-first']['deskew']:
+            configs['decon-first']['deskew']['executable_path'] = "deskew"
+
+        if 'angle' in configs['decon-first']['deskew']:
+            if not type(configs['decon-first']['deskew']['angle']) is float:
+                exit('ERROR: decon-first deskew angle \'%s\' in config.json is not a float' % configs['decon-first']['deskew']['angle'])
+        else:
+            configs['decon-first']['deskew']['angle'] = 31.8 # Angle is 31.8 in LLSM but -32.45 for MOSAIC
+            print('WARNING: Using default LLSM angle of 31.8 for deskewing after deconvolution')
+        configs['decon-first']['deskew']['angle'] = {'flag': '-a', 'arg': configs['decon-first']['deskew']['angle']}
+
+        if 'xy-res' in configs['decon-first']['deskew']:
+            if not type(configs['decon-first']['deskew']['xy-res']) is float:
+                exit('ERROR: decon-first deskew xy resolution \'%s\' in config.json is not a float' % configs['decon-first']['deskew']['xy-res'])
+        else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deskewing after deconvolution')
+            configs['decon-first']['deskew']['xy-res'] = 0.104
+        configs['decon-first']['deskew']['xy-res'] = {'flag': '-x', 'arg': configs['decon-first']['deskew']['xy-res']}
+        
+        if 'fill' in configs['decon-first']['deskew']:
+            if not type(configs['decon-first']['deskew']['fill']) is float:
+                exit('ERROR: decon-first deskew background fill value \'%s\' in config.json is not a float' % configs['decon-first']['deskew']['fill'])            
+        else:
+            print('WARNING: Assuming a default deskew fill of 0.0 for decon-first deskewing steps.')
+            configs['decon-first']['deskew']['fill'] = 0.0
+        configs['decon-first']['deskew']['fill'] = {'flag': '-f', 'arg': configs['decon-first']['deskew']['fill']}
+
+        if 'bit-depth' in configs['decon-first']['deskew']:
+            if configs['decon-first']['deskew']['bit-depth'] not in [8, 16, 32]:
+                exit('ERROR: decon-first deskew bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon-first']['deskew']['bit-depth'])
+        else:
+            print('WARNING: Assuming a default bit depth of 16 for decon-first deskewing.')
+            configs['decon-first']['deskew']['bit-depth'] = 16
+        configs['decon-first']['deskew']['bit-depth'] = {'flag': '-b', 'arg': configs['decon-first']['deskew']['bit-depth']}
+
+        # decon configs for decon-first
+        supported_opts = ['xy-res','n', 'bit-depth', 'subtract', 'executable_path']
+        for key in list(configs['decon-first']['decon']):
+            if key not in supported_opts:
+                print('WARNING: decon-first decon option \'%s\' in config.json is not supported' % key)
+                del configs['decon-first']['decon'][key]
+
+        if not 'executable_path' in configs['decon-first']['decon']:
+            configs['decon-first']['decon']['executable_path'] = "decon"
+
+        if 'xy-res' in configs['decon-first']['decon']:
+            if not type(configs['decon-first']['decon']['xy-res']) is float:
+                exit('ERROR: decon-first decon xy resolution \'%s\' in config.json is not a float' % configs['decon-first']['decon']['xy-res'])
+        else:
+            print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for deconvolution before deskewing')
+            configs['decon-first']['decon']['xy-res'] = 0.104
+        configs['decon-first']['decon']['xy-res'] = {'flag': '-x', 'arg': configs['decon-first']['decon']['xy-res']}
+
+        if 'n' in configs['decon-first']['decon']:
+            if not type(configs['decon-first']['decon']['n']) is int:
+                exit('ERROR: decon-first decon iteration number (n) \'%s\' in config.json must be 8, 16, or 32' % configs['decon-first']['decon']['n'])
+            configs['decon-first']['decon']['n'] = {'flag': '-n', 'arg': configs['decon-first']['decon']['n']}
+        
+        if 'bit-depth' in configs['decon-first']['decon']:
+            if configs['decon-first']['decon']['bit-depth'] not in [8, 16, 32]:
+                exit('ERROR: decon-first decon bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['decon-first']['decon']['bit-depth'])
+            configs['decon-first']['decon']['bit-depth'] = {'flag': '-b', 'arg': configs['decon-first']['decon']['bit-depth']}
+
+        if 'subtract' in configs['decon-first']['decon']:
+            if not type(configs['decon-first']['decon']['subtract']) is float:
+                exit('ERROR: decon-first decon subtract value \'%s\' in config.json must be a float' % configs['decon-first']['decon']['subtract'])
+            configs['decon-first']['decon']['subtract'] = {'flag': '-s', 'arg': configs['decon-first']['decon']['subtract']}
+
+        if 'psf' not in configs['paths']:
+            exit('ERROR: decon-first enabled, but no psf parameters found in config file')
+
+        if 'dir' in configs['paths']['psf']:
+            partial_path = root / configs['paths']['psf']['dir']
+        else:
+            configs['paths']['psf']['dir'] = None
+            partial_path = root
+            print('WARNING: no psf directory provided... using \'%s\'' % root)
+        
+        if 'resampled' not in configs['paths']['psf']:
+            exit('ERROR: no resampled psf files provided for decon-first')
+
+        for key, val in configs['paths']['psf']['resampled'].items():
+            p = partial_path / val
+            if not p.is_file():
+                exit('ERROR: resampled %s psf file \'%s\' does not exist' % (key, p))
+
 
     # sanitize deskew configs
     if 'deskew' in configs:
@@ -423,10 +525,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_crop = {}
     params_bdv = {}
     params_flatfield = {}
+    params_deconfirst_decon = {}
+    params_deconfirst_deskew = {}
 
     cmd_bsub = None
     cmd_flatfield = None
     cmd_crop = None
+    cmd_deconfirst_decon = None
+    cmd_deconfirst_deskew = None
     cmd_deskew = None
     cmd_decon = None
     cmd_mip = None
@@ -441,6 +547,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
     if 'crop' in configs:
         params_crop.update(configs['crop'])
         cmd_crop = params2cmd(params_crop, configs['crop']['executable_path'])
+    if 'decon-first'in configs:
+        params_deconfirst_decon.update(configs['decon-first']['decon'])
+        cmd_deconfirst_decon = params2cmd(params_deconfirst_decon, configs['decon-first']['decon']['executable_path'])
+        params_deconfirst_deskew.update(configs['decon-first']['deskew'])
+        cmd_deconfirst_deskew = params2cmd(params_deconfirst_deskew, configs['decon-first']['deskew']['executable_path'])
     if 'deskew' in configs:
         params_deskew.update(configs['deskew'])
         cmd_deskew = params2cmd(params_deskew, configs['deskew']['executable_path'])
@@ -473,6 +584,25 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 psf_settings[laser]['z-step'] = j['waveform']['z-pzt']['interval'][0] 
             else:
                 exit('ERROR: PSF z-motion cannot be determined for laser %s' % laser)
+    if 'decon-first' in configs:
+        root = Path(configs['paths']['root'])
+
+        psf_resample_settings = {}
+        for laser, psf_filename in configs['paths']['psf']['resampled'].items():
+            psf_resample_settings[laser] = {}
+            psf_filename, _ = os.path.splitext(psf_filename)
+            p = root / configs['paths']['psf']['dir'] / (psf_filename + '_Settings.txt')
+            if not p.is_file():
+                exit('ERROR: resampled %s psf file \'%s\' does not have a Settings file' % (laser, p))
+   
+            j = settings2json.parse_txt(p)
+
+            if j['waveform']['z-motion'] == 'Sample piezo':
+                exit('ERROR: PSF is skewed and cannot be used for decon')
+            elif j['waveform']['z-motion'] == 'Z galvo & piezo':
+                psf_resample_settings[laser]['z-step'] = j['waveform']['z-pzt']['interval'][0] 
+            else:
+                exit('ERROR: PSF z-motion cannot be determined for resampled %s' % laser)
 
     # process each directory
     for d in dirs:
@@ -571,6 +701,43 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if not dryrun:
                 output_crop.mkdir(exist_ok=True)
 
+        # decon-first set up        
+        deconfirst = False
+        if params_deconfirst_deskew:
+
+            deconfirst = True
+
+            # deskew setup
+            if 's-piezo' not in settings['waveform']:
+                exit('ERROR: settings file did not contain a S Piezo field')
+            if 'interval' not in settings['waveform']['s-piezo']:
+                exit('ERROR: settings file did not contain a S Piezo Interval field')          
+
+            # get step sizes (This could be repeated if also doing regular deskew...)
+            steps = settings['waveform']['s-piezo']['interval']
+
+            # deskew output directory
+            output_deconfirst_deskew = d / 'deskew_after_decon'
+            if not dryrun:
+                output_deconfirst_deskew.mkdir(exist_ok=True)
+
+            # decon setup
+            if 'laser' not in settings['waveform']:
+                exit('ERROR: settings file did not contain a Laser field')
+
+            root = Path(configs['paths']['root'])
+            resamplepaths = []
+            resamplesteps = []
+            for laser in settings['waveform']['laser']:
+                filename = configs['paths']['psf']['resampled'][str(laser)]
+                resamplepaths.append(root / configs['paths']['psf']['dir'] / filename )
+                resamplesteps.append(psf_resample_settings[str(laser)]['z-step'])
+
+            # decon output directory
+            output_deconfirst_decon = d / 'decon_before_deskew'
+            if not dryrun:
+                output_deconfirst_decon.mkdir(exist_ok=True)
+
         # deskew setup
         deskew = False
         if params_deskew:
@@ -589,8 +756,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if not dryrun:
                 output_deskew.mkdir(exist_ok=True)
         else:
-            if settings['waveform']['z-motion'] == 'Sample piezo':
-                print('WARNING: deskew is not enabled, but acquisition was stage scanned.')
+            if not deconfirst:
+                if settings['waveform']['z-motion'] == 'Sample piezo':
+                    print('WARNING: deskew is not enabled, but acquisition was stage scanned.')
 
         # decon setup
         decon = False
@@ -629,7 +797,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 output_decon_mip = output_mip / 'decon'
                 if not dryrun:
                     output_decon_mip.mkdir(parents=True, exist_ok=True)
-            if not deskew: # In this case, want mips of the 'original' data before decon
+            if deconfirst:
+                output_deconfirst_mip = output_mip / 'deskew_after_decon'
+                if not dryrun:
+                    output_deconfirst_mip.mkdir(parents=True, exist_ok=True)
+            if (not deskew) and (not deconfirst): # In this case, want mips of the 'original' data before decon
                 if crop:
                     output_crop_mip = output_mip / 'crop'
                     if not dryrun:
@@ -672,6 +844,53 @@ def process(dirs, configs, dryrun=False, verbose=False):
         param_bdv_parsing = {}       
         param_parsing.update(configs['parsing'])
         param_parsing.update(configs['bdv_parsing'])
+
+        # Skew the PSFs accordingly if necessary
+        # Will be saved to the current directory so that if multiple experiments are being processed the skewed files don't have the wrong step
+        if deconfirst:             
+            # This is a little bit manual to put some guard rails on what is requested...
+            a = 180-configs['decon-first']['deskew']['angle']['arg']
+            x = configs['decon-first']['deskew']['xy-res']['arg']
+            fill = configs['decon-first']['deskew']['fill']['arg']
+            bitd = configs['decon-first']['deskew']['bit-depth']['arg']
+            # Check if all steps are the same because it is unclear how to best keep track of channels vs lasers here
+            stepCheck = settings['waveform']['s-piezo']['interval']
+            for step in stepCheck:
+                if step != stepCheck[0]:
+                    exit("ERROR: Different stage steps for different channels for %s. PSF skewing is not able to parse the steps correctly." % (d)) 
+            step = settings['waveform']['s-piezo']['interval'][0] 
+            # Loop through deskew commands
+            bsub_psf = 'bsub -n 1 -J psf-skew -o /dev/null -We 1 -W 30 "'
+            for psffile in resamplepaths:
+                skewedPSF = PurePath(psffile)
+                skewedPSF = skewedPSF.stem + '_skewed' + skewedPSF.suffix     
+                skewedPSF = d / skewedPSF       
+                if skewedPSF.is_file():    
+                    print('Skewed PSF already exists and will not be overwritten: %s' % (skewedPSF))
+                else:
+                    tmp = configs['decon-first']['deskew']['executable_path'] + ' -a %s -x %s -f %s -b %s -w -s %s -o %s %s "' % (a,x,fill,bitd,step,skewedPSF,psffile)
+                    cmd = bsub_psf + tmp
+                    if verbose:
+                        print(cmd)
+                    if not dryrun:
+                        os.system(cmd)
+            if not dryrun: # check that files exist after the jobs have run
+                for psffile in resamplepaths:
+                    skewedPSF = PurePath(psffile)
+                    skewedPSF = skewedPSF.stem + '_skewed' + skewedPSF.suffix     
+                    skewedPSF = d / skewedPSF   
+                    if not skewedPSF.is_file():
+                        # TODO: can this better track the job above rather than waiting a few times?
+                        print('waiting on skewed PSF saving...')
+                        sleep(30)
+                        if not skewedPSF.is_file():
+                            print('still waiting on skewed PSF saving...')
+                            sleep(30)
+                        if not skewedPSF.is_file():
+                            print('still waiting on skewed PSF saving...')
+                            sleep(30)
+                        if not skewedPSF.is_file():
+                            exit("ERROR: skewed PSF taking too long to save....")
 
         # process all files in directory
         for f in files:
@@ -728,9 +947,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                     cmd.append(tmp)
 
-                if not deskew and mip: # don't need all of all the mips if deskewing, so only create useful ones to save file space
+                if (not deskew) and (not deconfirst) and mip: # don't need all of all the mips if deskewing, so only create useful ones to save file space
                     #  get the appropriate spacing
                     if settings['waveform']['z-motion'] == "Sample piezo":
+                        print('WARNING: deskew is not enabled but MIPs are being prpared for input stage scanned images with a default LLSM angle of 31.8')
                         step = settings['waveform']['s-piezo']['interval'][ch]
                         step = step * math.sin(abs(31.8* math.pi/180.0))  
                     elif settings['waveform']['z-motion'] == "Z galvo & piezo":
@@ -758,16 +978,59 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
                         cmd.append(tmp) 
 
+                if deconfirst:
+
+                    # Make sure that the skewed files exist
+                    skewedPSF = PurePath(resamplepaths[ch])
+                    skewedPSF = skewedPSF.stem + '_skewed' + skewedPSF.suffix     
+                    skewedPSF = d / skewedPSF
+                    if not dryrun:
+                        if not skewedPSF.is_file():
+                            exit('ERROR: skewed psf file \'%s\' does not exist' % (skewedPSF))
+
+                    # Set up by getting the appropriate step size
+                    step = settings['waveform']['s-piezo']['interval'][ch] 
+                    step = step * math.sin(configs['decon-first']['deskew']['angle']['arg'] * math.pi/180.0)                  
+                        
+                    # Which input image?
+                    if crop:
+                        inpath = output_crop / tag_filename(out_f, '_crop')
+                    elif flatfield:
+                        inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                    else:
+                        inpath = d / f
+
+                    outpath = output_deconfirst_decon / tag_filename(out_f, '_decon_before_deskew')
+
+                    # ASSUMPTION: the resampled PSF has a spacing equivalent to the image.
+                    tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (skewedPSF, step, step, outpath, inpath)
+                    cmd.append(tmp)
+
+                    # Now work on deskewing
+                    inpath = PurePath(outpath)
+                    outpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
+
+                    tmp = cmd_deconfirst_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
+                    cmd.append(tmp)
+
+                    # create mips for deskew_after_decon
+                    if mip:
+                        inpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
+                        outpath = output_deconfirst_mip / tag_filename(out_f, '_deskew_after_decon_mip')
+                        xyRes = configs['decon-first']['deskew']['xy-res']['arg']
+                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes, step, outpath, inpath)
+                        cmd.append(tmp)             
+
                 if deskew:
                     if crop:
                         inpath = output_crop / tag_filename(out_f, '_crop')
                     elif flatfield:
-                        inpath = inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                        inpath = output_flatfield / tag_filename(out_f, '_flatfield')
                     else:
                         inpath = d / f
                     outpath = output_deskew / tag_filename(out_f, '_deskew')
                     step = settings['waveform']['s-piezo']['interval'][ch] 
-                    step = step * math.sin(31.8 * math.pi/180.0)
+                    step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0)
 
                     tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
                     cmd.append(tmp)
@@ -785,7 +1048,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     elif crop:
                         inpath = output_crop / tag_filename(out_f, '_crop')
                     elif flatfield:
-                        inpath = inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                        inpath = output_flatfield / tag_filename(out_f, '_flatfield')
                     else:
                         inpath = d / f
 
@@ -825,6 +1088,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
             processed[d]['flatfield'] = params_flatfield
         if crop:
             processed[d]['crop'] = params_crop
+        if deconfirst:
+            processed[d]['decon-first'] = {}
+            processed[d]['decon-first']['deskew'] = params_deconfirst_deskew
+            processed[d]['decon-first']['decon'] = params_deconfirst_decon
         if deskew:
             processed[d]['deskew'] = params_deskew
             processed[d]['deskew']['step'] = steps

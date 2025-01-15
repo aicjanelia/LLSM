@@ -5,12 +5,19 @@ nav_order: 3
 ---
 
 # Flatfield Correction
+{: .no_toc }
 
 The `flatfield` module performs a flatfield correction as described in [Hobson, et al.](#reference) The function outputs $$I_{Corrected}$$ using the following equation:
 
 $$I_{Corrected} = \frac{I_{Measured} - I_{Dark}}{I_N}$$
 
 The input $$I_{Measured}$$ is the acquired image, while $$I_{Dark}$$ and $$I_N$$ are calibration images. To prepare these calibration images, see [Flatfield Inputs](#flatfield-inputs) below.  The paths to these calibration images must be specified in the paths section of the configuration file. Enable flatfield correction by adding a flatfield section to the configuration file with the image bit depth specified.
+
+## Table of Contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
 
 ## Flatfield Inputs
 Several flatfield calibration images should be collected for each channel to be corrected. Similarly, several dark images (i.e., camera aperture closed) should be collected for the system. Experimental details on collecting these images can be found in [Hobson, et al.](#reference) Once the sets of images are collected, they are averaged to create $$I_{flatfield}$$ and $$I_{dark}$$, respectively. The ImageJ macro described below performs this averaging while creating the required $$I_N$$ input image. $$I_N$$ is a normalized flatfield image, calculated as:

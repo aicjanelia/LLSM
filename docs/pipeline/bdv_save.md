@@ -80,7 +80,7 @@ Excitation Filter, Laser, Power (%), Exp(ms), Laser2, Power2 (%), Laser3, Power3
 
 
 ## Processed Files
-Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images. Modules are run in the order `flatfield > crop > deskew > decon`.
+Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images. Modules are run in the order `flatfield > crop > deskew > decon`. If the configuration file contains a section for `decon-first`, the order of deconvolution and deskewing will be swapped. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about `decon-first`, which saves files in folders called `decon_before_deskew` and `deskew_after_decon`.
 
 ### _Maximum Intensity Projections (MIPs)_
 Maximum Intensity Projections take the maximum intensity across one axis of an image to turn a 3D image into a 2D image. This can be useful for quickly reviewing images without needing to load the full experiment into memory. See more about this in the [MIP documentation](https://aicjanelia.github.io/LLSM/mip/mip.html). In general, analysis should be done on the 3D images, and thus the `mip` folder should not be used for analysis.

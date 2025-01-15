@@ -11,28 +11,28 @@
 // User GUI
 Dialog.create("PSF Processing");
 Dialog.addFile("Bead Image","");
+Dialog.addNumber("Intensity Threshold for Peak Finding",1000);
 Dialog.addMessage("Resampling is required for deconvolution prior to deskewing.");
 Dialog.addCheckbox("Resample in Z?", false);
-Dialog.addChoice("Microscope (Angle)",newArray("MOSAIC (-32.45)","LLSM (31.8)"));
-Dialog.addNumber("PSF Z-step (um)",0.1);
-Dialog.addNumber("Stage Step Size (um)",0);
+Dialog.addChoice("Microscope (Angle)",newArray("MOSAIC (-32.45)","LLSM (31.8)","Objective Scanned"));
+Dialog.addNumber("PSF Z Step (um)",0.1);
+Dialog.addNumber("Experiment Stage Step (um)",0);
 Dialog.addMessage("The following parameters do not usually need to be changed.");
 Dialog.addNumber("X-Y FOV (odd number)", 25);
 Dialog.addNumber("Z FOV (odd number", 25);
-Dialog.addNumber("Intensity Threshold for Peak Finding",1000);
 Dialog.addNumber("Background Subtraction", 100);
 Dialog.show();
 
 // Grab the user inputs
 bead_file = Dialog.getString();
 imDir = File.getDirectory(bead_file);
+intThresh = Dialog.getNumber();
 resampleToggle = Dialog.getCheckbox();
 microscope = Dialog.getChoice();
 psfStep = Dialog.getNumber();
 stepSize = Dialog.getNumber();
 xcrop = Dialog.getNumber();
 zcrop = Dialog.getNumber();
-intThresh = Dialog.getNumber();
 backSub = Dialog.getNumber();
 
 // Check the user inputs
@@ -50,6 +50,8 @@ if (microscope=="MOSAIC (-32.45)"){
 	ang = 32.45*PI/180;
 } else if (microscope=="LLSM (31.8)"){
 	ang = (180-31.8)*PI/180;
+} else if (microscope=="Objective Scanned"){
+	ang = PI/2;
 } else {
 	exit("Invalid microscope selection.")
 }

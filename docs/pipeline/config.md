@@ -28,13 +28,13 @@ All configuration files need to include information on image paths. The `root` d
 Once a folder has been processed, it will be added to a new file, `processed.json`. This new json file is made in the `root` directory. Any directories that are listed in `processed.json` will be skipped during any future processing. This is useful if, for example, you want to analyze the first experiment in a project, but want to keep using the same `config.json` to process the rest of the project. All previously processed experiments will be skipped, saving time and money.  However, if you make a mistake and want to re-run any given folder, you will need to open `processed.json` and manually delete the entry that is associated with that folder.
 
 ### _psf_
-PSFs are required for running the deconvolution module. In prior versions of the pipeline, this section was required regardless, but the current version only checks for the `psf` section if deconvolution is requested. Inside the `psf` section, there are two required subsections: `dir` and `laser`.  The directory `dir` is parsed as a subdirectory of `root` and should contain PSF images with their corresponding settings file. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about these files. The file names that correspond to each laser must be provided as name-value pairs in the `laser` subsection. The laser names must exactly match the values in the acquisition settings file (e.g., don't use 561 if the settings file uses 560).
+PSFs are required for running the deconvolution module. In prior versions of the pipeline, this section was required regardless, but the current version only checks for the `psf` section if deconvolution is requested. Inside the `psf` section, there are two required subsections for standard deconvolution: `dir` and `laser`.  The directory `dir` is parsed as a subdirectory of `root` and should contain PSF images with their corresponding settings file. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about these files. The file names that correspond to each laser must be provided as name-value pairs in the `laser` subsection. The laser names must exactly match the values in the acquisition settings file (e.g., don't use 561 if the settings file uses 560). If using the option to deconvolve between deskewing (`decon-first`), the `laser` section is replaced by a `resampled` section with the same structure that points to PSF files that have been resampled in Z.
 
 ## BDV
 This optional section determines the naming convention for output files. It defaults to false if the section is not provided. To learn more see [File Organization](https://aicjanelia.github.io/LLSM/pipeline/bdv_save.html).
 
 ## Individual Modules
-Individual modules are requested by adding their own section to the JSON file.  The [example json file](#example-configjson) requests flatfield correction, cropping, deskewing, deconvolution, and the generation of MIP files. More details on the parameters for each are provided in the discussion of each module, but a high-level overview is provided here.  If all modules are requested, they are run in the order of `flatfield > crop > deskew > decon`, with MIPs created at each stage as described in [MIP](https://aicjanelia.github.io/LLSM/mip/mip.html).
+Individual modules are requested by adding their own section to the JSON file.  The [example json file](#example-configjson) requests flatfield correction, cropping, deskewing, deconvolution, and the generation of MIP files. More details on the parameters for each are provided in the discussion of each module, but a high-level overview is provided here.  If all modules are requested, they are run in the order of `flatfield > crop > deskew > decon`, with MIPs created at each stage as described in [MIP](https://aicjanelia.github.io/LLSM/mip/mip.html). This ordering is changed if the configuration file contain a section called `decon-first`, which creates commands that run deconovlution before deskewing. For more about this ordering, see [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html).
 
 ### _flatfield_
 To use the flatfield correction, paths to an average darkfield image and one normalized flatfield image per channel must be included in the paths section. These inputs are described further in [Flatfield Inputs](https://aicjanelia.github.io/LLSM/flatfield/flatfield.html#flatfield-inputs). Adding the paths does not enable this module; the module is enabled by adding a flatfield section with the image bit-depth.
@@ -48,10 +48,13 @@ Deskewing is based on the xy-resolution and the step size of the images. The ste
 ### _decon_
 The value of n in `decon` is not related to the bsub command, but rather is the number of Richardson-Lucy iterations. Subtract will subtract a camera offset from all images; this value should generally be 100 for the AIC systems. Our systems have a `bit-depth` of 16.
 
+### _decon-first_
+The `decon-first` section of the configration file contains nested sections for decon and deskew that use the same input parameters as the isolated modules. This one section will generate commands that first deconvolve and then deskew the data (i.e., without needing to call the deskew module separately). Using this option is faster and requires less memory than running deconvolution on the desekwed images, but requires first resampling the PSF (see [Point Spread Function for Deconvolution](https://aicjanelia.github.io/LLSM/decon/psf.html)). There is no reason to use `decon-first` on objective-scanned images, as in this case `decon` alone (without `deskew`) is sufficient.
+
 ### _mip_
 The true/false values in `mip` determine if projections will be made along the x, y, and/or z axes. Setting all values to true is recommended.
 
-## Bsub
+## bsub
 The `bsub` section determines how jobs will be sent to the LSF cluster and is the section most specific to using the Janelia set up. A job is created for each individual tiff file, so thus there is one job for each time point and each channel.
 
 ### _job output_
@@ -121,6 +124,54 @@ Each slot has 15 GB of memory. The maximal memory is used by the deconvolution m
         "We": 10,
         "n": 4,
         "W": 480
+    }
+}
+```
+
+### Configuration for decon-first
+To use `decon-first`,  create a nested structure and make sure to specified resampled PSF paths in the psf information.
+
+```json
+{
+    "paths": {
+        "root": "/aic/instruments/llsm/pipeline-test/",
+        "psf": {
+            "dir": "Calibration",
+            "laser": {
+                "560": "560_PSF.tif",
+                "488": "488_PSF.tif"
+            },
+            "resampled": {
+                "560": "560_resampled_PSF.tif",
+                "488": "488_resampled_PSF.tif"
+            }
+        }
+    },
+    "bdv": {
+        "bdv_save": true
+    },
+    "decon-first": {
+        "deskew": {
+            "xy-res": 0.104,
+            "fill": 0.0,
+            "bit-depth": 16
+        },
+        "decon": {
+            "n": 5,
+            "bit-depth": 16,
+            "subtract": 100.0
+        }
+    },
+    "mip": {
+        "x": true,
+        "y": true,
+        "z": true
+    },
+    "bsub": {
+        "o": "/dev/null",
+        "We": 10,
+        "n": 2,
+        "W": 120
     }
 }
 ```

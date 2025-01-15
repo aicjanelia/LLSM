@@ -20,6 +20,10 @@ The `mip` module is run together with the other processing modules and will crea
 | flatfield + decon | flatfield & decon |
 | crop +/- flatfield + decon | crop & decon |
 | (crop and/or flatfield or none) + deskew + decon | deskew & decon |
+| (crop and/or flatfield or none) + decon-first | deskew_after_decon |
+| (crop and/or flatfield or none) + decon-first + deskew | deskew_after_decon + deskew |
+| (crop and/or flatfield or none) + decon-first + deskew + decon | deskew_after_decon + deskew + decon |
+
 
 ## Viewing MIPs
 
