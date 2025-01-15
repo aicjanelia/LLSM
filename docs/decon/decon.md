@@ -32,7 +32,7 @@ If using the pipeline, the image and PSF z-steps will be automatically parsed. I
 
 ### _Pipeline Ordering_
 | Modules in Configuration File | Decon Input File | Cluster Job Processing Steps |
-|:----------------------------- |:---------------- |:---------------------------- |
+| ------ | ------ | ------ |
 | decon | input images | input > decon |
 | flatfield + decon | flatfield | input > flatfield > decon |
 | crop + decon | crop | input > crop > decon |
@@ -42,8 +42,8 @@ If using the pipeline, the image and PSF z-steps will be automatically parsed. I
 | flatfield + decon-first | flatfield | input > flatfield > decon > deskew |
 | crop + decon-first | crop | input > crop > decon > deskew |
 | flatfield + crop + decon-first | crop | input > flatfield > crop > decon > desekw |
-| (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | input (> flatfield > crop) > decon > deskew *followed by* (input, flatfield, or crop) > deskew |
-| (crop and/or flatfield or none) + decon-first + deskew + decon | input (or flatfield or crop) *followed by* deskew | input (> flatfield > crop) > decon > deskew *followed by* (input, flatfield, or crop) > deskew > decon |
+| (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | input (> flatfield > crop) > decon > deskew followed by (input, flatfield, or crop) > deskew |
+| (crop and/or flatfield or none) + decon-first + deskew + decon | input (or flatfield or crop) followed by deskew | input (> flatfield > crop) > decon > deskew followed by (input, flatfield, or crop) > deskew > decon |
 
 
 # Usage
