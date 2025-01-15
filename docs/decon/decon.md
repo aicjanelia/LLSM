@@ -42,9 +42,8 @@ If using the pipeline, the image and PSF z-steps will be automatically parsed. I
 | flatfield + decon-first | flatfield | input > flatfield > decon > deskew |
 | crop + decon-first | crop | input > crop > decon > deskew |
 | flatfield + crop + decon-first | crop | input > flatfield > crop > decon > desekw |
-| (crop and/or flatfield or none) + decon-first + deskew | input<br>(or flatfield or crop) | input (> flatfield > crop) > decon > deskew<br>_followed by_<br> (input, flatfield, or crop) > deskew |
-| (crop and/or flatfield or none) + decon-first + deskew + decon | input, flatfield, or crop<br>_followed by_<br>deskew | input (> flatfield > crop) > decon > deskew<br>_followed by_<br> (input, flatfield, or crop) > deskew > decon |
-
+| (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | input (> flatfield > crop) > decon > deskew _followed by_ (input, flatfield, or crop) > deskew |
+| (crop and/or flatfield or none) + decon-first + deskew + decon | input, flatfield, or crop _followed by_ deskew | input (> flatfield > crop) > decon > deskew _followed by_ (input, flatfield, or crop) > deskew > decon |
 
 # Usage
 
