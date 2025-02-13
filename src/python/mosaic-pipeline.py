@@ -932,6 +932,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     cmd = bsub_psf + tmp
                     if verbose:
                         print(cmd)
+                    if not dryrun:
+                        os.system(cmd)
             if not dryrun: # check that files exist after the jobs have run
                 for psffile in resamplepaths:
                     skewedPSF = PurePath(psffile)
