@@ -818,7 +818,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         chList = []
         # parsing tile naming
         tiles = []
-        pattern_tile = re.compile(r'(\_(?:[-]*\d{1,}?){1}x\_(?:[-]*\d{1,}?){1}y\_(?:[-]*\d{1,}?)z_)')
+        pattern_tile = re.compile(r'(\_(?:[-]*\d{1,}?){1}x\_(?:[-]*\d{1,}?){1}y\_(?:[-]*\d{1,}?)z_).*\.tif')
         if bdv_file:
             if scan_type == 'bdv': # In this case, we have a different file structure
                 pattern_tile = re.compile(f.split('_')[0] + '.*_(tile(\d+)).*\.tif')
