@@ -88,13 +88,13 @@ Maximum Intensity Projections take the maximum intensity across one axis of an i
 MIPs are created for key modules that are used, so inside the `mip` folder will be additional subfolders corresponding to modules (e.g., `deskew` and `decon`). The folder name indicates which input image was used to create the MIP. MIPs can be created by taking the maximum along the x, y, or z axes, and file names will reflect this by ending with `_x`, `_y`, and `_z` respectively.
 
 ## BDV Saving
-The raw image file names contain informative metadata, but the long complex names can make converting to other file formats (e.g., Imaris) difficult. When bdv saving is enabled in the [configuration file](https://aicjanelia.github.io/LLSM/pipeline/config.html), the raw images will keep their informative names, but all processed files will have simplified names that are inspired by the [Automatic Loader in BigSticher](https://imagej.net/plugins/bigstitcher/autoloader), which runs on BigDataViewer (bdv). The simplified version keeps track of cameras, channels, tiles, and time points as simple numeric values (e.g., the specific laser line is removed). An example of the naming convention is shown below for a raw image that was run through the crop module.
+The raw image file names contain informative metadata, but the long complex names can make converting to other file formats (e.g., Imaris) difficult. When bdv saving is enabled in the [configuration file](https://aicjanelia.github.io/LLSM/pipeline/config.html), the raw images will keep their informative names, but all processed files will have simplified names that are inspired by the [Automatic Loader in BigSticher](https://imagej.net/plugins/bigstitcher/autoloader), which runs on BigDataViewer (bdv). The simplified version keeps track of channels, tiles, and time points as simple numeric values (e.g., the specific laser line is removed). An example of the naming convention is shown below for a raw image that was run through the crop module. In a previous version of this naming scheme, the camera information was also recorded in the simplified file naming, but that has been removed in the current version.
 
 ```c
 // raw image
 scan_CamA_ch0_CAM1_stack0000_488nm_0000000msec_0107885054msecAbs_-01x_-01y_-01z_0000t.tif
 // cropped image
-scan_Cam0_ch0_tile0_t0000_crop.tif
+scan_ch0_tile0_t0000_crop.tif
 ```
 
 Enable bdv saving by including the following in the configuration file:

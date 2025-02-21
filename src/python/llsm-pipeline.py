@@ -637,12 +637,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
             print('saving in bdv naming format...')
             bdv_file = True
         for f in files:
-            bdv_pattern = re.compile('scan_Cam(\d+)_ch(\d+)_tile(\d+)_t(\d+).*\.tif')
+            bdv_pattern = re.compile('scan.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))|(ch(\d+))).*tile.*\.tif') # Used to include camera, keep * for backwards compatibility
             m = bdv_pattern.fullmatch(f)
             if m:
                 scan_type = 'bdv'
-                attributes = [r'Cam_',r'ch_',r't_']
-                pattern = pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))).*\.tif')
+                attributes = [r'Cam_',r'ch_',r't_'] # Will also keep this for backwards compatibility
+                pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))|(ch(\d+))).*\.tif') # Used to include camera, keep | choices for backwards compatibility
                 break
             m = pattern.fullmatch(f)
             if m:
@@ -896,11 +896,15 @@ def process(dirs, configs, dryrun=False, verbose=False):
         for f in files:
             m = pattern.fullmatch(f)
             if m:
-                ch = int(m.group(1))
+                if scan_type == 'bdv':
+                    ch = m.group(1)
+                    ch = int(ch[-1])
+                else:
+                    ch = int(m.group(1))
                 cmd = [cmd_bsub, ' \"']
 
                 # Read filename and convert the outpath name to BDV format
-                # Use 'scan_CamX_chX_tileX_tXXXX.tif' as convention
+                # Use 'scan_chX_tileX_tXXXX.tif' as convention
                 if bdv_file & (scan_type != 'bdv'):
                     # attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
@@ -908,18 +912,18 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     tile_temp = re.findall(pattern_tile, f)
                     if tile_temp[0] in tiles_dict:
                         tile = tiles_dict[tile_temp[0]]
-                    # Keep tile_0 if not
+                    # Keep tile0 if not
                     else:
                         tile = '_tile0'
 
                     if bool(re.findall(r'CamA',f)):
                         # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_Cam'+re.sub('A','0',details[attributes[0]])+'_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
                     elif bool(re.findall(r'CamB',f)):
                         # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_Cam'+re.sub('B','1',details[attributes[0]])+'_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
                     else: # If only one camera used, there won't be a camera A/B
-                        dst = f'scan_Cam1_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'                        
+                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'                        
                     out_f = f'{dst}'                    
                 else:
                     out_f = f

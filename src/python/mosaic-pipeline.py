@@ -638,12 +638,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
             print('saving in bdv naming format...')
             bdv_file = True
         for f in files:
-            bdv_pattern = re.compile('scan_Cam(\d+)_ch(\d+)_tile(\d+)_t(\d+).*\.tif')
+            bdv_pattern = re.compile('scan.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))|(ch(\d+))).*\.tif') # Used to include camera, keep * for backwards compatibility
             m = bdv_pattern.fullmatch(f)
             if m:
                 scan_type = 'bdv'
-                attributes = [r'Cam_',r'ch_',r't_']
-                pattern = pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))).*\.tif')
+                attributes = [r'Cam_',r'ch_',r't_'] # Will also keep this for backwards compatibility
+                pattern = re.compile(f.split('_')[0] + '.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))|(ch(\d+))).*\.tif') # Used to include camera, keep | choices for backwards compatibility
                 break
             m = pattern.fullmatch(f)
             if m:
@@ -845,14 +845,19 @@ def process(dirs, configs, dryrun=False, verbose=False):
             temp = re.findall(r'CamA',name)
             if bool(temp):
                 N_ch_CamA += 1
-            sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
+            if scan_type == 'bdv':
+                sortVals[idx] = name[-1]
+            else:
+                sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
         sortVals = sorted(sortVals)
         chNum = list(chList)
         for idx, name in enumerate(sortVals):
-            chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
+            
             if scan_type == 'bdv':
+                chList[idx] = 'ch'+ name[0] # Recreate the names with the sorted values
                 chNum[idx] = idx
             else:
+                chList[idx] = 'Cam' + name[1] + '_ch'+ name[0] # Recreate the names with the sorted values
                 chNum[idx] = int(name[0])
         configs['parsing'] = {}
         configs['bdv_parsing'] = {}
@@ -966,7 +971,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 cmd = [cmd_bsub, ' \"']
 
                 # Read filename and convert the outpath name to BDV format
-                # Use 'scan_CamX_chX_tileX_tXXXX.tif' as convention
+                # Use 'scan_chX_tileX_tXXXX.tif' as convention
                 if bdv_file & (scan_type != 'bdv'):
                     # attributes = [r'Cam',r'ch',r'stack']
                     details = string_finder(f,attributes)
@@ -975,16 +980,16 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     tile_temp = re.findall(pattern_tile, f)
                     if tile_temp[0] in tiles_dict:
                         tile = tiles_dict[tile_temp[0]]
-                    # Keep tile_0 if not
+                    # Keep tile0 if not
                     else:
                         tile = '_tile0'
 
                     if bool(temp):
                         # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_Cam'+re.sub('A','0',details[attributes[0]])+'_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
                     else:
                         # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_Cam'+re.sub('B','1',details[attributes[0]])+'_ch'+str(int(details[attributes[1]])+N_ch_CamA)+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+str(int(details[attributes[1]])+N_ch_CamA)+tile+'_t'+details[attributes[-1]]+'.tif'
                     out_f = f'{dst}'
                     
                 else:
