@@ -839,20 +839,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
         tiles_dict = {tiles[i]:('_tile'+str(i)) for i in range(len(tiles))}
 
         sortVals = list(chList) 
-        N_ch_CamA = 0
         for idx, name in enumerate(chList):
-            # count number of CamA channels to offset CamB channel numbers
-            temp = re.findall(r'CamA',name)
-            if bool(temp):
-                N_ch_CamA += 1
             if scan_type == 'bdv':
                 sortVals[idx] = name[-1]
             else:
                 sortVals[idx] = name[-1] + name[3]  # Names are sorted by camera, ch, but we want ch, camera sorting
         sortVals = sorted(sortVals)
         chNum = list(chList)
-        for idx, name in enumerate(sortVals):
-            
+        for idx, name in enumerate(sortVals):            
             if scan_type == 'bdv':
                 chList[idx] = 'ch'+ name[0] # Recreate the names with the sorted values
                 chNum[idx] = idx
@@ -880,7 +874,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     nameC.append(idx)              
             if len(lasersC) == 1:
                 # In this case, map all the names to the single laser
-                # Arbitrarily use CamB_ch += N_ch_CamA to avoid same channel names
+                # Arbitrarily use CamB_ch += 10 to avoid same channel names
                 # The new naming scheme is stored in processed_config (use --verbose)
                 chName = []
                 for n in nameC:
@@ -890,9 +884,15 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 configs['parsing'][settings['waveform']['laser'][lasersC[0]]] = chName
                 temp = re.findall(r'CamA', chList[n])
                 if bool(temp):
-                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamA',r'Cam0',chList[n])
+                    chStr = chList[n][-1]
+                    chStr = str(chStr).zfill(2)
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamA',r'Cam0',chList[n][0:-1]+chStr)
+                    print(chList[n][0:-1]+chStr)
                 else:
-                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+str(int(chList[n][-1])+N_ch_CamA))
+                    chStr = int(chList[n][-1])+10
+                    chStr = str(chStr).zfill(2)
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+chStr)
+                    print(chList[n][0:-1]+chStr)
             elif len(lasersC) == len(nameC):
                 # In this case, map the names to the lasers in order
                 for idx, n in enumerate(nameC):
@@ -900,10 +900,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     print(chList[n] + '=' + str(settings['waveform']['laser'][lasersC[idx]]))
                     configs['parsing'][settings['waveform']['laser'][lasersC[idx]]] = chList[n]
                     temp = re.findall(r"CamA", chList[n])
-                    if bool(temp):
-                        configs['bdv_parsing'][settings['waveform']['laser'][lasersC[idx]]] = re.sub(r'CamA',r'Cam0',chList[n])
-                    else:
-                        configs['bdv_parsing'][settings['waveform']['laser'][lasersC[idx]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+str(int(chList[n][-1])+N_ch_CamA))
+                if bool(temp):
+                    chStr = chList[n]
+                    chStr = str(chStr).zfill(2)
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamA',r'Cam0',chList[n][0:-1]+chStr)
+                else:
+                    chStr = int(chList[n])+10
+                    chStr = str(chStr).zfill(2)
+                    configs['bdv_parsing'][settings['waveform']['laser'][lasersC[0]]] = re.sub(r'CamB',r'Cam1',chList[n][0:-1]+chStr)
             else:
                 # Other combinations of MOSAIC settings are not yet expected
                 exit('ERROR: Unexpected naming convention')
@@ -985,11 +989,15 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         tile = '_tile0'
 
                     if bool(temp):
+                        chStr = details[attributes[1]]
+                        chStr = str(chStr).zfill(2)
                         # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif'
                     else:
+                        chStr = int(details[attributes[1]])+10
+                        chStr = str(chStr).zfill(2)
                         # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_ch'+str(int(details[attributes[1]])+N_ch_CamA)+tile+'_t'+details[attributes[-1]]+'.tif'
+                        dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif' # CamB will be offset by 10 to avoid overlapping file names
                     out_f = f'{dst}'
                     
                 else:

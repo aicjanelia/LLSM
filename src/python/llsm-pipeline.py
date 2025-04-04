@@ -916,14 +916,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         tile = '_tile0'
 
-                    if bool(re.findall(r'CamA',f)):
-                        # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
-                    elif bool(re.findall(r'CamB',f)):
-                        # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
-                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'
-                    else: # If only one camera used, there won't be a camera A/B
-                        dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'                        
+                    dst = f'scan_ch'+details[attributes[1]]+tile+'_t'+details[attributes[-1]]+'.tif'                      
                     out_f = f'{dst}'                    
                 else:
                     out_f = f
@@ -936,10 +929,6 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     darkpath =  flatpath / configs['paths']['flatfield']['dark']
                     normpath = flatpaths[ch]
                     tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], outpath, inpath)
-                    # tmp = cmd_flatfield + ' -w -d %s -n %s -o %s  %s;' % (darkpath,normpath, outpath, inpath)
-                    # tmp = cmd_flatfield + ' -w -d %s -n %s -q %s -o %s  %s;' % (darkpath,normpath,stepFlatfield[ch], outpath, inpath)
-                    # forceScale = 1/25.4
-                    # tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q 1 -o %s  %s;' % (darkpath,normpath, forceScale,outpath, inpath)
                     cmd.append(tmp)
 
                 if crop:
