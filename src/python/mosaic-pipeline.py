@@ -647,7 +647,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 break
             m = pattern.fullmatch(f)
             if m:
-                temp = re.findall(r'Iter',f)
+                temp = re.findall(r'Iter_0000',f)
                 if bool(temp):
                     scan_type = 'tile'
                     attributes = [r'Cam',r'ch',r'Iter_']
