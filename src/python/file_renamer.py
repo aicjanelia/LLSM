@@ -85,7 +85,7 @@ def file_renamer(attributes,folder,tag,atype,dryrun=False):
                     chN_A = np.amax([chN_A, int(details[temp_atts[0]])])
                     
     # Handle tiling
-    tiles_dict = {tiles[i]:('_tile_'+str(i)) for i in range(len(tiles))}
+    tiles_dict = {tiles[i]:('_tile'+str(i)) for i in range(len(tiles))}
     chN_A += 1
     original_stdout = sys.stdout
     
@@ -106,19 +106,20 @@ def file_renamer(attributes,folder,tag,atype,dryrun=False):
                     tile = tiles_dict[tile_temp[0]]
                 # Keep tile_0 if not
                 else:
-                    tile = '_tile_0'
+                    tile = '_tile0'
                     
                 # New File names
-                # If CamA, we start ch at 0
                 if bool(temp):
-                    dst = f'scan_Cam_'+re.sub('A','0',details[attributes[0]])+'_ch_'+details[attributes[1]]+tile+'_t_'+details[attributes[-1]]+'.tif'
-                # If CamB, we start ch at N_ch_A + 1
+                    chStr = details[attributes[1]]
+                    chStr = str(chStr).zfill(2)
+                    # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
+                    dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif'
                 else:
-                    if str(int(details[attributes[1]])) not in ch_B:
-                        ch_B.append(str(int(details[attributes[1]])))
-                    if str(int(details[attributes[1]])+chN_A) not in new_ch_B:
-                        new_ch_B.append(str(int(details[attributes[1]])+chN_A))
-                    dst = f'scan_Cam_'+re.sub('B','1',details[attributes[0]])+'_ch_'+str(int(details[attributes[1]])+chN_A)+tile+'_t_'+details[attributes[-1]]+'.tif'
+                    chStr = int(details[attributes[1]])+10
+                    chStr = str(chStr).zfill(2)
+                    # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
+                    dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif' # CamB will be offset by 10 to avoid overlapping file names
+
                 src = Path(folder) / Path(filename)
                 dst_new = Path(folder) / tag_filename(dst,tag)
                 # os.rename(src,dst)

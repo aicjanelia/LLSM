@@ -637,7 +637,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
             print('saving in bdv naming format...')
             bdv_file = True
         for f in files:
-            bdv_pattern = re.compile('scan.*_((Cam0_ch(\d+))|(Cam1_ch(\d+))|(ch(\d+))).*tile.*\.tif') # Used to include camera, keep * for backwards compatibility
+            bdv_pattern = re.compile('scan.*_tile(\d+).*\.tif')
             m = bdv_pattern.fullmatch(f)
             if m:
                 scan_type = 'bdv'
