@@ -111,8 +111,8 @@ Once a folder has been processed by the pipeline, an entry for the folder will b
 
 The default behavior of the pipeline is then to re-process the entire folder, regardless of what was previously processed or what files already exist. This is equivalent to setting `overwrite` to `true`. However, sometimes it is desirable to only re-run a few files that failed or to only process newly acquired time points. In this case, set `overwrite` to `false` and commands will not be generated to replace exisiting files. The `overwrite` parameter should be added to the `bdv` section of `config.json`.
 
+In this config example, existing files will not be replaced:
 ```json
-// In this config example, existing files will not be replaced
 "bdv": {
     "overwrite": false
 }
