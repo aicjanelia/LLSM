@@ -1086,7 +1086,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         xyRes = 0.108 # For no cropping, use default
                         inpath = d / f
                         outpath = output_original_mip / tag_filename(out_f, '_mip')
-                        rerun = check_mips(output_crop_mip,out_f,configs, '_mip')  
+                        rerun = check_mips(output_original_mip,out_f,configs, '_mip')  
 
                     # Check for missing files if necessary
                     rerunMIP = True
