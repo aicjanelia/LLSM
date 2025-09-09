@@ -409,14 +409,20 @@ def load_configs(path):
     # sanitize bdv configs
     # (config flag for saving the output files in a BigDataViewer-compatible scheme)
     if 'bdv' in configs:
-        supported_opts = ['bdv_save']
+        supported_opts = ['bdv_save','overwrite']
         for key in list(configs['bdv']):
             if key not in supported_opts:
                 print('WARNING: bdv option \'%s\' in config.json is not supported' % key)
                 del configs['bdv'][key]
         if 'bdv_save' in configs['bdv']:
             if not type(configs['bdv']['bdv_save']) is bool:
-                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])    
+                exit('ERROR: bdv_save flag \'%s\' in config.json is not a true or false' % configs['bdv']['bdv_save'])
+
+        if 'overwrite' in configs['bdv']:
+            if not type(configs['bdv']['overwrite']) is bool:
+                exit('ERROR: overwrite flag \'%s\' in config.json is not a true or false' % configs['bdv']['overwrite'])
+        else:
+            configs['bdv']['overwrite'] = True              
 
     return configs
 
@@ -498,6 +504,24 @@ def string_finder(old_str, old_phrases):
         new_str1 = new_str.partition('_')[0]
         vars.append(new_str1)
     return dict(zip(old_phrases,vars))
+
+def check_mips(outputDir,out_f,configs,tag):
+
+    rerun = False
+
+    if 'x' in configs['mip']:
+        outpath = outputDir / tag_filename(out_f, tag + '_x')
+        rerun = not outpath.is_file() or rerun
+
+    if 'y' in configs['mip']:
+        outpath = outputDir / tag_filename(out_f,tag + '_y')
+        rerun = not outpath.is_file() or rerun
+
+    if 'z' in configs['mip']:
+        outpath = outputDir / tag_filename(out_f,tag + '_z')
+        rerun = not outpath.is_file() or rerun
+
+    return rerun
 
 def process(dirs, configs, dryrun=False, verbose=False):
     processed = {}
@@ -921,15 +945,22 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 else:
                     out_f = f
 
+                redoMIP = False
                 if flatfield:
                     inpath = d / f
                     outpath = output_flatfield / tag_filename(out_f, '_flatfield')
-                    root = Path(configs['paths']['root'])
-                    flatpath = root / configs['paths']['flatfield']['dir']
-                    darkpath =  flatpath / configs['paths']['flatfield']['dark']
-                    normpath = flatpaths[ch]
-                    tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], outpath, inpath)
-                    cmd.append(tmp)
+                     # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('Flatfield file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):
+                        root = Path(configs['paths']['root'])
+                        flatpath = root / configs['paths']['flatfield']['dir']
+                        darkpath =  flatpath / configs['paths']['flatfield']['dark']
+                        normpath = flatpaths[ch]
+                        tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], outpath, inpath)
+                        cmd.append(tmp)
+                        redoMIP = True
 
                 if crop:
                     if flatfield:
@@ -937,8 +968,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         inpath = d / f
                     outpath = output_crop / tag_filename(out_f, '_crop')
-                    tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
-                    cmd.append(tmp)
+                    # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('Cropped file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):        
+                        tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
+                        cmd.append(tmp)
+                        redoMIP = True
 
                 if (not deskew) and (not deconfirst) and mip: # don't need all of all the mips if deskewing, so only create useful ones to save file space
                     #  get the appropriate spacing
@@ -956,20 +993,30 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         xyRes = configs['xy-res']
                         inpath = output_crop / tag_filename(out_f, '_crop')
                         outpath = output_crop_mip / tag_filename(out_f, '_crop_mip')
-                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
-                        cmd.append(tmp)
+                        rerun = check_mips(output_crop_mip,out_f,configs, '_crop_mip')
                     elif flatfield:
                         xyRes = configs['xy-res']
                         inpath = output_flatfield / tag_filename(out_f, '_flatfield')
                         outpath = output_flatfield_mip / tag_filename(out_f, '_flatfield_mip')
-                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
-                        cmd.append(tmp)
+                        rerun = check_mips(output_flatfield_mip,out_f,configs,'_flatfield_mip')
                     else:
                         xyRes = 0.104 # For no cropping, use default
                         inpath = d / f
                         outpath = output_original_mip / tag_filename(out_f, '_mip')
-                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
-                        cmd.append(tmp) 
+                        rerun = check_mips(output_crop_mip,out_f,configs, '_mip')
+
+                    # Check for missing files if necessary
+                    rerunMIP = True
+                    if not configs['bdv']['overwrite']:
+                        rerunMIP = rerun or redoMIP
+                    
+                    # now run the command if necessary
+                    if rerunMIP:
+                         tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                         cmd.append(tmp)
+                    # else:
+                    #     if verbose:
+                    #         print('Crop/Flatfield/Original MIPs already exist and will not be re-run.') 
 
                 if deconfirst:
 
@@ -994,25 +1041,34 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         inpath = d / f
 
                     outpath = output_deconfirst_decon / tag_filename(out_f, '_decon_before_deskew')
-
-                    # ASSUMPTION: the resampled PSF has a spacing equivalent to the image.
-                    tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (skewedPSF, step, step, outpath, inpath)
-                    cmd.append(tmp)
+                    # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('decon_before_deskew file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):
+                        # ASSUMPTION: the resampled PSF has a spacing equivalent to the image.
+                        tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (skewedPSF, step, step, outpath, inpath)
+                        cmd.append(tmp)
 
                     # Now work on deskewing
                     inpath = PurePath(outpath)
                     outpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
 
-                    tmp = cmd_deconfirst_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
-                    cmd.append(tmp)
+                    # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('deskew_after_decon file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):
+                        tmp = cmd_deconfirst_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
+                        cmd.append(tmp)
 
-                    # create mips for deskew_after_decon
-                    if mip:
-                        inpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
-                        outpath = output_deconfirst_mip / tag_filename(out_f, '_deskew_after_decon_mip')
-                        xyRes = configs['decon-first']['deskew']['xy-res']['arg']
-                        tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes, step, outpath, inpath)
-                        cmd.append(tmp)             
+                        # create mips for deskew_after_decon
+                        if mip:
+                            inpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
+                            outpath = output_deconfirst_mip / tag_filename(out_f, '_deskew_after_decon_mip')
+                            xyRes = configs['decon-first']['deskew']['xy-res']['arg']
+                            tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes, step, outpath, inpath)
+                            cmd.append(tmp)             
 
                 if deskew:
                     if crop:
@@ -1022,18 +1078,23 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         inpath = d / f
                     outpath = output_deskew / tag_filename(out_f, '_deskew')
-                    step = settings['waveform']['s-piezo']['interval'][ch] 
-                    step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0)
+                    # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('Deskew file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):
+                        step = settings['waveform']['s-piezo']['interval'][ch] 
+                        step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0)
 
-                    tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
-                    cmd.append(tmp)
-
-                    # create mips for deskew
-                    if mip:
-                        inpath = output_deskew / tag_filename(out_f, '_deskew')
-                        outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                        tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
                         cmd.append(tmp)
+
+                        # create mips for deskew
+                        if mip:
+                            inpath = output_deskew / tag_filename(out_f, '_deskew')
+                            outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
+                            tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                            cmd.append(tmp)
 
                 if decon:
                     if deskew:
@@ -1053,17 +1114,23 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     else:
                         step = settings['waveform']['z-pzt']['interval'][ch]
 
-                    tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
-                    cmd.append(tmp)
+                    # if not configs['bdv']['overwrite'] and outpath.is_file():
+                    #     if verbose:
+                    #         print('Decon file already exists and will not be overwritten: %s' % (outpath))
+                    # else:
+                    if configs['bdv']['overwrite'] or (not outpath.is_file()):
 
-                    # create mips for decon
-                    if mip:
-                        inpath = output_decon / tag_filename(out_f, '_decon')
-                        outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
-                        tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                        tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
                         cmd.append(tmp)
 
-                if len(cmd) > 1:
+                        # create mips for decon
+                        if mip:
+                            inpath = output_decon / tag_filename(out_f, '_decon')
+                            outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
+                            tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                            cmd.append(tmp)
+
+                if len(cmd) > 2: # > 2 to require at least one module (bsub is already length 2)
                     cmd = ''.join(cmd)
                     cmd = cmd + '\"'
                     if verbose:

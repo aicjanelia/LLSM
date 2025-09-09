@@ -93,9 +93,9 @@ The raw image file names contain informative metadata, but the long complex name
 In a previous version of this naming scheme, the camera information was also recorded in the simplified file naming, but that has been removed in the current version.  When using the MOSAIC pipeline, all channels from Camera B will have 10 added to their channel value (so ch0 becomes ch10, ch1 becomes ch11, etc.). This keeps simultaneous acquisitions on Camera A and B from re-using the same channel number when naming files.
 
 ```c
-// raw image
+// raw image with full metadata name
 scan_CamA_ch0_CAM1_stack0000_488nm_0000000msec_0107885054msecAbs_-01x_-01y_-01z_0000t.tif
-// cropped image
+// cropped image with BDV naming
 scan_ch0_tile0_t0000_crop.tif
 ```
 
@@ -103,5 +103,17 @@ Enable bdv saving by including the following in the configuration file:
 ```json
 "bdv": {
     "bdv_save": true
+}
+```
+
+## Overwrite Options
+Once a folder has been processed by the pipeline, an entry for the folder will be created in `processed.json`. Any folders listed in `processed.json` will be skipped in subsequent runs of the pipeline. Although this is useful for processing additional subfolders as data is acquired without uncessary re-processing of prior experiments, it is sometimes necessary to re-process a folder. To do this, the folder's entry must be manually deleted from `processed.json`.
+
+The default behavior of the pipeline is then to re-process the entire folder, regardless of what was previously processed or what files already exist. This is equivalent to setting `overwrite` to `true`. However, sometimes it is desirable to only re-run a few files that failed or to only process newly acquired time points. In this case, set `overwrite` to `false` and commands will not be generated to replace exisiting files. The `overwrite` parameter should be added to the `bdv` section of `config.json`.
+
+```json
+// In this config example, existing files will not be replaced
+"bdv": {
+    "overwrite": false
 }
 ```

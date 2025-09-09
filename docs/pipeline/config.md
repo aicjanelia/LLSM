@@ -31,7 +31,13 @@ Once a folder has been processed, it will be added to a new file, `processed.jso
 PSFs are required for running the deconvolution module. In prior versions of the pipeline, this section was required regardless, but the current version only checks for the `psf` section if deconvolution is requested. Inside the `psf` section, there are two required subsections for standard deconvolution: `dir` and `laser`.  The directory `dir` is parsed as a subdirectory of `root` and should contain PSF images with their corresponding settings file. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about these files. The file names that correspond to each laser must be provided as name-value pairs in the `laser` subsection. The laser names must exactly match the values in the acquisition settings file (e.g., don't use 561 if the settings file uses 560). If using the option to deconvolve between deskewing (`decon-first`), the `laser` section is replaced by a `resampled` section with the same structure that points to PSF files that have been resampled in Z.
 
 ## BDV
-This optional section determines the naming convention for output files. It defaults to false if the section is not provided. To learn more see [File Organization](https://aicjanelia.github.io/LLSM/pipeline/bdv_save.html).
+The optional BDV section determines naming and saving conventions for the output files.
+
+### *bdv_save*
+To save the output files with simplified names compatible with programs such as BigStitcher, set `bdv_save` to `true`. The option defaults to `false` if the section is not provided. To learn more see [File Organization](https://aicjanelia.github.io/LLSM/pipeline/bdv_save.html).
+
+### _overwrite_
+When `overwrite` is set to `true`, any exisiting tif files in the folder will be overwritten by newly processed files. When `overwrite` is set to `false`, commands will not be generated to replace exisiting tif files. The one exception is that exisiting MIP files will be overwritten if their source file also must be recreated. This allows the pipeline to pick up part of the way through a folder, or re-run failed cluster jobs. This value defaults to `true` to be compatible with prior implementations of the pipeline that did not have this feature.
 
 ## Individual Modules
 Individual modules are requested by adding their own section to the JSON file.  The [example json file](#example-configjson) requests flatfield correction, cropping, deskewing, deconvolution, and the generation of MIP files. More details on the parameters for each are provided in the discussion of each module, but a high-level overview is provided here.  If all modules are requested, they are run in the order of `flatfield > crop > deskew > decon`, with MIPs created at each stage as described in [MIP](https://aicjanelia.github.io/LLSM/mip/mip.html). This ordering is changed if the configuration file contain a section called `decon-first`, which creates commands that run deconovlution before deskewing. For more about this ordering, see [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html).
@@ -91,7 +97,8 @@ Each slot has 15 GB of memory. The maximal memory is used by the deconvolution m
         }
     },
     "bdv": {
-        "bdv_save": true
+        "bdv_save": true, 
+        "overwrite": false
     },
     "flatfield": {
         "bit-depth": 16
