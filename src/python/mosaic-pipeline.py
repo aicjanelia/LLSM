@@ -471,6 +471,12 @@ def get_dirs(path, excludes):
 
         # check the good directories for settings files
         for d in dirs:
+            if d.endswith("ESH1"): # These folders are generated for tiled AO aquisitions and should not be processed
+                print('directory \'%s\' will be skipped because it ends with ESH1' %str(root/d))
+                continue
+            if d.endswith("DSH1"): # These folders are generated for tiled AO aquisitions and should not be processed
+                print('directory \'%s\' will be skipped because it ends with DSH1' %str(root/d))
+                continue
             files = os.listdir(root/d)
             # check if current dir contains a Settings.txt file
             for f in files:
