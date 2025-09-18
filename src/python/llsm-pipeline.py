@@ -463,11 +463,11 @@ def get_dirs(path, excludes):
             break
 
     # Now walk the rest of the path
-    for root, dirs, files in os.walk(path,topdown=False):
+    for root, dirs, files in os.walk(path,topdown=True):
         root = Path(root)
 
         # update directories to prevent us from traversing processed data
-        dirs[:] = [d for d in dirs if str(root / d) not in excludes]
+        dirs[:] = [d for d in dirs if (str(root / d) not in excludes) and ('.zarr' not in str(root/d)) and ('.n5' not in str(root/d))]
 
         # check the good directories for settings files
         for d in dirs:
