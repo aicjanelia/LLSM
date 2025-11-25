@@ -657,7 +657,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
         # bdv_file setup
         bdv_file = False
         attributes = []
-        if params_bdv:
+        if configs['bdv']['bdv_save']:
             print('saving in bdv naming format...')
             bdv_file = True
         for f in files:
