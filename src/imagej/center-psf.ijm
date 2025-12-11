@@ -26,6 +26,7 @@ Dialog.show();
 // Grab the user inputs
 bead_file = Dialog.getString();
 imDir = File.getDirectory(bead_file);
+imName = File.getName(bead_file);
 intThresh = Dialog.getNumber();
 resampleToggle = Dialog.getCheckbox();
 microscope = Dialog.getChoice();
@@ -83,18 +84,20 @@ selectWindow("Results");
 run("Close");
 
 // Create a BigStitcher Dataset
-run("Define dataset ...", "define_dataset=[Automatic Loader (Bioformats based)] project_filename=dataset.xml path=" + bead_file + " exclude=10 move_tiles_to_grid_(per_angle)?=[Move Tiles to Grid (interactive)] how_to_load_images=[Load raw data directly] dataset_save_path=" + imDir);
+run("Define Multi-View Dataset", "define_dataset=[Automatic Loader (Bioformats based)] project_filename=dataset.xml path=[" + bead_file + "] exclude=10 move_tiles_to_grid_(per_angle)?=[Move Tiles to Grid (interactive)] how_to_store_input_images=[Load raw data directly (no resaving)] load_raw_data_virtually metadata_save_path=[file:/" + imDir + "]");
+
+run("Define Multi-View Dataset", "define_dataset=[Manual Loader (TIFF only, ImageJ Opener)] project_filename=dataset.xml multiple_timepoints=[NO (one time-point)] multiple_channels=[NO (one channel)] _____multiple_illumination_directions=[NO (one illumination direction)] multiple_angles=[NO (one angle)] multiple_tiles=[NO (one tile)] image_file_directory=[" + imDir +"] image_file_pattern=" + imName + " calibration_type=[Same voxel-size for all views] calibration_definition=[Load voxel-size(s) from file(s)]");
 
 // Shift the bead to the center
-run("Apply Transformations", "select=" + imDir + "dataset.xml apply_to_angle=[All angles] apply_to_channel=[All channels] apply_to_illumination=[All illuminations] apply_to_tile=[All tiles] apply_to_timepoint=[All Timepoints] transformation=Affine apply=[Current view transformations (appends to current transforms)] timepoint_0_channel_0_illumination_0_angle_0=[1.0, 0.0, 0.0, -" + x + ", 0.0, 1.0, 0.0, -" + y + ", 0.0, 0.0, 1.0, -" + z-1 + "]"); // z-1 because of image indexing starts at 1 but I think BigStitcher starts at zero
+run("Apply Transformations", "select=[file:/" + imDir + "dataset.xml] apply_to_angle=[All angles] apply_to_channel=[All channels] apply_to_illumination=[All illuminations] apply_to_tile=[All tiles] apply_to_timepoint=[All Timepoints] transformation=Affine apply=[Current view transformations (appends to current transforms)] timepoint_0_channel_0_illumination_0_angle_0=[1.0, 0.0, 0.0, -" + x + ", 0.0, 1.0, 0.0, -" + y + ", 0.0, 0.0, 1.0, -" + z-1 + "]"); // z-1 because of image indexing starts at 1 but I think BigStitcher starts at zero
 
 // Define the cropping
-run("Define Bounding Box", "select=" + imDir + "dataset.xml process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=[Maximal Bounding Box spanning all transformed views] bounding_box_name=Crop minimal_x=-" + xcrop + " minimal_y=-" + xcrop + " minimal_z=-" + zcrop + " maximal_x=" + xcrop + " maximal_y=" + xcrop + " maximal_z=" + zcrop);
+run("Define Bounding Box", "select=[file:/" + imDir + "dataset.xml] process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=[Maximal Bounding Box spanning all transformed views] bounding_box_name=Crop minimal_x=-" + xcrop + " minimal_y=-" + xcrop + " minimal_z=-" + zcrop + " maximal_x=" + xcrop + " maximal_y=" + xcrop + " maximal_z=" + zcrop);
 
 // Save the cropped PSF
 // Note fusing to ImageJ and then saving to control file naming, etc. better
-run("Fuse", "select=" + imDir + "dataset.xml process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=Crop downsampling=1 interpolation=[Linear Interpolation] fusion_type=[Avg, Blending] pixel_type=[16-bit unsigned integer] interest_points_for_non_rigid=[-= Disable Non-Rigid =-] produce=[Each timepoint & channel] fused_image=[Display using ImageJ] define_input=[Manually define range of input data (in next dialog)] min=0 max=65535 display=[precomputed (fast, complete copy in memory before display)] min_intensity=0 max_intensity=1000");
-//run("Fuse", "select=" + imDir + "dataset.xml process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=Crop downsampling=1 interpolation=[Linear Interpolation] fusion_type=[Avg, Blending] pixel_type=[16-bit unsigned integer] interest_points_for_non_rigid=[-= Disable Non-Rigid =-] produce=[Each timepoint & channel] fused_image=[Display using ImageJ] define_input=[Auto-load from input data (values shown below)] display=[precomputed (fast, complete copy in memory before display)] min_intensity=0 max_intensity=1000");
+run("Image Fusion", "select=[file:/" + imDir + "dataset.xml] process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=Crop downsampling=1 interpolation=[Linear Interpolation] fusion_type=[Avg, Blending] pixel_type=[16-bit unsigned integer] interest_points_for_non_rigid=[-= Disable Non-Rigid =-] produce=[Each timepoint & channel] fused_image=[Display using ImageJ] define_input=[Auto-load from input data (values shown below)] display=[precomputed (fast, complete copy in memory before display)] min_intensity=0 max_intensity=1000");
+
 run("Subtract...", "value=" + backSub + " stack"); // background subtraction
 saveAs("Tiff", imDir + "cropped_"+ imName);
 
@@ -107,14 +110,15 @@ if (resampleToggle){
 	zcrop2 = zcrop*scale;
 	
 	// Affine transformation in z
-	run("Apply Transformations", "select=" + imDir + "dataset.xml apply_to_angle=[All angles] apply_to_channel=[All channels] apply_to_illumination=[All illuminations] apply_to_tile=[All tiles] apply_to_timepoint=[All Timepoints] transformation=Affine apply=[Current view transformations (appends to current transforms)] timepoint_0_channel_0_illumination_0_angle_0=[1.0, 0.0, 0.0,0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, " + scale + ", 0.0]");
+	run("Apply Transformations", "select=[file:/" + imDir + "dataset.xml] apply_to_angle=[All angles] apply_to_channel=[All channels] apply_to_illumination=[All illuminations] apply_to_tile=[All tiles] apply_to_timepoint=[All Timepoints] transformation=Affine apply=[Current view transformations (appends to current transforms)] timepoint_0_channel_0_illumination_0_angle_0=[1.0, 0.0, 0.0,0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, " + scale + ", 0.0]");
 	
 	// Define the cropping
-	run("Define Bounding Box", "select=" + imDir + "dataset.xml process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=[Maximal Bounding Box spanning all transformed views] bounding_box_name=CropResample minimal_x=-" + xcrop + " minimal_y=-" + xcrop + " minimal_z=-" + zcrop*scale + " maximal_x=" + xcrop + " maximal_y=" + xcrop + " maximal_z=" + zcrop*scale);
+	run("Define Bounding Box", "select=[file:/" + imDir + "dataset.xml] process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=[Maximal Bounding Box spanning all transformed views] bounding_box_name=CropResample minimal_x=-" + xcrop + " minimal_y=-" + xcrop + " minimal_z=-" + zcrop*scale + " maximal_x=" + xcrop + " maximal_y=" + xcrop + " maximal_z=" + zcrop*scale);
 	
 	// Save the cropped PSF
 	// Note fusing to ImageJ and then saving to control file naming, etc. better
-	run("Fuse", "select=" + imDir + "dataset.xml process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=CropResample downsampling=1 interpolation=[Linear Interpolation] fusion_type=[Avg, Blending] pixel_type=[16-bit unsigned integer] interest_points_for_non_rigid=[-= Disable Non-Rigid =-] produce=[Each timepoint & channel] fused_image=[Display using ImageJ] define_input=[Auto-load from input data (values shown below)] display=[precomputed (fast, complete copy in memory before display)] min_intensity=0 max_intensity=1000");
+	run("Image Fusion", "select=[file:/" + imDir + "dataset.xml] process_angle=[All angles] process_channel=[All channels] process_illumination=[All illuminations] process_tile=[All tiles] process_timepoint=[All Timepoints] bounding_box=Crop downsampling=1 interpolation=[Linear Interpolation] fusion_type=[Avg, Blending] pixel_type=[16-bit unsigned integer] interest_points_for_non_rigid=[-= Disable Non-Rigid =-] produce=[Each timepoint & channel] fused_image=[Display using ImageJ] define_input=[Auto-load from input data (values shown below)] display=[precomputed (fast, complete copy in memory before display)] min_intensity=0 max_intensity=1000");
+	
 	run("Set Scale...", "distance=1 known=1 unit=pixels"); // don't need scaling
 	run("Subtract...", "value=" + backSub + " stack"); // background subtraction
 	saveAs("Tiff", imDir + "cropped_resampled_"+ imName);
