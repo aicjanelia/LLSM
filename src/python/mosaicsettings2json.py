@@ -132,18 +132,18 @@ def parse_txt(path):
             data[sctn]['excitation-filter'].append(g_parts[0])
             data[sctn]['laser'].append(int(g_parts[1])) 
             data[sctn]['power'].append(float(g_parts[2]))
-            data[sctn]['exp'].append(int(g_parts[3])) 
+            data[sctn]['exp'].append(float(g_parts[3])) 
             data[sctn]['ch'].append(int(i))
             if not g_parts[4]=='OFF': # If a second laser is acquired simultaneously, keep the information
                 data[sctn]['laser'].append(int(g_parts[4])) 
                 data[sctn]['power'].append(float(g_parts[5]))
-                data[sctn]['exp'].append(int(g_parts[3])) 
+                data[sctn]['exp'].append(float(g_parts[3])) 
                 data[sctn]['ch'].append(int(i))
 
                 if not g_parts[6]=='OFF': # If a third laser is acquired simultaneously, keep the information
                     data[sctn]['laser'].append(int(g_parts[6])) 
                     data[sctn]['power'].append(float(g_parts[7]))
-                    data[sctn]['exp'].append(int(g_parts[3]))
+                    data[sctn]['exp'].append(float(g_parts[3]))
                     data[sctn]['ch'].append(int(i))
 
             # MOSAIC settings file format is: Excitation Filter, Laser, Power (%), Exp(ms), Laser2, Power2 (%), Laser3, Power3 (%)
