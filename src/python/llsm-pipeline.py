@@ -916,6 +916,9 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         if not skewedPSF.is_file():
                             exit("ERROR: skewed PSF taking too long to save....")
 
+        # For the threads, get the correct number of slots
+        threads = 2*configs['bsub']['n']['arg']
+
         # process all files in directory
         for f in files:
             m = pattern.fullmatch(f)
@@ -958,7 +961,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         flatpath = root / configs['paths']['flatfield']['dir']
                         darkpath =  flatpath / configs['paths']['flatfield']['dark']
                         normpath = flatpaths[ch]
-                        tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], outpath, inpath)
+                        tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -t %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], threads, outpath, inpath)
                         cmd.append(tmp)
                         redoMIP = True
 
@@ -973,7 +976,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     #         print('Cropped file already exists and will not be overwritten: %s' % (outpath))
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):        
-                        tmp = cmd_crop + ' -w -s %s -o %s  %s;' % (stepCrop[ch], outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
+                        tmp = cmd_crop + ' -w -s %s -t %s -o %s  %s;' % (stepCrop[ch], 2*threads, outpath, inpath) # note, input is steps b/c angle calculation repeated in deskew...
                         cmd.append(tmp)
                         redoMIP = True
 
@@ -1012,7 +1015,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     
                     # now run the command if necessary
                     if rerunMIP:
-                         tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes,step, outpath, inpath)
+                         tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (xyRes,step, 2*threads, outpath, inpath)
                          cmd.append(tmp)
                     # else:
                     #     if verbose:
@@ -1047,7 +1050,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):
                         # ASSUMPTION: the resampled PSF has a spacing equivalent to the image.
-                        tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (skewedPSF, step, step, outpath, inpath)
+                        tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -t %s -o %s %s;' % (skewedPSF, step, step, 2*threads, outpath, inpath)
                         cmd.append(tmp)
 
                     # Now work on deskewing
@@ -1059,7 +1062,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     #         print('deskew_after_decon file already exists and will not be overwritten: %s' % (outpath))
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):
-                        tmp = cmd_deconfirst_deskew + ' -w -s %s -o %s  %s;' % (steps[ch], outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
+                        tmp = cmd_deconfirst_deskew + ' -w -s %s -t %s -o %s  %s;' % (steps[ch], 2*threads, outpath, inpath) # input is steps (not step) b/c angle calculations occur in deskew command
                         cmd.append(tmp)
 
                         # create mips for deskew_after_decon
@@ -1067,7 +1070,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             inpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
                             outpath = output_deconfirst_mip / tag_filename(out_f, '_deskew_after_decon_mip')
                             xyRes = configs['decon-first']['deskew']['xy-res']['arg']
-                            tmp = cmd_mip + ' -p %s -q %s -o %s %s;' % (xyRes, step, outpath, inpath)
+                            tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (xyRes, step, 2*threads, outpath, inpath)
                             cmd.append(tmp)             
 
                 if deskew:
@@ -1086,14 +1089,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         step = settings['waveform']['s-piezo']['interval'][ch] 
                         step = step * math.sin(abs(configs['deskew']['angle']['arg']) * math.pi/180.0)
 
-                        tmp = cmd_deskew + ' -w -s %s -o %s %s;' % (steps[ch], outpath, inpath)
+                        tmp = cmd_deskew + ' -w -s %s -t %s -o %s %s;' % (steps[ch], 2*threads, outpath, inpath)
                         cmd.append(tmp)
 
                         # create mips for deskew
                         if mip:
                             inpath = output_deskew / tag_filename(out_f, '_deskew')
                             outpath = output_deskew_mip / tag_filename(out_f, '_deskew_mip')
-                            tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath, inpath)
+                            tmp = cmd_mip + ' -q %s -t %s -o %s %s;' % (step, 2*threads, outpath, inpath)
                             cmd.append(tmp)
 
                 if decon:
@@ -1120,14 +1123,14 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):
 
-                        tmp = cmd_decon + ' -w -k %s -p %s -q %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, outpath, inpath)
+                        tmp = cmd_decon + ' -w -k %s -p %s -q %s -t %s -o %s %s;' % (psfpaths[ch], psfsteps[ch], step, 2*threads, outpath, inpath)
                         cmd.append(tmp)
 
                         # create mips for decon
                         if mip:
                             inpath = output_decon / tag_filename(out_f, '_decon')
                             outpath = output_decon_mip / tag_filename(out_f, '_decon_mip')
-                            tmp = cmd_mip + ' -q %s -o %s %s;' % (step, outpath , inpath)
+                            tmp = cmd_mip + ' -q %s -t %s -o %s %s;' % (step, 2*threads, outpath , inpath)
                             cmd.append(tmp)
 
                 if len(cmd) > 2: # > 2 to require at least one module (bsub is already length 2)
