@@ -10,6 +10,7 @@
 #include <itkResampleImageFilter.h>
 #include "itkAffineTransform.h"
 #include "itkLinearInterpolateImageFunction.h"
+#include <itkMultiThreaderBase.h>
 
 kImageType::Pointer Deskew(kImageType::Pointer img, float angle, float step, float xy_res, kPixelType fill_value, bool verbose=false)
 {
