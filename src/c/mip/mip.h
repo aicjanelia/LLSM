@@ -8,6 +8,8 @@
 
 #include <itkMaximumProjectionImageFilter.h>
 
+#include <itkMultiThreaderBase.h>
+
 itk::Image<kPixelType, 2>::Pointer MaxIntensityProjection(kImageType::Pointer img, unsigned int axis, bool verbose=false)
 {
   using FilterType = itk::MaximumProjectionImageFilter<kImageType, itk::Image<kPixelType, 2>>;

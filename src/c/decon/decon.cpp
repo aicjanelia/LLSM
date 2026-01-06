@@ -6,6 +6,7 @@
 #include "math_local.h"
 #include "writer.h"
 #include <algorithm>
+#include <chrono>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -18,6 +19,7 @@ int main(int argc, char** argv) {
   float subtract_constant = UNSET_FLOAT;
   unsigned int iterations = UNSET_UNSIGNED_INT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
+  unsigned int threadnum = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -33,6 +35,7 @@ int main(int argc, char** argv) {
       ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant intensity value to subtract from input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
+      ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
@@ -69,6 +72,9 @@ int main(int argc, char** argv) {
     
     // check options
     po::notify(varsmap);
+
+    // set thread number
+    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threadnum);
 
   } catch (po::error& e) {
     std::cerr << "decon: " << e.what() << "\n\n";
@@ -113,12 +119,16 @@ int main(int argc, char** argv) {
   if (verbose) {
     std::cout << "\nInput Parameters\n";
     std::cout << "Iterations = " << iterations << "\n";
+    std::cout << "Threads = " << threadnum << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Kernel Path = " << kernel_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
     std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
+
+  // Start timing
+  auto start_time = std::chrono::high_resolution_clock::now();
 
   // read data
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
@@ -180,6 +190,14 @@ int main(int argc, char** argv) {
     std::cerr << "decon: unknown bit depth" << std::endl;
     return EXIT_FAILURE;
   }
+
+  // End timing and display results
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+  
+  std::cout << "\n=== Processing Complete ===\n";
+  std::cout << "Threads used: " << threadnum << "\n";
+  std::cout << "Processing time: " << duration.count() / 1000.0 << " seconds" << std::endl;
 
   return EXIT_SUCCESS;
 }

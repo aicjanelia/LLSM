@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
   float xy_res = UNSET_FLOAT;
   float z_res = UNSET_FLOAT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
+  unsigned int threadnum = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
       ("z-rez,q", po::value<float>(&z_res)->default_value(0.104f), "z resolution (um/px)")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
+      ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
@@ -119,6 +121,9 @@ int main(int argc, char** argv) {
     std::cout << "Overwrite = " << overwrite << "\n";
     std::cout << "Bit Depth = " << bit_depth << std::endl;
   }
+
+  // set thread number
+  itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threadnum);
 
   // mip
   kImageType::Pointer img = ReadImageFile<kImageType>(in_path);

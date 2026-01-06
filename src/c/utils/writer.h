@@ -41,7 +41,8 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
         buffer[index] = it.Get();
     }
 
-    TIFF* tiff = TIFFOpen(filename.c_str(), "w");
+    // Use BigTIFF format ("w8") to support files larger than 4GB
+    TIFF* tiff = TIFFOpen(filename.c_str(), "w8");
     if (!tiff) {
         throw std::runtime_error("Failed to open TIFF file for writing.");
     }
@@ -56,8 +57,9 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
     TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(tiff, width * sizeof(TPixel)));
 
-    TIFFSetField(tiff, TIFFTAG_XRESOLUTION, spacing[0]);
-    TIFFSetField(tiff, TIFFTAG_YRESOLUTION, spacing[1]);
+    // TIFF resolution is pixels per unit, which is the inverse of spacing (unit per pixel)
+    TIFFSetField(tiff, TIFFTAG_XRESOLUTION, 1.0 / spacing[0]);
+    TIFFSetField(tiff, TIFFTAG_YRESOLUTION, 1.0 / spacing[1]);
     TIFFSetField(tiff, TIFFTAG_RESOLUTIONUNIT, RESUNIT_NONE);
 
     for (size_t row = 0; row < height; ++row) {
@@ -88,7 +90,13 @@ void Save3DImageAsTiffStackWithResolutions(typename itk::Image<TPixel, VDimensio
     size_t height = size[1];
     size_t depth = size[2]; 
 
-    TIFF* tiff = TIFFOpen(filename.c_str(), "w");
+    // Calculate estimated file size
+    size_t estimated_size = width * height * depth * sizeof(TPixel);
+    const size_t size_threshold = static_cast<size_t>(3.0 * 1024 * 1024 * 1024); // 3.0GB
+
+    // Use BigTIFF format ("w8") for files larger than 3.0GB, otherwise use standard mode ("w")
+    const char* mode = (estimated_size >= size_threshold) ? "w8" : "w";
+    TIFF* tiff = TIFFOpen(filename.c_str(), mode);
     if (!tiff) {
         throw std::runtime_error("Failed to open TIFF file for writing.");
     }
@@ -114,15 +122,17 @@ void Save3DImageAsTiffStackWithResolutions(typename itk::Image<TPixel, VDimensio
         TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
         TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(tiff, width * sizeof(TPixel)));
 
-        // Save resolutions
-        TIFFSetField(tiff, TIFFTAG_XRESOLUTION, spacing[0]);
-        TIFFSetField(tiff, TIFFTAG_YRESOLUTION, spacing[1]);
+        // Save resolutions (TIFF resolution is pixels per unit, which is the inverse of spacing)
+        TIFFSetField(tiff, TIFFTAG_XRESOLUTION, 1.0 / spacing[0]);
+        TIFFSetField(tiff, TIFFTAG_YRESOLUTION, 1.0 / spacing[1]);
         TIFFSetField(tiff, TIFFTAG_RESOLUTIONUNIT, RESUNIT_NONE);
 
-        // Save Z resolution in ImageJ format
-        if (slice == 0) { // Add spacing information to the first slice only
-            char description[128];
-            snprintf(description, sizeof(description), "spacing=%.6f", spacing[2]);
+        // Save metadata in ImageJ format
+        if (slice == 0) { // Add ImageJ metadata to the first slice only
+            char description[512];
+            snprintf(description, sizeof(description), 
+                     "ImageJ=1.53\nimages=%zu\nslices=%zu\nspacing=%.6f\nunit=pixel\nhyperstack=false\nmode=grayscale\nloop=false", 
+                     depth, depth, spacing[2]);
             TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, description);
         }
 

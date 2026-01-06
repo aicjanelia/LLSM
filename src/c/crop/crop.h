@@ -7,6 +7,7 @@
 #include <itkImage.h>
 #include <itkImageBase.h>
 #include <itkExtractImageFilter.h>
+#include <itkMultiThreaderBase.h>
 
 kImageType::Pointer Crop(kImageType::Pointer img, float z_step, float xy_res, int top, int bottom, int left, int right, int front, int back, bool verbose=false)
 {

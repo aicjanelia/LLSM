@@ -8,7 +8,19 @@
 #include <itkProjectedLandweberDeconvolutionImageFilter.h>
 #include <itkParametricBlindLeastSquaresDeconvolutionImageFilter.h>
 #include <itkZeroFluxNeumannBoundaryCondition.h>
+#include <itkMultiThreaderBase.h>
+#include <iostream>
 
+// FFTW support for multi-threading
+#if defined(ITK_USE_FFTWF) || defined(ITK_USE_FFTWD)
+  #include <itkFFTWGlobalConfiguration.h>
+  #ifdef ITK_USE_FFTWF
+    #include <itkFFTWForwardFFTImageFilter.h>
+  #endif
+  #ifdef ITK_USE_FFTWD
+    #include <itkFFTWForwardFFTImageFilter.h>
+  #endif
+#endif
 
 // Inverse:
 //  Tikhonov
@@ -27,6 +39,22 @@ kImageType::Pointer RichardsonLucy(kImageType::Pointer img, kImageType::Pointer 
 {
     using DeconFilterType = itk::RichardsonLucyDeconvolutionImageFilter<kImageType>;
     itk::ZeroFluxNeumannBoundaryCondition< kImageType > bc;
+
+    // Enable FFTW multi-threading if available
+    #if defined(ITK_USE_FFTWF) || defined(ITK_USE_FFTWD)
+        itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_MEASURE);
+        
+        if (verbose) {
+            unsigned int num_threads = itk::MultiThreaderBase::GetGlobalDefaultNumberOfThreads();
+            std::cout << "FFTW backend detected - attempting multi-threaded deconvolution with " 
+                      << num_threads << " threads" << std::endl;
+        }
+    #else
+        if (verbose) {
+            std::cout << "Warning: FFTW not available, using single-threaded VNLFFT backend" << std::endl;
+            std::cout << "For multi-threaded deconvolution, rebuild ITK with FFTW support" << std::endl;
+        }
+    #endif
 
     DeconFilterType::Pointer filter = DeconFilterType::New();
     filter->SetInput(img);

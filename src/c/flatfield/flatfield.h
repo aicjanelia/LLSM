@@ -11,6 +11,7 @@
 #include "itkPasteImageFilter.h"
 #include "itkUnaryFunctorImageFilter.h"
 #include "itkMinimumMaximumImageFilter.h"
+#include <itkMultiThreaderBase.h>
 
 #define FLATFIELD_VERSION "AIC flatfield correction version 0.1.0"
 
