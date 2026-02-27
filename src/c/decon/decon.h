@@ -42,12 +42,15 @@ kImageType::Pointer RichardsonLucy(kImageType::Pointer img, kImageType::Pointer 
 
     // Enable FFTW multi-threading if available
     #if defined(ITK_USE_FFTWF) || defined(ITK_USE_FFTWD)
-        itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_MEASURE);
+        itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_ESTIMATE);
+        itk::FFTWGlobalConfiguration::SetReadWisdomCache(false);
+        itk::FFTWGlobalConfiguration::SetWriteWisdomCache(false);
         
         if (verbose) {
             unsigned int num_threads = itk::MultiThreaderBase::GetGlobalDefaultNumberOfThreads();
             std::cout << "FFTW backend detected - attempting multi-threaded deconvolution with " 
                       << num_threads << " threads" << std::endl;
+            std::cout << "FFTW wisdom cache is disabled" << std::endl;
         }
     #else
         if (verbose) {
