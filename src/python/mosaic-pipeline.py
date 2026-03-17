@@ -685,7 +685,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     attributes = [r'Cam',r'ch',r'Iter_']
                     break                
                 scan_type = 'scan' # if not tile or bdv, general case
-                attributes = [r'Cam',r'ch',r'stack']
+                attributes = [r'_Cam',r'_ch',r'_stack']
         print('scan type is ' + scan_type)
 
         # flatfield setup
@@ -1028,7 +1028,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         # dst = f'scan_Cam_'+re.sub('A','0',details['Cam'])+'_ch_'+details['ch']+tile+'_t_'+details['stack']+'.tif'
                         dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif'
                     else:
-                        chStr = int(details[attributes[1]])+10
+                        chStr = int(details[attributes[1]])+10                        
                         chStr = str(chStr).zfill(2)
                         # dst = f'scan_Cam_'+re.sub('B','1',details['Cam'])+'_ch_'+str(int(details['ch'])+N_ch_CamA)+tile+'_t_'+details['stack']+'.tif'
                         dst = f'scan_ch'+chStr+tile+'_t'+details[attributes[-1]]+'.tif' # CamB will be offset by 10 to avoid overlapping file names
