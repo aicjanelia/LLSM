@@ -16,6 +16,19 @@
 
 #include "itk_tiff.h"
 
+#include <type_traits>
+
+// libtiff sample format for the pixel type being written. Without this tag readers
+// default to SAMPLEFORMAT_UINT, which makes 32-bit float output (--bit-depth 32) be
+// misinterpreted as 32-bit unsigned integer (e.g. by ImageJ's TiffDecoder).
+template <typename TPixel>
+constexpr int TiffSampleFormat()
+{
+    return std::is_floating_point<TPixel>::value
+               ? SAMPLEFORMAT_IEEEFP
+               : (std::is_signed<TPixel>::value ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
+}
+
 
 template <typename TPixel, unsigned int VDimension>
 void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, const std::string& filename) {
@@ -41,8 +54,16 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
         buffer[index] = it.Get();
     }
 
-    // Use BigTIFF format ("w8") to support files larger than 4GB
-    TIFF* tiff = TIFFOpen(filename.c_str(), "w8");
+    // Calculate estimated file size
+    size_t estimated_size = width * height * sizeof(TPixel);
+    const size_t size_threshold = static_cast<size_t>(3.0 * 1024 * 1024 * 1024); // 3.0GB
+
+    // Write a classic TIFF ("w") rather than BigTIFF ("w8") so that ImageJ opens the file
+    // with its fast native reader instead of the Bio-Formats importer, which is very slow
+    // when browsing many MIPs. A 2D projection is orders of magnitude below the 4GB classic
+    // TIFF limit; only fall back to BigTIFF if a single plane would not fit.
+    const char* mode = (estimated_size >= size_threshold) ? "w8" : "w";
+    TIFF* tiff = TIFFOpen(filename.c_str(), mode);
     if (!tiff) {
         throw std::runtime_error("Failed to open TIFF file for writing.");
     }
@@ -51,7 +72,8 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
     TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, static_cast<uint32_t>(width));
     TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, static_cast<uint32_t>(height));
     TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 1); // Grayscale image
-    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, sizeof(TPixel) * 8);
+    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, static_cast<int>(sizeof(TPixel) * 8));
+    TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, TiffSampleFormat<TPixel>());
     TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
     TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
     TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
@@ -61,6 +83,13 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
     TIFFSetField(tiff, TIFFTAG_XRESOLUTION, 1.0 / spacing[0]);
     TIFFSetField(tiff, TIFFTAG_YRESOLUTION, 1.0 / spacing[1]);
     TIFFSetField(tiff, TIFFTAG_RESOLUTIONUNIT, RESUNIT_NONE);
+
+    // Mark the file as ImageJ format, mirroring the 3D writer. A single plane needs no
+    // stack fields; ImageJ's TiffDecoder infers nImages=1 from the single IFD.
+    char description[128];
+    snprintf(description, sizeof(description),
+             "ImageJ=1.53\nimages=1\nslices=1\nunit=pixel\nmode=grayscale");
+    TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, description);
 
     for (size_t row = 0; row < height; ++row) {
         if (TIFFWriteScanline(tiff, buffer.data() + row * width, row, 0) < 0) {
@@ -116,7 +145,8 @@ void Save3DImageAsTiffStackWithResolutions(typename itk::Image<TPixel, VDimensio
         TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, static_cast<uint32_t>(width));
         TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, static_cast<uint32_t>(height));
         TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 1); // Grayscale image
-        TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, sizeof(TPixel) * 8);
+        TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, static_cast<int>(sizeof(TPixel) * 8));
+        TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, TiffSampleFormat<TPixel>());
         TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
         TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
         TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);

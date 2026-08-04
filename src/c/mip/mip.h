@@ -1,6 +1,6 @@
 #pragma once
 
-#define MIP_VERSION "AIC MIP version 0.1.0"
+#define MIP_VERSION "AIC MIP version 0.1.1"
 
 #include "defines.h"
 #include <itkImage.h>

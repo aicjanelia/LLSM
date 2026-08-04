@@ -42,9 +42,10 @@ kImageType::Pointer RichardsonLucy(kImageType::Pointer img, kImageType::Pointer 
 
     // Enable FFTW multi-threading if available
     #if defined(ITK_USE_FFTWF) || defined(ITK_USE_FFTWD)
-        itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_ESTIMATE);
-        itk::FFTWGlobalConfiguration::SetReadWisdomCache(false);
-        itk::FFTWGlobalConfiguration::SetWriteWisdomCache(false);
+        itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_MEASURE);
+        //itk::FFTWGlobalConfiguration::SetPlanRigor(FFTW_ESTIMATE);
+        //itk::FFTWGlobalConfiguration::SetReadWisdomCache(false);
+        //itk::FFTWGlobalConfiguration::SetWriteWisdomCache(false);
         
         if (verbose) {
             unsigned int num_threads = itk::MultiThreaderBase::GetGlobalDefaultNumberOfThreads();
