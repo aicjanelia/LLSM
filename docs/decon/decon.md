@@ -123,7 +123,24 @@ Allowed options:
                                       from input image
   -o [ --output ] arg                 output file path
   -b [ --bit-depth ] arg (=16)        bit depth (8, 16, or 32) of output image
+  --block-depth arg (=0)              Z core depth per block (0 selects 512,
+                                      reduced automatically when required)
   -w [ --overwrite ]                  overwrite output if it exists
   -v [ --verbose ]                    display progress and debug information
   --version                           display the version number
 ```
+
+## Z-block processing
+
+`decon` reads and processes the input TIFF stack in Z blocks so that the full
+input and FFT working volume do not need to fit in memory. Each core block is
+extended with a halo of `iterations * (resampled PSF depth - 1)` slices on both
+sides. After deconvolution, only the core is written incrementally to the output
+TIFF (BigTIFF for large output), so the halo prevents internal block boundaries
+from affecting the retained result.
+
+The default core depth is 512 slices. Use `--block-depth` to select a smaller
+value when less memory is available or a larger value to reduce repeated halo
+work. The value is reduced automatically when necessary to keep a block below
+the FFT voxel limit. Z splitting cannot handle an image whose single XY plane,
+after PSF padding, already exceeds that limit.

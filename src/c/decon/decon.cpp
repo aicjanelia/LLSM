@@ -3,10 +3,13 @@
 #include "utils.h"
 #include "reader.h"
 #include "resampler.h"
-#include "math_local.h"
 #include "writer.h"
+#include "z_block.h"
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
+#include <limits>
+#include <vector>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -20,6 +23,7 @@ int main(int argc, char** argv) {
   unsigned int iterations = UNSET_UNSIGNED_INT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
+  std::uint64_t block_depth = 0;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -36,6 +40,7 @@ int main(int argc, char** argv) {
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
+      ("block-depth", po::value<std::uint64_t>(&block_depth)->default_value(0),"Z core depth per block (0 selects 512, reduced automatically when required)")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
       ("verbose,v", po::value<bool>(&verbose)->default_value(false)->implicit_value(true)->zero_tokens(), "display progress and debug information")
       ("version", "display the version number")
@@ -87,18 +92,22 @@ int main(int argc, char** argv) {
   }
 
   // check files
-  const char* in_path = varsmap["input"].as<std::string>().c_str();
-  if (!IsFile(in_path)) {
+  const std::string in_path = varsmap["input"].as<std::string>();
+  if (!IsFile(in_path.c_str())) {
     std::cerr << "decon: input path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
-  const char* kernel_path = varsmap["kernel"].as<std::string>().c_str();
-  if (!IsFile(kernel_path)) {
+  const std::string kernel_path = varsmap["kernel"].as<std::string>();
+  if (!IsFile(kernel_path.c_str())) {
     std::cerr << "decon: kernel path is not a file" << std::endl;
     return EXIT_FAILURE;
   }
-  const char* out_path = varsmap["output"].as<std::string>().c_str();
-  if (IsFile(out_path)) {
+  const std::string out_path = varsmap["output"].as<std::string>();
+  if (IsFile(out_path.c_str())) {
+    if (fs::equivalent(in_path, out_path)) {
+      std::cerr << "decon: input and output paths must be different for block processing" << std::endl;
+      return EXIT_FAILURE;
+    }
     if (!overwrite) {
       std::cerr << "decon: output path already exists" << std::endl;
       return EXIT_FAILURE;
@@ -124,70 +133,95 @@ int main(int argc, char** argv) {
     std::cout << "Kernel Path = " << kernel_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
     std::cout << "Overwrite = " << overwrite << "\n";
-    std::cout << "Bit Depth = " << bit_depth << std::endl;
+    std::cout << "Bit Depth = " << bit_depth << "\n";
+    std::cout << "Requested Block Depth = " << block_depth << std::endl;
   }
 
   // Start timing
   auto start_time = std::chrono::high_resolution_clock::now();
 
-  // read data
-  kImageType::Pointer img = ReadImageFile<kImageType>(in_path);
-  kImageType::Pointer kernel = ReadImageFile<kImageType>(kernel_path);
+  try {
+    TiffStackBlockReader input_reader(in_path);
+    kImageType::Pointer kernel = ReadImageFile<kImageType>(kernel_path);
+    if (kernel == nullptr) {
+      std::cerr << "decon: unable to read kernel image" << std::endl;
+      return EXIT_FAILURE;
+    }
 
-  // set spacing
-  kImageType::SpacingType img_spacing = img->GetSpacing();
-  kImageType::SpacingType kernel_spacing = kernel->GetSpacing();
+    kImageType::SpacingType img_spacing = input_reader.GetSpacing();
+    kImageType::SpacingType kernel_spacing = kernel->GetSpacing();
+    if (xy_res > 0.0) {
+      img_spacing[0] = xy_res;
+      img_spacing[1] = xy_res;
+      kernel_spacing[0] = xy_res;
+      kernel_spacing[1] = xy_res;
+    }
+    if (img_zstep > 0.0)
+      img_spacing[2] = img_zstep;
+    if (kernel_zstep > 0.0)
+      kernel_spacing[2] = kernel_zstep;
+    kernel->SetSpacing(kernel_spacing);
 
-  if (xy_res > 0.0) {
-    img_spacing[0] = xy_res;
-    img_spacing[1] = xy_res;
-    kernel_spacing[0] = xy_res;
-    kernel_spacing[1] = xy_res;
-  }
-  if (img_zstep > 0.0)
-    img_spacing[2] = img_zstep;
-  if (kernel_zstep > 0.0)
-    kernel_spacing[2] = kernel_zstep;
-  
-  img->SetSpacing(img_spacing);
-  kernel->SetSpacing(kernel_spacing);
+    if (img_spacing[2] != kernel_spacing[2])
+    {
+      kernel = Resampler(kernel, img_spacing, verbose);
+    }
 
-  // resample kernel
-  if (img_spacing[2] != kernel_spacing[2])
-  {
-    kernel = Resampler(kernel, img_spacing, verbose);
-  }
+    const kImageType::SizeType kernel_size =
+        kernel->GetLargestPossibleRegion().GetSize();
+    const std::uint64_t halo_depth =
+        llsm::RequiredHaloDepth(kernel_size[2], iterations);
+    const std::uint64_t maximum_input_depth = llsm::MaximumInputDepthForFFT(
+        input_reader.GetWidth(), input_reader.GetHeight(),
+        kernel_size[0], kernel_size[1], kernel_size[2]);
+    const std::uint64_t selected_core_depth = llsm::SelectCoreDepth(
+        input_reader.GetDepth(), block_depth, halo_depth, maximum_input_depth);
+    const std::vector<llsm::ZBlock> blocks = llsm::MakeZBlocks(
+        input_reader.GetDepth(), selected_core_depth, halo_depth);
 
-  // subtract constant
-  if (subtract_constant != 0.0)
-  {
-    img = SubtractConstantClamped(img, (kPixelType) subtract_constant/std::numeric_limits<unsigned short>::max()); // TODO: scale subtraction by input type
+    if (verbose) {
+      std::cout << "Input Dimensions = " << input_reader.GetWidth() << " "
+                << input_reader.GetHeight() << " " << input_reader.GetDepth() << "\n";
+      std::cout << "Resampled Kernel Dimensions = " << kernel_size[0] << " "
+                << kernel_size[1] << " " << kernel_size[2] << "\n";
+      std::cout << "Z Halo = " << halo_depth << "\n";
+      std::cout << "Selected Core Depth = " << selected_core_depth << "\n";
+      std::cout << "Number of Z Blocks = " << blocks.size() << std::endl;
+    }
 
-  }
+    kImageType::SpacingType output_spacing;
+    output_spacing.Fill(1.0);
+    TiffStackBlockWriter output_writer(
+        out_path, input_reader.GetWidth(), input_reader.GetHeight(),
+        input_reader.GetDepth(), bit_depth, output_spacing);
 
-  // decon
-  kImageType::Pointer decon_img = RichardsonLucy(img, kernel, iterations, verbose);
+    const kPixelType normalized_subtract =
+        static_cast<kPixelType>(subtract_constant) /
+        std::numeric_limits<unsigned short>::max();
 
-  img_spacing[0] = 1.0;
-  img_spacing[1] = 1.0;
-  img_spacing[2] = 1.0;
-  decon_img->SetSpacing(img_spacing);
+    for (std::size_t block_index = 0; block_index < blocks.size(); ++block_index)
+    {
+      const llsm::ZBlock &block = blocks[block_index];
+      if (verbose) {
+        std::cout << "Processing Z block " << block_index + 1 << "/" << blocks.size()
+                  << ": core [" << block.core_begin << ", "
+                  << block.core_begin + block.core_size << "), input ["
+                  << block.read_begin << ", " << block.read_begin + block.read_size
+                  << ")" << std::endl;
+      }
 
-  // write file
-  if (bit_depth == 8) {
-    using PixelTypeOut = unsigned char;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
-  } else if (bit_depth == 16) {
-    using PixelTypeOut = unsigned short;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
-  } else if (bit_depth == 32) {
-    using PixelTypeOut = float;
-    using ImageTypeOut = itk::Image<PixelTypeOut, kDimensions>;
-    WriteImageFile<kImageType,ImageTypeOut>(decon_img, out_path);
-  } else {
-    std::cerr << "decon: unknown bit depth" << std::endl;
+      kImageType::Pointer image_block = input_reader.ReadBlock(
+          block.read_begin, block.read_size, img_spacing, normalized_subtract);
+      kImageType::Pointer decon_block =
+          RichardsonLucy(image_block, kernel, iterations, verbose);
+      output_writer.AppendCore(decon_block, block.core_offset, block.core_size);
+    }
+    output_writer.Finish();
+  } catch (const itk::ExceptionObject& e) {
+    std::cerr << "decon: ITK error: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
   }
 

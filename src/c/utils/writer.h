@@ -16,7 +16,15 @@
 
 #include "itk_tiff.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdint>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 // libtiff sample format for the pixel type being written. Without this tag readers
 // default to SAMPLEFORMAT_UINT, which makes 32-bit float output (--bit-depth 32) be
@@ -28,6 +36,223 @@ constexpr int TiffSampleFormat()
                ? SAMPLEFORMAT_IEEEFP
                : (std::is_signed<TPixel>::value ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
 }
+
+class TiffStackBlockWriter
+{
+public:
+    TiffStackBlockWriter(const std::string &file_path,
+                         std::uint64_t width,
+                         std::uint64_t height,
+                         std::uint64_t depth,
+                         unsigned int bit_depth,
+                         const kImageType::SpacingType &spacing)
+        : file_path_(file_path), width_(width), height_(height), depth_(depth),
+          bit_depth_(bit_depth), spacing_(spacing)
+    {
+        if (width_ == 0 || height_ == 0 || depth_ == 0)
+        {
+            throw std::invalid_argument("TIFF output dimensions must be greater than zero");
+        }
+        if (width_ > std::numeric_limits<std::uint32_t>::max() ||
+            height_ > std::numeric_limits<std::uint32_t>::max())
+        {
+            throw std::runtime_error("TIFF output width or height exceeds uint32_t");
+        }
+        if (bit_depth_ != 8 && bit_depth_ != 16 && bit_depth_ != 32)
+        {
+            throw std::invalid_argument("TIFF output bit depth must be 8, 16, or 32");
+        }
+
+        const std::uint64_t bytes_per_pixel = bit_depth_ / 8;
+        if (width_ > std::numeric_limits<std::uint32_t>::max() / bytes_per_pixel)
+        {
+            throw std::runtime_error("TIFF output scanline exceeds the libtiff size limit");
+        }
+        const long double estimated_size = static_cast<long double>(width_) *
+                                           static_cast<long double>(height_) *
+                                           static_cast<long double>(depth_) *
+                                           static_cast<long double>(bytes_per_pixel);
+        const long double big_tiff_threshold =
+            3.0L * 1024.0L * 1024.0L * 1024.0L;
+        const char *mode = estimated_size >= big_tiff_threshold ? "w8" : "w";
+        tiff_ = TIFFOpen(file_path_.c_str(), mode);
+        if (tiff_ == nullptr)
+        {
+            throw std::runtime_error("Failed to open TIFF file for block writing: " + file_path_);
+        }
+    }
+
+    ~TiffStackBlockWriter()
+    {
+        if (tiff_ != nullptr)
+        {
+            TIFFClose(tiff_);
+        }
+    }
+
+    TiffStackBlockWriter(const TiffStackBlockWriter &) = delete;
+    TiffStackBlockWriter &operator=(const TiffStackBlockWriter &) = delete;
+
+    void AppendCore(kImageType::Pointer image,
+                    std::uint64_t first_local_slice,
+                    std::uint64_t slice_count)
+    {
+        if (image == nullptr)
+        {
+            throw std::invalid_argument("Cannot write a null image block");
+        }
+        const kImageType::RegionType region = image->GetLargestPossibleRegion();
+        const kImageType::SizeType size = region.GetSize();
+        if (size[0] != width_ || size[1] != height_ ||
+            first_local_slice > size[2] || slice_count > size[2] - first_local_slice)
+        {
+            throw std::out_of_range("Output core is outside the deconvolved image block");
+        }
+        if (slices_written_ > depth_ || slice_count > depth_ - slices_written_)
+        {
+            throw std::out_of_range("Output core exceeds the declared TIFF stack depth");
+        }
+
+        const kPixelType *buffer = image->GetBufferPointer();
+        const std::uint64_t plane_voxels = width_ * height_;
+        for (std::uint64_t local_slice = first_local_slice;
+             local_slice < first_local_slice + slice_count;
+             ++local_slice)
+        {
+            SetDirectoryTags();
+            const kPixelType *source = buffer + local_slice * plane_voxels;
+            if (bit_depth_ == 8)
+            {
+                WriteSlice<std::uint8_t>(source);
+            }
+            else if (bit_depth_ == 16)
+            {
+                WriteSlice<std::uint16_t>(source);
+            }
+            else
+            {
+                WriteSlice<float>(source);
+            }
+
+            ++slices_written_;
+            if (slices_written_ < depth_ && TIFFWriteDirectory(tiff_) == 0)
+            {
+                CloseAfterError();
+                throw std::runtime_error("Failed to write TIFF directory for output slice");
+            }
+        }
+    }
+
+    void Finish()
+    {
+        if (slices_written_ != depth_)
+        {
+            std::ostringstream message;
+            message << "TIFF output has " << slices_written_ << " slices; expected " << depth_;
+            throw std::runtime_error(message.str());
+        }
+        if (tiff_ != nullptr)
+        {
+            TIFFClose(tiff_);
+            tiff_ = nullptr;
+        }
+    }
+
+private:
+    void SetDirectoryTags()
+    {
+        TIFFSetField(tiff_, TIFFTAG_IMAGEWIDTH, static_cast<std::uint32_t>(width_));
+        TIFFSetField(tiff_, TIFFTAG_IMAGELENGTH, static_cast<std::uint32_t>(height_));
+        TIFFSetField(tiff_, TIFFTAG_SAMPLESPERPIXEL, 1);
+        TIFFSetField(tiff_, TIFFTAG_BITSPERSAMPLE, static_cast<int>(bit_depth_));
+        TIFFSetField(tiff_, TIFFTAG_SAMPLEFORMAT,
+                     bit_depth_ == 32 ? SAMPLEFORMAT_IEEEFP : SAMPLEFORMAT_UINT);
+        TIFFSetField(tiff_, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+        TIFFSetField(tiff_, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+        TIFFSetField(tiff_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+        TIFFSetField(tiff_, TIFFTAG_ROWSPERSTRIP,
+                     TIFFDefaultStripSize(tiff_,
+                                          static_cast<std::uint32_t>(width_ * (bit_depth_ / 8))));
+        TIFFSetField(tiff_, TIFFTAG_XRESOLUTION, 1.0 / spacing_[0]);
+        TIFFSetField(tiff_, TIFFTAG_YRESOLUTION, 1.0 / spacing_[1]);
+        TIFFSetField(tiff_, TIFFTAG_RESOLUTIONUNIT, RESUNIT_NONE);
+
+        if (slices_written_ == 0)
+        {
+            char description[512];
+            snprintf(description, sizeof(description),
+                     "ImageJ=1.53\nimages=%llu\nslices=%llu\nspacing=%.6f\nunit=pixel\nhyperstack=false\nmode=grayscale\nloop=false",
+                     static_cast<unsigned long long>(depth_),
+                     static_cast<unsigned long long>(depth_), spacing_[2]);
+            TIFFSetField(tiff_, TIFFTAG_IMAGEDESCRIPTION, description);
+        }
+    }
+
+    static double ClampUnit(double value)
+    {
+        if (!std::isfinite(value))
+        {
+            return 0.0;
+        }
+        return std::max(0.0, std::min(1.0, value));
+    }
+
+    template <typename TPixel>
+    static TPixel ConvertOutputImpl(kPixelType value, std::true_type)
+    {
+        return static_cast<TPixel>(ClampUnit(value));
+    }
+
+    template <typename TPixel>
+    static TPixel ConvertOutputImpl(kPixelType value, std::false_type)
+    {
+        return static_cast<TPixel>(ClampUnit(value) *
+                                   static_cast<double>(std::numeric_limits<TPixel>::max()));
+    }
+
+    template <typename TPixel>
+    static TPixel ConvertOutput(kPixelType value)
+    {
+        return ConvertOutputImpl<TPixel>(value, std::is_floating_point<TPixel>{});
+    }
+
+    template <typename TPixel>
+    void WriteSlice(const kPixelType *source)
+    {
+        std::vector<TPixel> row_buffer(static_cast<std::size_t>(width_));
+        for (std::uint32_t row = 0; row < height_; ++row)
+        {
+            const kPixelType *source_row = source + static_cast<std::uint64_t>(row) * width_;
+            for (std::uint64_t column = 0; column < width_; ++column)
+            {
+                row_buffer[static_cast<std::size_t>(column)] = ConvertOutput<TPixel>(source_row[column]);
+            }
+            if (TIFFWriteScanline(tiff_, row_buffer.data(), row, 0) < 0)
+            {
+                CloseAfterError();
+                throw std::runtime_error("Failed to write TIFF scanline for output slice");
+            }
+        }
+    }
+
+    void CloseAfterError()
+    {
+        if (tiff_ != nullptr)
+        {
+            TIFFClose(tiff_);
+            tiff_ = nullptr;
+        }
+    }
+
+    std::string file_path_;
+    TIFF *tiff_ = nullptr;
+    std::uint64_t width_ = 0;
+    std::uint64_t height_ = 0;
+    std::uint64_t depth_ = 0;
+    unsigned int bit_depth_ = 0;
+    kImageType::SpacingType spacing_;
+    std::uint64_t slices_written_ = 0;
+};
 
 
 template <typename TPixel, unsigned int VDimension>
