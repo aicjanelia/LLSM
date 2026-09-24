@@ -11,7 +11,7 @@ int main()
 
     const auto maximum_input_depth =
         llsm::MaximumInputDepthForFFT(512, 1536, 25, 25, 10);
-    assert(maximum_input_depth == 2559);
+    assert(maximum_input_depth == 2558);
 
     const auto core_depth =
         llsm::SelectCoreDepth(2542, 512, 90, maximum_input_depth);
@@ -70,6 +70,29 @@ int main()
         rejected_wide_plane = true;
     }
     assert(rejected_wide_plane);
+
+    // Check both parity cases and every block of the reported large stack.
+    for (const llsm::FFTSize kernel : {llsm::FFTSize{{25, 25, 10}},
+                                      llsm::FFTSize{{24, 26, 10}},
+                                      llsm::FFTSize{{25, 25, 9}}})
+    {
+        const auto limit = llsm::MaximumInputDepthForFFT(4853, 1536, kernel[0], kernel[1], kernel[2]);
+        const auto halo = llsm::RequiredHaloDepth(kernel[2], 10);
+        const auto core = llsm::SelectCoreDepth(1017, 0, halo, limit);
+        if ((kernel == llsm::FFTSize{{25, 25, 10}}))
+        {
+            assert(limit == 272);
+            assert(core == 92);
+        }
+        assert(llsm::PlanFFTPadding({{4853, 1536, limit}}, kernel, 13).minimum_size_supported);
+        assert(!llsm::PlanFFTPadding({{4853, 1536, limit + 1}}, kernel, 13).minimum_size_supported);
+        for (const auto &block : llsm::MakeZBlocks(1017, core, halo))
+        {
+            assert(llsm::PlanFFTPadding({{4853, 1536, block.read_size}}, kernel, 13).minimum_size_supported);
+        }
+    }
+    // An even Z kernel needs kernel + 1 padded slices for one input slice.
+    assert(llsm::MaximumInputDepthForFFT(llsm::kMaximumFFTVoxelCount / 2, 1, 1, 1, 2) == 0);
 
     std::cout << "Z block tests passed" << std::endl;
     return 0;

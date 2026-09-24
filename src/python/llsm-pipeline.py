@@ -16,6 +16,7 @@ from pathlib import Path, PurePath
 from sys import exit
 import settings2json
 from time import sleep
+from pipeline_commands import build_job_command
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Batch processing script for LLSM images.')
@@ -1134,8 +1135,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             cmd.append(tmp)
 
                 if len(cmd) > 2: # > 2 to require at least one module (bsub is already length 2)
-                    cmd = ''.join(cmd)
-                    cmd = cmd + '\"'
+                    cmd = build_job_command(cmd[0], cmd[2:])
                     if verbose:
                         print(cmd)
                     if not dryrun:

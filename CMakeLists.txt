@@ -52,7 +52,6 @@ add_executable(mip src/c/mip/mip.cpp)
 # add_executable(reader-test src/c/tests/reader-test.cpp)
 # add_executable(writer-test src/c/tests/writer-test.cpp)
 # add_executable(resampler-test src/c/tests/resampler-test.cpp)
-add_executable(check_itk_fftw check_itk_fftw.cpp)
 
 set_property(TARGET flatfield PROPERTY CXX_STANDARD 14)
 set_property(TARGET flatfield PROPERTY CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -75,9 +74,6 @@ set_property(TARGET mip PROPERTY CMAKE_CXX_EXTENSIONS  OFF)
 # set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
 # set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
 # set_property(TARGET resampler-test PROPERTY CXX_STANDARD 17)
-set_property(TARGET check_itk_fftw PROPERTY CXX_STANDARD 14)
-set_property(TARGET check_itk_fftw PROPERTY CMAKE_CXX_STANDARD_REQUIRED ON)
-set_property(TARGET check_itk_fftw PROPERTY CMAKE_CXX_EXTENSIONS  OFF)
 
 ######### Set Pre-package Variables #########
 
@@ -156,13 +152,45 @@ target_link_libraries(mip PRIVATE ${ITK_LIBRARIES})
 # target_link_libraries(resampler-test PRIVATE Boost::filesystem)
 # target_link_libraries(resampler-test PRIVATE ${ITK_LIBRARIES})
 
-target_link_libraries(check_itk_fftw PRIVATE ${ITK_LIBRARIES})
+if(EXISTS "${PROJECT_SOURCE_DIR}/check_itk_fftw.cpp")
+  add_executable(check_itk_fftw check_itk_fftw.cpp)
+  set_property(TARGET check_itk_fftw PROPERTY CXX_STANDARD 14)
+  target_link_libraries(check_itk_fftw PRIVATE ${ITK_LIBRARIES})
+  install(TARGETS check_itk_fftw CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+endif()
+
+######### Regression Tests #########
+
+include(CTest)
+if(BUILD_TESTING)
+  foreach(test fft-size z-block fft-padding-itk block-writer)
+    add_executable(${test}-test src/c/tests/${test}-test.cpp)
+    set_target_properties(${test}-test PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(${test}-test PRIVATE src/c/utils src/c/decon)
+    # These standalone tests use assert, including in Release builds.
+    if(MSVC)
+      target_compile_options(${test}-test PRIVATE /UNDEBUG)
+    else()
+      target_compile_options(${test}-test PRIVATE -UNDEBUG)
+    endif()
+    add_test(NAME ${test} COMMAND ${test}-test)
+  endforeach()
+  target_link_libraries(fft-padding-itk-test PRIVATE Boost::filesystem ${ITK_LIBRARIES})
+  target_link_libraries(block-writer-test PRIVATE Boost::filesystem ${ITK_LIBRARIES})
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME pipeline-commands COMMAND ${Python3_EXECUTABLE}
+      ${PROJECT_SOURCE_DIR}/src/python/tests/test_pipeline_commands.py)
+  endif()
+endif()
 
 ######### Installs #########
 
 # install(TARGETS deskew deskew-test decon decon-test mip mip-test reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-install(TARGETS flatfield crop deskew decon mip check_itk_fftw CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS flatfield crop deskew decon mip CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/llsm-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file(COPY ${PROJECT_SOURCE_DIR}/src/python/mosaic-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file(COPY ${PROJECT_SOURCE_DIR}/src/python/pipeline_commands.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file(COPY ${PROJECT_SOURCE_DIR}/src/python/mosaicsettings2json.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/settings2json.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-

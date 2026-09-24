@@ -82,12 +82,15 @@ inline FFTSize MinimumConvolutionSize(const FFTSize &image_size,
         {
             throw std::invalid_argument("Image and kernel dimensions must be greater than zero");
         }
+        // ITK pads both sides by GetKernelRadius(), i.e. floor(kernel / 2).
+        // For an even kernel this is one voxel more than kernel - 1.
+        const std::uint64_t padding = 2 * (kernel_size[dimension] / 2);
         if (image_size[dimension] >
-            std::numeric_limits<std::uint64_t>::max() - kernel_size[dimension] + 1)
+            std::numeric_limits<std::uint64_t>::max() - padding)
         {
             throw std::overflow_error("Convolution dimension exceeds uint64_t");
         }
-        size[dimension] = image_size[dimension] + kernel_size[dimension] - 1;
+        size[dimension] = image_size[dimension] + padding;
     }
     return size;
 }

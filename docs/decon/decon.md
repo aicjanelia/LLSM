@@ -144,3 +144,19 @@ value when less memory is available or a larger value to reduce repeated halo
 work. The value is reduced automatically when necessary to keep a block below
 the FFT voxel limit. Z splitting cannot handle an image whose single XY plane,
 after PSF padding, already exceeds that limit.
+
+The limit accounts for ITK's padding on both sides of every axis, including
+even-sized resampled PSFs. It limits the FFT element count; it does not measure
+available RAM. A smaller `--block-depth` may still be needed on machines with
+less memory.
+
+The output is staged in a hidden `.decon-partial-*` directory beside the final
+path and renamed into place only after every slice has been written and flushed.
+If processing fails, the final path is not created or replaced, and ordinary
+exception handling removes the staging files. A forcibly terminated process may
+leave its staging directory, which is an incomplete result and may be removed
+after that process has stopped. With `--overwrite`, an existing result remains
+in place until the new result is complete.
+
+Pipeline jobs stop at the first failed module and return its failure status;
+dependent steps such as MIP generation do not run after a failed deconvolution.

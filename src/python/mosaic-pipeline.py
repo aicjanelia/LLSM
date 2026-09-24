@@ -16,6 +16,7 @@ from sys import exit
 # import sys
 import mosaicsettings2json
 from time import sleep
+from pipeline_commands import build_job_command
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Batch processing script for MOSAIC images.')
@@ -1228,8 +1229,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             cmd.append(tmp)
 
                 if len(cmd) > 2: # >2 means that there are commands besides the bsub
-                    cmd = ''.join(cmd)
-                    cmd = cmd + '\"'
+                    cmd = build_job_command(cmd[0], cmd[2:])
                     if verbose:
                         print(cmd)
                     if not dryrun:

@@ -54,11 +54,12 @@ inline std::uint64_t MaximumInputDepthForFFT(std::uint64_t image_width,
     const std::uint64_t padded_plane_voxels = minimum_size[0] * minimum_size[1];
     const std::uint64_t maximum_padded_depth =
         kMaximumFFTVoxelCount / padded_plane_voxels;
-    if (maximum_padded_depth < kernel_depth)
+    if (maximum_padded_depth < minimum_size[2])
     {
         return 0;
     }
-    return maximum_padded_depth - kernel_depth + 1;
+    // minimum_size[2] includes one input slice plus ITK's kernel padding.
+    return maximum_padded_depth - (minimum_size[2] - 1);
 }
 
 inline std::uint64_t SelectCoreDepth(std::uint64_t total_depth,

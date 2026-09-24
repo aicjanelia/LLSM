@@ -75,9 +75,21 @@ public:
         const long double big_tiff_threshold =
             3.0L * 1024.0L * 1024.0L * 1024.0L;
         const char *mode = estimated_size >= big_tiff_threshold ? "w8" : "w";
-        tiff_ = TIFFOpen(file_path_.c_str(), mode);
+        // Stage beside the destination so Finish() can publish the complete
+        // stack with a same-filesystem rename. A failed run must not replace
+        // an existing result or leave a truncated TIFF at the final path.
+        const fs::path destination(file_path_);
+        do
+        {
+            staging_directory_ = destination.parent_path() /
+                fs::unique_path(".decon-partial-%%%%-%%%%-%%%%-%%%%");
+        }
+        while (!fs::create_directory(staging_directory_));
+        staging_path_ = staging_directory_ / "stack.tif";
+        tiff_ = TIFFOpen(staging_path_.string().c_str(), mode);
         if (tiff_ == nullptr)
         {
+            RemoveStagingFile();
             throw std::runtime_error("Failed to open TIFF file for block writing: " + file_path_);
         }
     }
@@ -88,6 +100,7 @@ public:
         {
             TIFFClose(tiff_);
         }
+        RemoveStagingFile();
     }
 
     TiffStackBlockWriter(const TiffStackBlockWriter &) = delete;
@@ -97,6 +110,10 @@ public:
                     std::uint64_t first_local_slice,
                     std::uint64_t slice_count)
     {
+        if (tiff_ == nullptr)
+        {
+            throw std::logic_error("Cannot append to a closed TIFF output");
+        }
         if (image == nullptr)
         {
             throw std::invalid_argument("Cannot write a null image block");
@@ -145,20 +162,42 @@ public:
 
     void Finish()
     {
+        if (finished_)
+        {
+            return;
+        }
         if (slices_written_ != depth_)
         {
             std::ostringstream message;
             message << "TIFF output has " << slices_written_ << " slices; expected " << depth_;
             throw std::runtime_error(message.str());
         }
-        if (tiff_ != nullptr)
+        if (tiff_ == nullptr)
         {
-            TIFFClose(tiff_);
-            tiff_ = nullptr;
+            throw std::runtime_error("TIFF output was closed before completion: " + file_path_);
         }
+        if (TIFFFlush(tiff_) == 0)
+        {
+            CloseAfterError();
+            throw std::runtime_error("Failed to flush TIFF output: " + file_path_);
+        }
+        TIFFClose(tiff_);
+        tiff_ = nullptr;
+        fs::rename(staging_path_, fs::path(file_path_));
+        finished_ = true;
+        RemoveStagingFile();
     }
 
 private:
+    void RemoveStagingFile() noexcept
+    {
+        boost::system::error_code error;
+        if (!staging_path_.empty())
+            fs::remove(staging_path_, error);
+        if (!staging_directory_.empty())
+            fs::remove(staging_directory_, error);
+    }
+
     void SetDirectoryTags()
     {
         TIFFSetField(tiff_, TIFFTAG_IMAGEWIDTH, static_cast<std::uint32_t>(width_));
@@ -245,6 +284,9 @@ private:
     }
 
     std::string file_path_;
+    fs::path staging_directory_;
+    fs::path staging_path_;
+    bool finished_ = false;
     TIFF *tiff_ = nullptr;
     std::uint64_t width_ = 0;
     std::uint64_t height_ = 0;
@@ -357,7 +399,8 @@ void Save3DImageAsTiffStackWithResolutions(typename itk::Image<TPixel, VDimensio
 
     for (size_t slice = 0; slice < depth; ++slice) {
         std::vector<TPixel> buffer(width * height);
-        typename ImageType::IndexType start = { {startIndex[0], startIndex[1], startIndex[2] + slice} };
+        typename ImageType::IndexType start = { {startIndex[0], startIndex[1],
+            startIndex[2] + static_cast<typename ImageType::IndexValueType>(slice)} };
         typename ImageType::SizeType sliceSize = { {width, height, 1} };
         typename ImageType::RegionType sliceRegion(start, sliceSize);
 
