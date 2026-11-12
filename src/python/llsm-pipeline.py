@@ -1288,7 +1288,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         else:
                             inpath = d / f
 
-                        outpath = job['dir'] / tag_filename(out_f, '_rotate')
+                        outpath = job['dir'] / tag_filename(out_f, '_' + job['dir'].name)
 
                         if geometry is not None:
                             # geometry of the deskewed volume: z spacing = |step*sin(angle)|, shift = step*cos(angle)/xy (signed)
@@ -1310,7 +1310,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             # create mips for rotate
                             if mip:
                                 inpath = outpath
-                                outpath = job['mip_dir'] / tag_filename(out_f, '_rotate_mip')
+                                outpath = job['mip_dir'] / tag_filename(out_f, '_' + job['dir'].name + '_mip')
                                 mip_z = rotate_z if 'isotropic' in params_rotate else rotate_xy # 'isotropic' is only kept (as -p) when set to false
                                 tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (rotate_xy, mip_z, 2*threads, outpath, inpath)
                                 cmd.append(tmp)

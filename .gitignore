@@ -4,4 +4,6 @@ __pycache__/
 .vscode
 build/*
 build-mosaic/*
+build-local/*
 bin/*
+Claude.md
