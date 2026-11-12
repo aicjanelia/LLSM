@@ -372,6 +372,99 @@ def load_configs(path):
             if not p.is_file():
                 exit('ERROR: laser %s psf file \'%s\' does not exist' % (key, p))
 
+    # sanitize rotate configs
+    if 'rotate' in configs:
+        supported_opts = ['angle', 'xy-res', 'stages', 'crop-mode', 'isotropic', 'fill', 'bit-depth', 'executable_path']
+        for key in list(configs['rotate']):
+            if key not in supported_opts:
+                print('WARNING: rotate option \'%s\' in config.json is not supported' % key)
+                del configs['rotate'][key]
+
+        if not 'executable_path' in configs['rotate']:
+            configs['rotate']['executable_path'] = "rotate"
+
+        # Same convention as BigStitcher's y-axis rotation. The matching value is the deskew angle: 31.8 for the LLSM
+        # (not yet confirmed in BigStitcher) and -32.45 (not 147.55) for the MOSAIC.
+        if 'angle' in configs['rotate']:
+            if not type(configs['rotate']['angle']) is float:
+                exit('ERROR: rotate angle \'%s\' in config.json is not a float' % configs['rotate']['angle'])
+        else:
+            configs['rotate']['angle'] = 31.8
+            print('WARNING: Using default LLSM angle of 31.8 for rotation (BigStitcher y-axis convention; not yet confirmed for the LLSM)')
+        if abs(configs['rotate']['angle']) > 360.0:
+            exit('ERROR: rotate angle \'%s\' in config.json must be within [-360, 360]' % configs['rotate']['angle'])
+        configs['rotate']['angle'] = {'flag': '-a', 'arg': configs['rotate']['angle']}
+
+        # xy-res is only used when there is no deskew/decon-first section to take it from
+        if 'xy-res' in configs['rotate']:
+            if not type(configs['rotate']['xy-res']) is float:
+                exit('ERROR: rotate xy resolution \'%s\' in config.json is not a float' % configs['rotate']['xy-res'])
+        else:
+            configs['rotate']['xy-res'] = 0.104 # 0.104 um/pixel on the LLSM
+            if not ('deskew' in configs or 'decon-first' in configs):
+                print('WARNING: Using default LLSM pixel size of 0.104 um/pixel for rotation')
+        configs['rotate']['xy-res'] = {'flag': '-x', 'arg': configs['rotate']['xy-res']}
+
+        # Which processed images to rotate. Each one is written to rotate_<source folder> (e.g., rotate_deskew,
+        # rotate_decon, rotate_deskew_after_decon); with no deskew/decon module the unprocessed images are rotated
+        # and written to rotate. By default the last stage of each chain is rotated.
+        enabled_stages = []
+        if 'deskew' in configs:
+            enabled_stages.append('deskew')
+        if 'decon' in configs:
+            enabled_stages.append('decon')
+        if 'decon-first' in configs:
+            enabled_stages.append('deskew_after_decon')
+        if 'stages' in configs['rotate']:
+            stages = configs['rotate']['stages']
+            if not (type(stages) is list and len(stages) > 0 and all(type(st) is str for st in stages)):
+                exit('ERROR: rotate stages in config.json must be a non-empty list of names (deskew, decon, deskew_after_decon)')
+            for st in stages:
+                if st not in ['deskew', 'decon', 'deskew_after_decon']:
+                    exit('ERROR: rotate stage \'%s\' in config.json must be deskew, decon, or deskew_after_decon' % st)
+                if st not in enabled_stages:
+                    exit('ERROR: rotate stage \'%s\' was requested, but the module that creates it (%s) is not enabled in config.json' % (st, 'decon-first' if st == 'deskew_after_decon' else st))
+            if len(set(stages)) != len(stages):
+                exit('ERROR: rotate stages in config.json must not repeat')
+        else:
+            stages = []
+            if 'deskew' in configs:
+                stages.append('decon' if 'decon' in configs else 'deskew')
+            elif 'decon' in configs:
+                stages.append('decon')
+            if 'decon-first' in configs:
+                stages.append('deskew_after_decon')
+        configs['rotate']['stages'] = stages
+
+        if 'crop-mode' in configs['rotate']:
+            if configs['rotate']['crop-mode'] not in ['keep-all', 'strict']:
+                exit('ERROR: rotate crop-mode \'%s\' in config.json must be \'keep-all\' or \'strict\'' % configs['rotate']['crop-mode'])
+        else:
+            configs['rotate']['crop-mode'] = 'keep-all'
+        if configs['rotate']['crop-mode'] == 'strict':
+            # strict cropping needs the deskew geometry of every stage that is rotated
+            if len(stages) == 0 or ('decon' in stages and 'deskew' not in configs):
+                exit('ERROR: rotate crop-mode \'strict\' requires a deskew or decon-first section for every rotated stage (it needs the deskew geometry)')
+        configs['rotate']['crop-mode'] = {'flag': '-c', 'arg': configs['rotate']['crop-mode']}
+
+        if 'isotropic' in configs['rotate']:
+            if not type(configs['rotate']['isotropic']) is bool:
+                exit('ERROR: rotate isotropic \'%s\' in config.json is not a true or false' % configs['rotate']['isotropic'])
+            if configs['rotate']['isotropic']:
+                del configs['rotate']['isotropic'] # isotropic output is the default of rotate
+            else:
+                configs['rotate']['isotropic'] = {'flag': '-p'} # preserve the input voxel spacing
+
+        if 'fill' in configs['rotate']:
+            if not type(configs['rotate']['fill']) is float:
+                exit('ERROR: rotate background fill value \'%s\' in config.json is not a float' % configs['rotate']['fill'])
+            configs['rotate']['fill'] = {'flag': '-f', 'arg': configs['rotate']['fill']}
+
+        if 'bit-depth' in configs['rotate']:
+            if configs['rotate']['bit-depth'] not in [8, 16, 32]:
+                exit('ERROR: rotate bit-depth \'%s\' in config.json must be 8, 16, or 32' % configs['rotate']['bit-depth'])
+            configs['rotate']['bit-depth'] = {'flag': '-b', 'arg': configs['rotate']['bit-depth']}
+
     # sanitize mip configs
     if 'mip' in configs:
         supported_opts = ['x', 'y', 'z', 'executable_path']
@@ -550,6 +643,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     params_crop = {}
     params_bdv = {}
     params_flatfield = {}
+    params_rotate = {}
     params_deconfirst_decon = {}
     params_deconfirst_deskew = {}
 
@@ -560,6 +654,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
     cmd_deconfirst_deskew = None
     cmd_deskew = None
     cmd_decon = None
+    cmd_rotate = None
     cmd_mip = None
 
     # update default params with user defined configs and build commands
@@ -583,6 +678,11 @@ def process(dirs, configs, dryrun=False, verbose=False):
     if 'decon' in configs:
         params_decon.update(configs['decon'])
         cmd_decon = params2cmd(params_decon, configs['decon']['executable_path'])
+    if 'rotate' in configs:
+        params_rotate.update(configs['rotate'])
+        # the xy-res flag is chosen per directory (from the deskew section when there is one), so keep it out of the shared command
+        params_rotate_cmd = {k: v for k, v in params_rotate.items() if k not in ('xy-res', 'stages')}
+        cmd_rotate = params2cmd(params_rotate_cmd, configs['rotate']['executable_path'])
     if 'mip' in configs:
         params_mip.update(configs['mip'])
         cmd_mip = params2cmd(params_mip, configs['mip']['executable_path'])
@@ -806,6 +906,37 @@ def process(dirs, configs, dryrun=False, verbose=False):
             if not dryrun:
                 output_decon.mkdir(exist_ok=True)
 
+        # rotate setup
+        rotate = False
+        rotate_jobs = []
+        if params_rotate:
+            rotate = True
+
+            # one job per rotated stage; with none requested the unprocessed images (crop/flatfield/original) are rotated
+            objective_checked = False
+            for stage in (params_rotate['stages'] or [None]):
+                # deskew geometry (angle, xy pixel size) gives the rotated volume's spacing and valid region
+                if stage == 'deskew' or (stage == 'decon' and deskew):
+                    geometry = configs['deskew']
+                elif stage == 'deskew_after_decon':
+                    geometry = configs['decon-first']['deskew']
+                else:
+                    geometry = None
+
+                if geometry is None and not objective_checked:
+                    # no deskew geometry: only objective-scanned data (already in the objective frame) makes sense
+                    if settings['waveform']['z-motion'] != 'Z galvo & piezo':
+                        exit('ERROR: rotate without deskew requires objective-scanned data (Z galvo & piezo); deskew stage-scanned data first')
+                    if 'z-pzt' not in settings['waveform'] or 'interval' not in settings['waveform']['z-pzt']:
+                        exit('ERROR: settings file did not contain a Z PZT Interval field for rotation')
+                    objective_checked = True
+
+                # rotate output directory: rotate_<source folder>, or rotate for unprocessed images
+                output_rotate = d / ('rotate' if stage is None else 'rotate_' + stage)
+                if not dryrun:
+                    output_rotate.mkdir(exist_ok=True)
+                rotate_jobs.append({'stage': stage, 'geometry': geometry, 'dir': output_rotate, 'mip_dir': None})
+
         # mip setup
         mip = False
         if params_mip:
@@ -826,6 +957,10 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 output_deconfirst_mip = output_mip / 'deskew_after_decon'
                 if not dryrun:
                     output_deconfirst_mip.mkdir(parents=True, exist_ok=True)
+            for job in rotate_jobs:
+                job['mip_dir'] = output_mip / job['dir'].name
+                if not dryrun:
+                    job['mip_dir'].mkdir(parents=True, exist_ok=True)
             if (not deskew) and (not deconfirst): # In this case, want mips of the 'original' data before decon
                 if crop:
                     output_crop_mip = output_mip / 'crop'
@@ -1134,6 +1269,52 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             tmp = cmd_mip + ' -q %s -t %s -o %s %s;' % (step, 2*threads, outpath , inpath)
                             cmd.append(tmp)
 
+                if rotate:
+                    for job in rotate_jobs:
+                        stage = job['stage']
+                        geometry = job['geometry']
+
+                        # input: the stage being rotated
+                        if stage == 'deskew_after_decon':
+                            inpath = output_deconfirst_deskew / tag_filename(out_f, '_deskew_after_decon')
+                        elif stage == 'decon':
+                            inpath = output_decon / tag_filename(out_f, '_decon')
+                        elif stage == 'deskew':
+                            inpath = output_deskew / tag_filename(out_f, '_deskew')
+                        elif crop:
+                            inpath = output_crop / tag_filename(out_f, '_crop')
+                        elif flatfield:
+                            inpath = output_flatfield / tag_filename(out_f, '_flatfield')
+                        else:
+                            inpath = d / f
+
+                        outpath = job['dir'] / tag_filename(out_f, '_rotate')
+
+                        if geometry is not None:
+                            # geometry of the deskewed volume: z spacing = |step*sin(angle)|, shift = step*cos(angle)/xy (signed)
+                            stage_step = settings['waveform']['s-piezo']['interval'][ch]
+                            deskew_angle = geometry['angle']['arg']
+                            rotate_xy = geometry['xy-res']['arg']
+                            rotate_z = abs(stage_step * math.sin(deskew_angle * math.pi/180.0))
+                            rotate_shift = stage_step * math.cos(deskew_angle * math.pi/180.0) / rotate_xy
+                            shift_arg = ' -d %s' % rotate_shift
+                        else:
+                            rotate_xy = params_rotate['xy-res']['arg']
+                            rotate_z = settings['waveform']['z-pzt']['interval'][ch]
+                            shift_arg = ''
+
+                        if configs['bdv']['overwrite'] or (not outpath.is_file()):
+                            tmp = cmd_rotate + ' -w -x %s -z %s%s -t %s -o %s  %s;' % (rotate_xy, rotate_z, shift_arg, 2*threads, outpath, inpath)
+                            cmd.append(tmp)
+
+                            # create mips for rotate
+                            if mip:
+                                inpath = outpath
+                                outpath = job['mip_dir'] / tag_filename(out_f, '_rotate_mip')
+                                mip_z = rotate_z if 'isotropic' in params_rotate else rotate_xy # 'isotropic' is only kept (as -p) when set to false
+                                tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (rotate_xy, mip_z, 2*threads, outpath, inpath)
+                                cmd.append(tmp)
+
                 if len(cmd) > 2: # > 2 to require at least one module (bsub is already length 2)
                     cmd = build_job_command(cmd[0], cmd[2:])
                     if verbose:
@@ -1160,6 +1341,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
             processed[d]['deskew']['step'] = steps
         if decon:
             processed[d]['decon'] = params_decon
+        if rotate:
+            processed[d]['rotate'] = params_rotate
         if mip:
             processed[d]['mip'] = params_mip 
 

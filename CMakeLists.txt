@@ -1,6 +1,18 @@
 cmake_minimum_required(VERSION 3.12...3.20)
 project(llsm-pipeline VERSION 0.1 DESCRIPTION "Process lattice lightsheet images." LANGUAGES CXX)
 
+######### Policies #########
+
+# Guarded so older CMake versions (which don't know these policies) still work.
+# CMP0144: honour upper-case <PACKAGE>_ROOT variables (e.g. -DBOOST_ROOT=...).
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 NEW)
+endif()
+# CMP0167: use Boost's own BoostConfig.cmake instead of the removed FindBoost module.
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 ######### Build Configuration #########
 
 # Set default build type to Release if not specified
@@ -48,6 +60,7 @@ add_executable(deskew src/c/deskew/deskew.cpp)
 add_executable(decon src/c/decon/decon.cpp)
 # add_executable(decon-test src/c/tests/decon-test.cpp)
 add_executable(mip src/c/mip/mip.cpp)
+add_executable(rotate src/c/rotate/rotate.cpp)
 # add_executable(mip-test src/c/tests/mip-test.cpp)
 # add_executable(reader-test src/c/tests/reader-test.cpp)
 # add_executable(writer-test src/c/tests/writer-test.cpp)
@@ -70,6 +83,9 @@ set_property(TARGET decon PROPERTY CMAKE_CXX_EXTENSIONS  OFF)
 set_property(TARGET mip PROPERTY CXX_STANDARD 14)
 set_property(TARGET mip PROPERTY CMAKE_CXX_STANDARD_REQUIRED ON)
 set_property(TARGET mip PROPERTY CMAKE_CXX_EXTENSIONS  OFF)
+set_property(TARGET rotate PROPERTY CXX_STANDARD 14)
+set_property(TARGET rotate PROPERTY CMAKE_CXX_STANDARD_REQUIRED ON)
+set_property(TARGET rotate PROPERTY CMAKE_CXX_EXTENSIONS  OFF)
 # set_property(TARGET mip-test PROPERTY CXX_STANDARD 17)
 # set_property(TARGET reader-test PROPERTY CXX_STANDARD 17)
 # set_property(TARGET writer-test PROPERTY CXX_STANDARD 17)
@@ -105,6 +121,9 @@ target_include_directories(decon PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
 target_include_directories(mip PRIVATE ${PROJECT_SOURCE_DIR}/src/c/mip)
 target_include_directories(mip PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
+
+target_include_directories(rotate PRIVATE ${PROJECT_SOURCE_DIR}/src/c/rotate)
+target_include_directories(rotate PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 # target_include_directories(mip-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/mip)
 # target_include_directories(mip-test PRIVATE ${PROJECT_SOURCE_DIR}/src/c/utils)
 
@@ -139,6 +158,10 @@ target_link_libraries(decon PRIVATE ${ITK_LIBRARIES})
 target_link_libraries(mip PRIVATE Boost::filesystem)
 target_link_libraries(mip PRIVATE Boost::program_options)
 target_link_libraries(mip PRIVATE ${ITK_LIBRARIES})
+
+target_link_libraries(rotate PRIVATE Boost::filesystem)
+target_link_libraries(rotate PRIVATE Boost::program_options)
+target_link_libraries(rotate PRIVATE ${ITK_LIBRARIES})
 # target_link_libraries(mip-test PRIVATE Boost::filesystem)
 # target_link_libraries(mip-test PRIVATE Boost::program_options)
 # target_link_libraries(mip-test PRIVATE ${ITK_LIBRARIES})
@@ -181,13 +204,34 @@ if(BUILD_TESTING)
   if(Python3_Interpreter_FOUND)
     add_test(NAME pipeline-commands COMMAND ${Python3_EXECUTABLE}
       ${PROJECT_SOURCE_DIR}/src/python/tests/test_pipeline_commands.py)
+    add_test(NAME rotate-pipeline COMMAND ${Python3_EXECUTABLE}
+      ${PROJECT_SOURCE_DIR}/src/python/tests/test_rotate_pipeline.py)
   endif()
+
+  # rotate module: geometry (no ITK), synthetic ITK tests, and end-to-end CLI tests
+  foreach(t rotate-box-test rotate-test rotate-cli-test)
+    add_executable(${t} src/c/tests/${t}.cpp)
+    set_target_properties(${t} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(${t} PRIVATE src/c/utils src/c/rotate src/c/deskew)
+    if(MSVC)
+      target_compile_options(${t} PRIVATE /UNDEBUG)
+    else()
+      target_compile_options(${t} PRIVATE -UNDEBUG)
+    endif()
+  endforeach()
+  target_link_libraries(rotate-test PRIVATE Boost::filesystem ${ITK_LIBRARIES})
+  target_link_libraries(rotate-cli-test PRIVATE Boost::filesystem ${ITK_LIBRARIES})
+  target_compile_definitions(rotate-cli-test PRIVATE ROTATE_EXECUTABLE="$<TARGET_FILE:rotate>")
+  add_dependencies(rotate-cli-test rotate)
+  add_test(NAME rotate-box COMMAND rotate-box-test)
+  add_test(NAME rotate-itk COMMAND rotate-test)
+  add_test(NAME rotate-cli COMMAND rotate-cli-test)
 endif()
 
 ######### Installs #########
 
 # install(TARGETS deskew deskew-test decon decon-test mip mip-test reader-test writer-test resampler-test CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-install(TARGETS flatfield crop deskew decon mip CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+install(TARGETS flatfield crop deskew decon mip rotate CONFIGURATIONS Release DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/llsm-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)
 file(COPY ${PROJECT_SOURCE_DIR}/src/python/mosaic-pipeline.py DESTINATION ${PROJECT_SOURCE_DIR}/bin)

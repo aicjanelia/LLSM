@@ -2,7 +2,7 @@
 
 # Lattice Light-Sheet Microscope (LLSM) Pipeline
 
-This repository contains pipeline code for handling AIC's LLSM and MOSAIC data. The pipeline consists of multiple discrete modules: cropping, deskewing, deconvolution, and maximum intensity projection. The pipeline is accessed via the command line using the `llsm-pipeline` and  `mosaic-pipeline` commands.
+This repository contains pipeline code for handling AIC's LLSM and MOSAIC data. The pipeline consists of multiple discrete modules: cropping, deskewing, deconvolution, rotation to the coverslip frame, and maximum intensity projection. The pipeline is accessed via the command line using the `llsm-pipeline` and  `mosaic-pipeline` commands.
 
 For most cases, the `llsm-pipeline` and `mosaic-pipeline` commands should be all that is needed. However, the individual modules, which each compile to a separate binary, can be run directly on a single file if needed. Use the `-h` option with any command to get a list of supported arguments.
 
