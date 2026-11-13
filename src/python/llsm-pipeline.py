@@ -384,13 +384,13 @@ def load_configs(path):
             configs['rotate']['executable_path'] = "rotate"
 
         # Same convention as BigStitcher's y-axis rotation. The matching value is the deskew angle: 31.8 for the LLSM
-        # (not yet confirmed in BigStitcher) and -32.45 (not 147.55) for the MOSAIC.
+        # (confirmed in BigStitcher) and -32.45 (not 147.55) for the MOSAIC.
         if 'angle' in configs['rotate']:
             if not type(configs['rotate']['angle']) is float:
                 exit('ERROR: rotate angle \'%s\' in config.json is not a float' % configs['rotate']['angle'])
         else:
             configs['rotate']['angle'] = 31.8
-            print('WARNING: Using default LLSM angle of 31.8 for rotation (BigStitcher y-axis convention; not yet confirmed for the LLSM)')
+            print('WARNING: Using default LLSM angle of 31.8 for rotation (BigStitcher y-axis convention)')
         if abs(configs['rotate']['angle']) > 360.0:
             exit('ERROR: rotate angle \'%s\' in config.json must be within [-360, 360]' % configs['rotate']['angle'])
         configs['rotate']['angle'] = {'flag': '-a', 'arg': configs['rotate']['angle']}

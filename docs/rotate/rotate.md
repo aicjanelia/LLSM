@@ -44,7 +44,7 @@ applied to physical (calibrated) coordinates, so x&prime; = x cos θ + z sin θ 
 | Microscope | Rotation angle | Deskew angle in the pipeline |
 | ----- | ----- | ----- |
 | MOSAIC | -32.45 | 147.55 |
-| LLSM | 31.8 (*not yet confirmed in BigStitcher*) | 31.8 |
+| LLSM | 31.8 | 31.8 |
 
 Note that on the MOSAIC the rotation angle is -32.45, not the 147.55 used for deskewing; the two differ by 180&#176;. Any other angle can be used if there is an experimental reason to rotate by something else.
 
