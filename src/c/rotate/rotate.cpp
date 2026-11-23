@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
   float shift = UNSET_FLOAT;
   float fill_value = UNSET_FLOAT;
   std::string crop_mode = "keep-all";
+  std::string z_trim_str = "0";
   bool isotropic = UNSET_BOOL;
   bool preserve_spacing = UNSET_BOOL;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
       ("z-res,z", po::value<float>(&z_res)->default_value(-1.0f), "z resolution of the input (um/px), i.e. step*sin(angle) after deskewing; default is read from the input file")
       ("shift,d", po::value<float>(&shift)->default_value(0.0f), "signed deskew shift (px per z plane) = step*cos(deskew angle)/xy-res; needed for strict cropping, 0 treats the whole array as valid")
       ("crop-mode,c", po::value<std::string>(&crop_mode)->default_value("keep-all"), "keep-all (bounding box of the valid data) or strict (largest fully valid region; needs --shift and a matching angle)")
+      ("z-trim", po::value<std::string>(&z_trim_str)->default_value("0"), "output z slices to remove after cropping, to avoid edge effects: N (both ends) or bottom,top (e.g. 2,3)")
       ("isotropic,i", po::value<bool>(&isotropic)->default_value(true)->implicit_value(true)->zero_tokens(), "write isotropic output voxels (xy size); this is the default")
       ("preserve-spacing,p", po::value<bool>(&preserve_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "preserve the input voxel spacing instead of writing isotropic voxels (smaller output)")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty regions")
@@ -132,6 +134,30 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  // check z trim: "N" or "bottom,top"
+  std::array<long, 2> z_trim = {0, 0};
+  {
+    const auto comma = z_trim_str.find(',');
+    try {
+      std::size_t used = 0;
+      const std::string first = z_trim_str.substr(0, comma);
+      z_trim[0] = std::stol(first, &used);
+      bool ok = (used == first.size());
+      if (comma == std::string::npos) {
+        z_trim[1] = z_trim[0];
+      } else {
+        const std::string second = z_trim_str.substr(comma + 1);
+        z_trim[1] = std::stol(second, &used);
+        ok = ok && (used == second.size());
+      }
+      if (!ok || z_trim[0] < 0 || z_trim[1] < 0)
+        throw std::invalid_argument("z-trim");
+    } catch (const std::exception&) {
+      std::cerr << "rotate: z-trim must be a non-negative integer N or two integers bottom,top" << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
+
   // without --shift the whole array is treated as valid data, so the empty deskew triangles are
   // rotated and counted in the keep-all bounding box (many extra, empty z slices on deskewed input)
   if (varsmap["shift"].defaulted()) {
@@ -152,6 +178,7 @@ int main(int argc, char** argv) {
     std::cout << "Rotation Angle (degrees) = " << angle << "\n";
     std::cout << "Deskew Shift (px/plane) = " << shift << "\n";
     std::cout << "Crop Mode = " << crop_mode << "\n";
+    std::cout << "Z Trim (bottom,top slices) = " << z_trim[0] << "," << z_trim[1] << "\n";
     std::cout << "Isotropic Output = " << isotropic << "\n";
     std::cout << "Fill Value = " << fill_value << "\n";
     std::cout << "Input Path = " << in_path << "\n";
@@ -174,7 +201,7 @@ int main(int argc, char** argv) {
   kImageType::Pointer rotated_img;
   try {
     rotated_img = Rotate(img, angle, img_spacing[0], img_spacing[2], shift, mode, isotropic,
-                         (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // same fill scaling as deskew
+                         (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose, z_trim); // same fill scaling as deskew
   } catch (const std::invalid_argument& e) {
     std::cerr << "rotate: " << e.what() << std::endl;
     return EXIT_FAILURE;

@@ -374,7 +374,7 @@ def load_configs(path):
 
     # sanitize rotate configs
     if 'rotate' in configs:
-        supported_opts = ['angle', 'xy-res', 'stages', 'crop-mode', 'isotropic', 'fill', 'bit-depth', 'executable_path']
+        supported_opts = ['angle', 'xy-res', 'stages', 'crop-mode', 'z-trim', 'isotropic', 'fill', 'bit-depth', 'executable_path']
         for key in list(configs['rotate']):
             if key not in supported_opts:
                 print('WARNING: rotate option \'%s\' in config.json is not supported' % key)
@@ -446,6 +446,20 @@ def load_configs(path):
             if len(stages) == 0 or ('decon' in stages and 'deskew' not in configs):
                 exit('ERROR: rotate crop-mode \'strict\' requires a deskew or decon-first section for every rotated stage (it needs the deskew geometry)')
         configs['rotate']['crop-mode'] = {'flag': '-c', 'arg': configs['rotate']['crop-mode']}
+
+        if 'z-trim' in configs['rotate']:
+            zt = configs['rotate']['z-trim']
+            is_n = lambda v: type(v) is int and v >= 0
+            if is_n(zt):
+                zt_arg = '%d' % zt
+            elif type(zt) is list and len(zt) == 2 and all(is_n(v) for v in zt):
+                zt_arg = '%d,%d' % (zt[0], zt[1])
+            else:
+                exit('ERROR: rotate z-trim \'%s\' in config.json must be a non-negative integer or a list of two non-negative integers [bottom, top]' % (zt,))
+            if zt_arg in ('0', '0,0'):
+                del configs['rotate']['z-trim'] # nothing to trim
+            else:
+                configs['rotate']['z-trim'] = {'flag': '--z-trim', 'arg': zt_arg}
 
         if 'isotropic' in configs['rotate']:
             if not type(configs['rotate']['isotropic']) is bool:

@@ -110,6 +110,27 @@ int main()
     assert(half.first[0] == -63 && half.size[0] == 64 && half.first[2] == -31 && half.size[2] == 32);
   }
 
+  // --- z-trim removes output slices from the ends after the crop mode is applied
+  {
+    for (const auto mode : {CropMode::KeepAll, CropMode::Strict})
+    {
+      const auto base = ComputeOutputGrid(size, spacing, -32.45, shift, mode, false);
+      const auto sym = ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {3, 3});
+      assert(sym.size[2] == base.size[2] - 6 && sym.first[2] == base.first[2] + 3);
+      assert(Near(sym.origin[2], sym.first[2] * sym.spacing[2], 1e-12));
+      assert(sym.size[0] == base.size[0] && sym.first[0] == base.first[0] && sym.size[1] == base.size[1]);
+      const auto asym = ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {0, 5});
+      assert(asym.size[2] == base.size[2] - 5 && asym.first[2] == base.first[2]);
+      const auto zero = ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {0, 0});
+      assert(zero.size == base.size && zero.first == base.first);
+      const long n = static_cast<long>(base.size[2]);
+      assert(Throws([&] { ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {n, 0}); }));
+      assert(Throws([&] { ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {n / 2, n - n / 2}); }));
+      assert(Throws([&] { ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {-1, 0}); }));
+      ComputeOutputGrid(size, spacing, -32.45, shift, mode, false, {n / 2, n - n / 2 - 1}); // leaves one slice
+    }
+  }
+
   // --- Input validation
   assert(Throws([&] { ComputeOutputGrid(size, {0.1, 0.2, 0.3}, 10.0, 0.0, CropMode::KeepAll, false); }));
   assert(Throws([&] { ValidPolygon(100, 10, 0.1, 0.0, 0.0); }));

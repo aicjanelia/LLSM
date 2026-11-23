@@ -142,13 +142,19 @@ inline long SnapUp(double value, double spacing) { return static_cast<long>(std:
 //   spacing_in : input (x, y, z) spacing in um; x and y must match
 //   shift      : signed deskew shift (px per z plane); 0 treats the array as fully valid
 //   isotropic  : output voxels are xy x xy x xy instead of preserving the input spacing
+//   z_trim     : output z slices removed from the {bottom, top} ends after the crop mode is applied
+//                (to avoid edge effects); {0, 0} keeps everything
 inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
                                     const std::array<double, 3> &spacing_in,
                                     double theta_degrees,
                                     double shift,
                                     CropMode mode,
-                                    bool isotropic)
+                                    bool isotropic,
+                                    const std::array<long, 2> &z_trim = {0, 0})
 {
+  if (z_trim[0] < 0 || z_trim[1] < 0)
+    throw std::invalid_argument("z-trim must not be negative");
+
   if (std::fabs(spacing_in[0] - spacing_in[1]) > 1e-9 * spacing_in[0])
     throw std::invalid_argument("rotate requires equal x and y spacing");
 
@@ -223,6 +229,11 @@ inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
     if (x1 < x0 || z1 < z0)
       throw std::invalid_argument("strict cropping leaves no output voxels");
   }
+
+  z0 += z_trim[0];
+  z1 -= z_trim[1];
+  if (z1 < z0)
+    throw std::invalid_argument("z-trim removes all output z slices");
 
   OutputGrid grid;
   grid.spacing = {sx, spacing_in[1], sz};

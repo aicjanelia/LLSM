@@ -165,9 +165,22 @@ class ConfigTests(unittest.TestCase):
         configs, _ = self.load(MOSAIC, deskew=dict(DESKEW), rotate={})
         self.assertNotIn('isotropic', configs['rotate'])
 
+    def test_z_trim_becomes_a_flag(self):
+        for module in (MOSAIC, LLSM):
+            for value, arg in ((3, '3'), ([2, 5], '2,5'), ([0, 4], '0,4')):
+                with self.subTest(module=module.__name__, value=value):
+                    configs, _ = self.load(module, deskew=dict(DESKEW), rotate={'z-trim': value})
+                    self.assertEqual(configs['rotate']['z-trim'], {'flag': '--z-trim', 'arg': arg})
+            for value in (0, [0, 0]):  # nothing to trim: no flag
+                configs, _ = self.load(module, deskew=dict(DESKEW), rotate={'z-trim': value})
+                self.assertNotIn('z-trim', configs['rotate'])
+            configs, _ = self.load(module, deskew=dict(DESKEW), rotate={})
+            self.assertNotIn('z-trim', configs['rotate'])
+
     def test_invalid_values_exit(self):
         bad = [{'angle': 30}, {'angle': 400.0}, {'crop-mode': 'tight'}, {'isotropic': 'yes'},
-               {'fill': 1}, {'bit-depth': 12}, {'xy-res': 1}]
+               {'fill': 1}, {'bit-depth': 12}, {'xy-res': 1},
+               {'z-trim': -1}, {'z-trim': 1.5}, {'z-trim': [1]}, {'z-trim': [1, -2]}, {'z-trim': [1, 2, 3]}, {'z-trim': True}]
         for module in (MOSAIC, LLSM):
             for rotate in bad:
                 with self.subTest(module=module.__name__, rotate=rotate):

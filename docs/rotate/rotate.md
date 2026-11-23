@@ -61,6 +61,10 @@ Two cropping modes are available with `--crop-mode` (`"crop-mode"` in the config
 
 Both modes need to know where the valid data are. The pipeline passes the deskew shift (`--shift`, in pixels per z plane, `step*cos(deskew angle)/xy-res`, negative on the MOSAIC) to `rotate` automatically. When running `rotate` by hand on deskewed data, supply it yourself; without `--shift` the whole array is treated as valid data and `strict` is not available. On deskewed input with shift unspecified or set to zero, the empty deskew triangles are then rotated and included in the `keep-all` bounding box, which shows up as many extra, empty z slices, greatly increasing file size. `rotate` prints a warning when `--shift` is not given; pass `--shift 0` explicitly if the input really is not deskewed.
 
+## Removing edge slices (`z-trim`)
+
+Some experiments show edge effects in the first or last z slices of the rotated volume. `--z-trim` (`"z-trim"` in the configuration file) removes output z slices after the crop mode has been applied, and works with both `keep-all` and `strict`. Give one non-negative integer to remove that many slices from both ends, or two (`bottom,top` on the command line, `[bottom, top]` in the configuration file) to trim each end separately. The default is 0. The trimmed slices are never computed, and every channel and timepoint receives the same trimmed grid. Slices are counted in the output, so with the default isotropic output one slice is one xy pixel in thickness. `rotate` stops with an error if the trim would remove every slice.
+
 Prevoius work used Fiji's BigStitcher plugin for rotation. Small differences from BigStitcher's output (intensities within about +/-1 count, most likely from rounding when converting to the output bit depth, and a thin rim at the boundary of the data) are expected.
 
 # Memory
@@ -83,6 +87,7 @@ This is an example portion of a configuration file for a MOSAIC acquisition that
     "angle": -32.45,
     "stages": ["deskew"],
     "crop-mode": "strict",
+    "z-trim": [2, 2],
     "isotropic": true,
     "fill": 0.0,
     "bit-depth": 16
@@ -119,6 +124,9 @@ Allowed options:
   -c [ --crop-mode ] arg (=keep-all) keep-all (bounding box of the valid data)
                                      or strict (largest fully valid region;
                                      needs --shift and a matching angle)
+  --z-trim arg (=0)                  output z slices to remove after cropping,
+                                     to avoid edge effects: N (both ends) or
+                                     bottom,top (e.g. 2,3)
   -i [ --isotropic ]                 write isotropic output voxels (xy size);
                                      this is the default
   -p [ --preserve-spacing ]          preserve the input voxel spacing instead
