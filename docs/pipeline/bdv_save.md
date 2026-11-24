@@ -16,7 +16,7 @@ nav_order: 3
 
 Users are encouraged to organize experiments by date and with informative folder structures before running the processing pipeline. All processed files are saved in subfolders of the original image folder. Processed files can be saved with the [original naming scheme](#raw-images) or a simplified [bdv naming scheme](#bdv-saving).
 
-A common mistake is to start an acquisition, immediately realize a mistake, end the first acquisition, and restart it in the same folder. This can lead to incorrect processing of the folder as it will have multiple files with the same time point naming, etc. If restarting an acquisition, always create a new folder!
+A common mistake is to start an acquisition, immediately realize a mistake, end the first acquisition, and restart it in the same folder. This can lead to incorrect processing of the folder as it will have multiple files with the same time point naming, etc. **If restarting an acquisition, always create a new folder!**
 
 ##  Raw Images
 After a LLSM or MOSAIC acquisition, the acquisition folder will contain individual tiff files for each time point and channel. The same folder that contains tiff files will also contain several metadata files.  The structure of the metadata files will depend on the acquisition set up, but most importantly for the pipeline, the folder should contain at least one file ending with `Settings.txt`.
@@ -45,7 +45,7 @@ In a multi-position experiment, the separate positions will be stored in their o
 ### _Metadata_
 The `Settings.txt` file is parsed by the subfunctions `settings2json` for the LLSM or `mosaicsettings2json` for the MOSAIC. It parses multiple parts of the settings file, but two key parts for processing are the z-stack and laser settings, which are both contained in the `***** Waveform *****` section of the file.
 
-Both systems can either be run in stage scanning or objective scanning mode. Stage scanning mode is most commonly used and requires deskewing. In objective scanning mode, no deskewing is required. To confirm which mode on the lattice, look for a section on `Z motion`, while on the MOSAIC, look for the name of the stage offset section. The text to search for in the settings file is summarized below.
+Both systems can either be run in stage scanning or objective scanning mode. Stage scanning mode is most commonly used and requires deskewing. In objective scanning mode, no deskewing is required. To confirm which mode on the lattice, look for a section on `Z motion`, while on the MOSAIC, look for the name of the stage offset section. The text to search for in the settings file is summarized in the table.
 
 | System | Scan Type | Identifying Settings Text |
 | ------ | ------ | ------ |
@@ -80,7 +80,7 @@ Excitation Filter, Laser, Power (%), Exp(ms), Laser2, Power2 (%), Laser3, Power3
 
 
 ## Processed Files
-Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images. Modules are run in the order `flatfield > crop > deskew > decon`. If the configuration file contains a section for `decon-first`, the order of deconvolution and deskewing will be swapped. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about `decon-first`, which saves files in folders called `decon_before_deskew` and `deskew_after_decon`.
+Each module that is run will create its own subfolder of files. Subsequent modules will look in the relevant subfolder to continue the processing. For example, if running both cropping and deskewing, the deskewing will be run on the files in the `crop` folder, not on the original raw images. Modules are run in the order `flatfield > crop > deskew > decon > rotate`. If the configuration file contains a section for `decon-first`, the order of deconvolution and deskewing will be swapped. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about `decon-first`, which saves files in folders called `decon_before_deskew` and `deskew_after_decon`.
 
 ### _Maximum Intensity Projections (MIPs)_
 Maximum Intensity Projections take the maximum intensity across one axis of an image to turn a 3D image into a 2D image. This can be useful for quickly reviewing images without needing to load the full experiment into memory. See more about this in the [MIP documentation](https://aicjanelia.github.io/LLSM/mip/mip.html). In general, analysis should be done on the 3D images, and thus the `mip` folder should not be used for analysis.

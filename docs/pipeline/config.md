@@ -28,7 +28,7 @@ All configuration files need to include information on image paths. The `root` d
 Once a folder has been processed, it will be added to a new file, `processed.json`. This new json file is made in the `root` directory. Any directories that are listed in `processed.json` will be skipped during any future processing. This is useful if, for example, you want to analyze the first experiment in a project, but want to keep using the same `config.json` to process the rest of the project. All previously processed experiments will be skipped, saving time and money.  However, if you make a mistake and want to re-run any given folder, you will need to open `processed.json` and manually delete the entry that is associated with that folder.
 
 ### _psf_
-PSFs are required for running the deconvolution module. In prior versions of the pipeline, this section was required regardless, but the current version only checks for the `psf` section if deconvolution is requested. Inside the `psf` section, there are two required subsections for standard deconvolution: `dir` and `laser`.  The directory `dir` is parsed as a subdirectory of `root` and should contain PSF images with their corresponding settings file. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about these files. The file names that correspond to each laser must be provided as name-value pairs in the `laser` subsection. The laser names must exactly match the values in the acquisition settings file (e.g., don't use 561 if the settings file uses 560). If using the option to deconvolve between deskewing (`decon-first`), the `laser` section is replaced by a `resampled` section with the same structure that points to PSF files that have been resampled in Z.
+PSFs are required for running the deconvolution module. In prior versions of the pipeline, this section was required regardless, but the current version only checks for the `psf` section if deconvolution is requested. Inside the `psf` section, there are two required subsections for standard deconvolution: `dir` and `laser`.  The directory `dir` is parsed as a subdirectory of `root` and should contain PSF images with their corresponding settings file. See [Deconvolution](https://aicjanelia.github.io/LLSM/decon/decon.html) for more about these files. The file names that correspond to each laser must be provided as name-value pairs in the `laser` subsection. The laser names must exactly match the values in the acquisition settings file (e.g., don't use 561 if the settings file uses 560). If using the option to deconvolve before deskewing (`decon-first`), the `laser` section is replaced by a `resampled` section with the same structure that points to PSF files that have been resampled in Z.
 
 ## BDV
 The optional BDV section determines naming and saving conventions for the output files.
@@ -58,7 +58,8 @@ The value of n in `decon` is not related to the bsub command, but rather is the 
 The `decon-first` section of the configration file contains nested sections for decon and deskew that use the same input parameters as the isolated modules. This one section will generate commands that first deconvolve and then deskew the data (i.e., without needing to call the deskew module separately). Using this option is faster and requires less memory than running deconvolution on the desekwed images, but requires first resampling the PSF (see [Point Spread Function for Deconvolution](https://aicjanelia.github.io/LLSM/decon/psf.html)). There is no reason to use `decon-first` on objective-scanned images, as in this case `decon` alone (without `deskew`) is sufficient.
 
 ### _rotate_
-The `rotate` section assumes as rotation about the y-axis (see [Rotation](https://aicjanelia.github.io/LLSM/rotate/rotate.html)). The value of `angle` uses -32.45 for the MOSAIC (do not use the 147.55 used for deskewing) and 31.8 for the LLSM. The optional parameter `stages` lists which outputs to rotate (`deskew`, `decon`, `deskew_after_decon`); by default the last stage of each chain is rotated, and each is saved in `rotate_<source folder>` (e.g., `rotate_deskew`, `rotate_decon`, `rotate_deskew_after_decon`). Options for `crop-mode` are `keep-all` (removes entirely empty rectangular regions) or `strict` (removes all surrounding black space, leading to the removal of real data).  After rotation, images by default are written with cubic voxels the size of the xy pixel. The optional `output-spacing` (in &#956;m) changes this: `"input"` keeps the input voxel size (smaller files, coarser z), a single number gives cubic voxels (e.g., `0.2`), and a list of three numbers gives anisotropic voxels in x, y, z order (e.g., `[0.2, 0.2, 0.5]`). The pipeline warns when the output is finer than the input or coarser than the input z spacing, and does not allow different x and y values together with a `mip` section. The parameters `fill` and `bit-depth` work as in deskewing.
+The `rotate` section assumes rotation about the y-axis. The default value of `angle` is -32.45 for the MOSAIC (do not use the 147.55 used for deskewing) and 31.8 for the LLSM. By default, the last stage of each processing stage is rotated, voxels are saved with isotropic scaling, and data is cropped to the regions containing data. The full list of optional parameters for `rotate` is available in [Rotation](https://aicjanelia.github.io/LLSM/rotate/rotate.html).
+
 
 ### _mip_
 The true/false values in `mip` determine if projections will be made along the x, y, and/or z axes. Setting all values to true is recommended.
@@ -67,13 +68,13 @@ The true/false values in `mip` determine if projections will be made along the x
 The `bsub` section determines how jobs will be sent to the LSF cluster and is the section most specific to using the Janelia set up. A job is created for each individual tiff file, so thus there is one job for each time point and each channel.
 
 ### _job output_
-If no output path, `o`, is specified, an email will be generated for every individual job, which corresponds to each individual tif, and can number in the thousands. This should be avoided! Setting `o` to `"/dev/null"` will result in no output being sent. If you are troubleshooting, you can specify a path to a file (e.g., `"/nrs/aic/instruments/llsm/pipeline-test/output.txt"`) that can be viewed as the processing progresses.
+If no output path, `o`, is specified, an email will be generated for every individual job, which corresponds to each individual tif, and can number in the thousands. This should be avoided! Setting `o` to `"/dev/null"` will result in no output being sent. If you are troubleshooting, you can specify a path to a file (e.g., `"/nrs/aic/instruments/llsm/pipeline-test/output-%J.txt"`) that can be viewed as the processing progresses.
 
 ### _run times_
 Two values, `We` and `W`, impact the run times of each individual job (i.e., each individual tiff file) and are specified in minutes. The estimated runtime, `We` is a guess of how long the files will take to process. This is generally short (approximately 10 min) on the LLSM, but can vary widely for MOSAIC data. The hard runtime limit, `W`, will stop your job at that time point, whether the job has completed or not. This keeps jobs with mistakes from running too long on the cluster and is currently set to a default of 8 hours. **If jobs are expected to run for longer than 8 hours, the value of `W` must be increased in the configuration file or jobs will not complete.**  If confident that jobs will take less than 1 hour each, setting `W` to 59 will lead to jobs being placed in a faster queue for cluster processing.
 
 ### _slots_
-The value of `n` determines the number of slots requested on the cluster. The only purpose of this parameter is to guarantee the correct amount of memory for processing. If more slots than necessary for memory are requested, jobs will actually slow down, not speed up. *The modules are not written to take advantage of parallel processing.*
+The value of `n` determines the number of slots requested on the cluster. The only purpose of this parameter is to guarantee the correct amount of memory for processing. If more slots than necessary for memory are requested, jobs will actually slow down, not speed up. *In general, the modules are not written to take advantage of parallel processing.*
 
 Each slot has 15 GB of memory. The maximal memory is used by the deconvolution module. To determine how much memory to request for deconvolution, calculate the total voxels in the final output image. If you are deconvolving after deskewing, this will be the voxels in the deskewed image, not the raw input images. An empirical equation for memory usage is `memory = (7.5E-8 * total voxels) - 1.39119`. Divide this memory value by 15 GB and round up to determine the number of slots. If the value is close to an integer value (e.g., 1.95), a cautious approach is to add 1 to the rounded value (e.g., 2-->3) to avoid small fluctuations in memory usage causing errors.
 
@@ -115,14 +116,14 @@ Each slot has 15 GB of memory. The maximal memory is used by the deconvolution m
         "cropBack": 50
     },
     "deskew": {
-        "xy-res": 0.104,
+        "xy-res": 0.108,
         "fill": 0.0,
         "bit-depth": 16
     },
     "decon": {
         "n": 5,
         "bit-depth": 16,
-        "subtract": 100.0
+        "subtract": 0.0
     },
     "mip": {
         "x": true,
@@ -162,14 +163,14 @@ To use `decon-first`,  create a nested structure and make sure to specified resa
     },
     "decon-first": {
         "deskew": {
-            "xy-res": 0.104,
+            "xy-res": 0.108,
             "fill": 0.0,
             "bit-depth": 16
         },
         "decon": {
             "n": 5,
             "bit-depth": 16,
-            "subtract": 100.0
+            "subtract": 0.0
         }
     },
     "mip": {

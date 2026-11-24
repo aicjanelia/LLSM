@@ -31,7 +31,7 @@ For most cases, the `llsm-pipeline` \ `mosaic-pipeline` command should be all th
 
 ### Command Line Example
 ```
-llsm-pipeline -d /aic/instruments/llsm/pipeline-test/config.json
+llsm-pipeline /aic/instruments/llsm/pipeline-test/config.json -d
 ```
 
 ### LLSM Options

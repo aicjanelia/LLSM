@@ -25,7 +25,7 @@ mosaic-pipeline /aic/instruments/MOSAIC/experimentFolder/config.json
 | Microscope | Angle | &#956;m/pixel |
 | ----- | ----- | -----|
 | LLSM | 31.8&#176; | 0.104 |
-| MOSAIC | -32.45&#176; = 147.55&#176; | 0.108 |
+| MOSAIC | -32.45&#176; (147.55&#176; for deskewing) | 0.108 |
 
 ### Usage
 ```

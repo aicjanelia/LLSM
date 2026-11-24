@@ -6,7 +6,7 @@ nav_order: 4
 
 # Cropping
 
-The `crop` module removes pixels from the sides of an image. In most cases, this module is not necessary. However, in some experimental set ups, it maybe useful to remove some pixels before processing, so save on both processing time and final image storage. As an example, there may be a need to leave a large margin around the sample during imaging if sample migration is expected. After the time lapse is completed, if the sample only moved to the left, the empty margins on the right could be removed.
+The `crop` module removes pixels from the sides of an image. In most cases, this module is not necessary. However, in some experimental set ups, it maybe useful to remove some pixels before processing, to save on both processing time and final image storage. As an example, there may be a need to leave a large margin around the sample during imaging if sample migration is expected. After the time lapse is completed, if the sample only moved to the left, the empty margins on the right could be removed.
 
 When used though the pipeline command, the only parameters to be specified are the amount of pixels to crop from each side of the image. These should be the number of pixels to be removed, not the size of either the initial or final image. Thus, to remove the right 10 pixels from a 512 x 1500 x 201 pixel image stack, set `"cropLeft": 10`, which will lead to the output of a 502 x 1500 x 201 pixel image stack. `cropLeft` and `cropRight` remove pixels in the x-direction, `cropTop` and `cropBottom` remove pixels in the y-direction, and `cropFront` and `cropBack` remove pixels in z (i.e., remove z-slices). If an input stack is opened in ImageJ or FIJI, there will be a z-slider at the bottom of the image; `cropFront` removes slices starting from ImageJ's z = 1, while `cropBack` removes slices starting from the final z-slice. If any values are excluded, they are set to zero.
 
@@ -16,7 +16,7 @@ If directly using the crop module on the command line, these cropping values are
 # Usage
 
 ### Pipeline: Configuration File
-The example below removes top 10 pixels in y, no and no pixels from the bottom in y. It removes 15 pixels from the left of the image in x. Because `cropRight` is excluded, no pixels are removed from the right. It also removes the first 100 z-slices and the last 50 z-slices.
+The example below removes the top 10 pixels in y and no pixels from the bottom in y. It removes 15 pixels from the left of the image in x. Because `cropRight` is excluded, no pixels are removed from the right. It also removes the first 100 z-slices and the last 50 z-slices.
 
 ```json
 "crop": {

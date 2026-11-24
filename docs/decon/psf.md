@@ -44,7 +44,7 @@ The value input into the stage step size will be multiplied by $$sin(angle)$$ to
 
 ### Additional Parameters
 
-For best results, the PSF should be cropped to a cube after being centered. The size of the final output fil is specified by the FOV values, which must be an odd number to allow the PSF to be centered appropriately. An image of 25 x 25 x 25 voxels works well for deconvolution.  The background subtraction value of 100 is based on the properties of the LLSM and MOSAIC cameras.
+For best results, the PSF should be cropped to a cube after being centered. The size of the final output file is specified by the FOV values, which must be an odd number to allow the PSF to be centered appropriately. An image of 25 x 25 x 25 voxels works well for deconvolution.  The background subtraction value of 100 is based on the properties of the LLSM and MOSAIC cameras.
 
 ## Pipeline: Configuration File
 This is an example portion of a configuration file to specify the PSF file locations. The section `laser` is required when the configuration file includes a `decon` section, while the section `resampled` is necessary when the configuration file includes a `decon-first` section.

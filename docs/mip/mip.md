@@ -1,12 +1,12 @@
 ---
 title: Maximum Intensity Projection
 layout: default
-nav_order: 7
+nav_order: 8
 ---
 
 # Maximum Intensity Projection (MIP)
 
-The `mip` module is run together with the other processing modules and will create MIPs for key modules that are run. For example, if running both `deskew` and `decon`, MIPs will be made for both. The subfolder created by `mip` will contain subfolders indicating which input images were used to create them (e.g., a `decon` subfolder). Inside this folder will be files that end with `mip_x`, `mip_y`, and `mip_z`. The dimension in the file name is the axes over which the images have been projected.
+The `mip` module is run together with the other processing modules and will create MIPs for key modules that are run. For example, if running both `deskew` and `decon`, MIPs will be made for both. The subfolder created by `mip` will contain subfolders indicating which input images were used to create them (e.g., a `decon` subfolder). Inside this folder will be files that end with `mip_x`, `mip_y`, and `mip_z`. The dimension in the file name is the axis over which the images have been projected.
 
 
 | Modules Enabled | MIPs Created |
@@ -23,11 +23,12 @@ The `mip` module is run together with the other processing modules and will crea
 | (crop and/or flatfield or none) + decon-first | deskew_after_decon |
 | (crop and/or flatfield or none) + decon-first + deskew | deskew_after_decon + deskew |
 | (crop and/or flatfield or none) + decon-first + deskew + decon | deskew_after_decon + deskew + decon |
+| (any of the preceding commands) + rotate | (as in preceeding) + rotate |
 
 
 ## Viewing MIPs
 
-2D MIPs are very useful for screening data, but in general, should not be used for downstream analysis (use the appropriate processed image folder of 3D images). MIPs are written as standard (non-BigTIFF) ImageJ-format TIFFs, so ImageJ reads them with its fast built-in reader rather than falling back to the much slower Bio-Formats importer. To quickly look at MIPs in ImageJ, use the option under `File > Import > Image Sequence...`. This will open a dialog box that allow for selecting the directory of images to load in. The directory will be something like `/path/to/experiment/mip/deskew/`. By default, the importer will attempt to open all images in the folder. This begins by opening the first image in the folder, and then excluding any subsequent files that are not the same size. In the case of `mip` folders, this will lead to importing only `_x` files. To get only the files of interest, the `Filter:` dialog can be used to select files. For example, to select the z projections, input `_z` in the filter dialog.
+2D MIPs are very useful for screening data, but in general, should not be used for downstream analysis (use the appropriate processed image folder of 3D images). MIPs are written as standard (non-BigTIFF) ImageJ-format TIFFs, so ImageJ reads them with its fast built-in reader rather than falling back to the much slower Bio-Formats importer. To quickly look at MIPs in ImageJ, use the option under `File > Import > Image Sequence...`. This will open a dialog box that allows for selecting the directory of images to load in. The directory will be something like `/path/to/experiment/mip/deskew/`. By default, the importer will attempt to open all images in the folder. This begins by opening the first image in the folder, and then excluding any subsequent files that are not the same size. In the case of `mip` folders, this will lead to importing only `_x` files. To get only the files of interest, the `Filter:` dialog can be used to select files. For example, to select the z projections, input `_z` in the filter dialog.
 
 More complex filtering of imported images is also possible using regular expressions. In ImageJ, `.*` is a wildcard, and the complete regular expression must be enclosed in parentheses. For example, to load in y projections of only channel zero, use `(ch0.*_y)` in the filter dialog. When the filter dialog box is changed, the number of images to be loaded automatically changes (shown in the `Count:` dialog). If the value is `---` or otherwise does not make sense, there is likely a typo in the regular expression.
 

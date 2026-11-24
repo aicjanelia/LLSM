@@ -12,6 +12,7 @@ Each of the modules compiles to a separate binary that can also be directly exec
 - Cropping
 - Deskewing
 - Deconvolution
+- Rotation
 - Maximum Intensity Projection
 
 The main pipeline command and each individual module are further described in this documentation. With any command, you can also use the `-h` option to get a list of supported arguments.
