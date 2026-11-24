@@ -15,7 +15,7 @@ The `rotate` module rotates an image stack about the y axis to move it from the 
 1. TOC
 {:toc}
 
-## Rotate Ordering
+## Rotate ordering
 
 Each rotated stage is written to its own folder, named `rotate_` plus the name of the folder it was made from, so it is clear how the pipeline was run:
 
@@ -24,7 +24,7 @@ Each rotated stage is written to its own folder, named `rotate_` plus the name o
 | `deskew` | `deskew/` | `rotate_deskew/` |
 | `decon` (deconvolved after deskewing) | `decon/` | `rotate_decon/` |
 | `deskew_after_decon` (`decon-first`) | `deskew_after_decon/` | `rotate_deskew_after_decon/` |
-| none enabled | unprocessed (or cropped/flatfielded) images | `rotate/` |
+| none enabled | input (or crop/flatfield) images | `rotate/` |
 
 By default the last stage of each chain is rotated: `decon` if deconvolution is enabled after deskewing, otherwise `deskew`, plus `deskew_after_decon` if `decon-first` is enabled. A configuration with both `deskew` and `decon-first` therefore rotates both chains separately. To rotate more than one stage of a chain (for example both the deskewed and the deconvolved images), list them with `stages`: `"stages": ["deskew", "decon"]`. When `stages` is given it replaces the default, so list every stage you want rotated. A stage can only be listed if the module that makes it is enabled.
 
@@ -68,7 +68,7 @@ Two cropping modes are available with `--crop-mode` (`"crop-mode"` in the config
 
 | Mode | Output region |
 | ----- | ----- |
-| `keep-all` (default) | The bounding box of the valid data. The empty triangles created by deskewing are not included, but black space around the rotated data is. See the solid teal line the output cropping schematic.|
+| `keep-all` (default) | The bounding box of the valid data. The empty triangles created by deskewing are not included, but black space around the rotated data is. See the solid teal line in the output cropping schematic.|
 | `strict` | The largest rectangle that contains only valid data (no empty space). Only available when the rotation angle matches the deskew geometry (e.g., MOSAIC -32.45 after deskewing at 147.55). See dashed magenta line in the output cropping schematic. |
 
 Both modes need to know where the valid data are. The pipeline passes the deskew shift (`--shift`, in pixels per z plane, `step*cos(deskew angle)/xy-res`, negative on the MOSAIC) to `rotate` automatically. When running `rotate` by hand on deskewed data, supply it yourself; without `--shift` the whole array is treated as valid data and `strict` is not available. On deskewed input with shift unspecified or set to zero, the empty deskew triangles are then rotated and included in the `keep-all` bounding box, which shows up as many extra, empty z slices, greatly increasing file size (see the dot-dashed orange line in the output cropping schematic below). `rotate` prints a warning when `--shift` is not given; pass `--shift 0` explicitly if the input really is not deskewed.
@@ -94,7 +94,7 @@ This is an example portion of a configuration file for a MOSAIC acquisition that
     "fill": 0.0,
     "bit-depth": 16,
     "angle": 147.55
-},
+}
 "rotate": {
     "angle": -32.45,
     "stages": ["deskew"],
