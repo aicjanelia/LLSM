@@ -46,7 +46,7 @@ If using the pipeline, the image and PSF z-steps will be automatically parsed. I
 | (crop and/or flatfield or none) + decon-first + deskew | input (or flatfield or crop) | (1) crop and/or flatfield or none, (2) decon, (3) deskew, (4) deskew with input from 1 |
 | (crop and/or flatfield or none) + decon-first + deskew + decon | input (or flatfield or crop) for (1) and deskew for (5) | (1) crop and/or flatfield or none, (2) decon, (3) deskew, (4) deskew with input from 1, (5) decon |
 
-## Z-block processing
+## Z-block Processing
 
 `decon` reads and processes the input TIFF stack in Z blocks so that the full
 input and FFT working volume do not need to fit in memory. Each core block is

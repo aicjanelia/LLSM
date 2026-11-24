@@ -11,7 +11,7 @@ This pipeline was designed to be used with the high performance computing cluste
 The main input into either `llsm-pipeline` or `mosaic-pipeline` is a configuration JSON file. This configuration file is a structured way of informing the pipeline of which modules will be used, what the relevant file paths are, and any necessary parameters. An example `config.json` file is provided in example directory of the [GitHub Repository](https://github.com/aicjanelia/LLSM) and further details about its organization are available the [Configuration File](https://aicjanelia.github.io/LLSM/pipeline/config.html) documentation.
 
 
-### Use a dry run before submitting jobs
+### Use a Dry Run Before Submitting Jobs
 We recommend using the optional `--dry-run` (or `-d`) command before submitting jobs to the cluster. When this optional argument is passed to the pipeline command, the script will attempt to process the files without actually submitting any jobs to the cluster. The command line will display information about the requested processing that can be used to confirm that processing will proceed as desired.
 
 The following dry run output confirms the path of files to be processed, that the files will be saved with the bdv naming format (see [File Organization](https://aicjanelia.github.io/LLSM/pipeline/bdv_save.html)), and that there is one combination of cameras and channels, which corresponds to the 488 nm laser.

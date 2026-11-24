@@ -15,7 +15,7 @@ The `rotate` module rotates an image stack about the y axis to move it from the 
 1. TOC
 {:toc}
 
-## Rotate ordering
+## Rotate Ordering
 
 Each rotated stage is written to its own folder, named `rotate_` plus the name of the folder it was made from, so it is clear how the pipeline was run:
 
@@ -28,7 +28,7 @@ Each rotated stage is written to its own folder, named `rotate_` plus the name o
 
 By default the last stage of each chain is rotated: `decon` if deconvolution is enabled after deskewing, otherwise `deskew`, plus `deskew_after_decon` if `decon-first` is enabled. A configuration with both `deskew` and `decon-first` therefore rotates both chains separately. To rotate more than one stage of a chain (for example both the deskewed and the deconvolved images), list them with `stages`: `"stages": ["deskew", "decon"]`. When `stages` is given it replaces the default, so list every stage you want rotated. A stage can only be listed if the module that makes it is enabled.
 
-## Angle and sign conventions
+## Angle and Sign Conventions
 
 `rotate -a θ` rotates the image **content** with the matrix
 
@@ -47,7 +47,7 @@ applied to physical (calibrated) coordinates, so x&prime; = x cos θ + z sin θ 
 
 Note that on the MOSAIC the rotation angle is -32.45, not the 147.55 used for deskewing; the two differ by 180&#176;. Any other angle can be used if there is an experimental reason to rotate by something else.
 
-## Output size and spacing
+## Output Size and Spacing
 
 The rotated volume is resampled once with linear interpolation. By default the output is **isotropic**: cubic voxels the size of the xy pixel (for example 0.108 x 0.108 x 0.108 &#956;m on the MOSAIC). Because the z spacing of deskewed data is coarser, the decrease in file size from cropping away empty regions of the image is offset by the increase in file size from changing the voxel sizes. Output voxel centers sit on a grid of integer multiples of the output spacing, relative to input voxel (0,0,0) and the absolute position of the output is not preserved.
 
@@ -73,7 +73,7 @@ Two cropping modes are available with `--crop-mode` (`"crop-mode"` in the config
 
 Both modes need to know where the valid data are. The pipeline passes the deskew shift (`--shift`, in pixels per z plane, `step*cos(deskew angle)/xy-res`, negative on the MOSAIC) to `rotate` automatically. When running `rotate` by hand on deskewed data, supply it yourself; without `--shift` the whole array is treated as valid data and `strict` is not available. On deskewed input with shift unspecified or set to zero, the empty deskew triangles are then rotated and included in the `keep-all` bounding box, which shows up as many extra, empty z slices, greatly increasing file size (see the dot-dashed orange line in the output cropping schematic below). `rotate` prints a warning when `--shift` is not given; pass `--shift 0` explicitly if the input really is not deskewed.
 
-### Removing edge slices
+### Removing Edge Slices
 
 Some experiments show edge effects in the first or last z slices of the rotated volume. `--z-trim` (`"z-trim"` in the configuration file) removes output z slices after the crop mode has been applied, and works with both `keep-all` and `strict`. Give one non-negative integer to remove that many slices from both ends, or two (`bottom,top` on the command line, `[bottom, top]` in the configuration file) to trim each end separately. If an image were opened in Fiji, `top` corresponds to the first z-slice, while `bottom` corresponds to the last. The default is 0. The trimmed slices are never computed, and every channel and timepoint receives the same trimmed grid when processed with the pipeline. Slices are counted in the output, so their thickness is the output z spacing. `rotate` stops with an error if the trim would remove every slice.
 
