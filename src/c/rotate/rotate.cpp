@@ -4,6 +4,9 @@
 #include "reader.h"
 #include "writer.h"
 #include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <vector>
 #include <boost/program_options.hpp>
 #include <itkMultiThreaderBase.h>
 
@@ -18,8 +21,7 @@ int main(int argc, char** argv) {
   float fill_value = UNSET_FLOAT;
   std::string crop_mode = "keep-all";
   std::string z_trim_str = "0";
-  bool isotropic = UNSET_BOOL;
-  bool preserve_spacing = UNSET_BOOL;
+  std::string output_spacing_str = "";
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
   bool overwrite = UNSET_BOOL;
@@ -35,8 +37,7 @@ int main(int argc, char** argv) {
       ("shift,d", po::value<float>(&shift)->default_value(0.0f), "signed deskew shift (px per z plane) = step*cos(deskew angle)/xy-res; needed for strict cropping, 0 treats the whole array as valid")
       ("crop-mode,c", po::value<std::string>(&crop_mode)->default_value("keep-all"), "keep-all (bounding box of the valid data) or strict (largest fully valid region; needs --shift and a matching angle)")
       ("z-trim", po::value<std::string>(&z_trim_str)->default_value("0"), "output z slices to remove after cropping, to avoid edge effects: N (both ends) or bottom,top (e.g. 2,3)")
-      ("isotropic,i", po::value<bool>(&isotropic)->default_value(true)->implicit_value(true)->zero_tokens(), "write isotropic output voxels (xy size); this is the default")
-      ("preserve-spacing,p", po::value<bool>(&preserve_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "preserve the input voxel spacing instead of writing isotropic voxels (smaller output)")
+      ("output-spacing", po::value<std::string>(&output_spacing_str)->default_value(""), "output voxel spacing (um): S (cubic voxels), X,Y,Z, or 'input' to keep the input spacing; default is cubic voxels the size of the input xy pixel")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty regions")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
@@ -167,8 +168,33 @@ int main(int argc, char** argv) {
                  "(or --shift 0 to silence this warning)." << std::endl;
   }
 
-  if (preserve_spacing)
-    isotropic = false;
+  // check output spacing: "", "input", "S" or "X,Y,Z" (resolved against the input spacing below)
+  const bool keep_input_spacing = (output_spacing_str == "input");
+  std::vector<double> user_spacing;
+  if (!output_spacing_str.empty() && !keep_input_spacing) {
+    try {
+      std::size_t start = 0;
+      while (true) {
+        const auto comma = output_spacing_str.find(',', start);
+        const std::string token = output_spacing_str.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+        std::size_t used = 0;
+        const double value = std::stod(token, &used);
+        // plain decimal numbers only (stod would also accept "nan"/"inf")
+        if (token.empty() || !(std::isdigit(static_cast<unsigned char>(token[0])) || token[0] == '.') ||
+            used != token.size() || !(value > 0.0 && value < 1.0e6))
+          throw std::invalid_argument("output-spacing");
+        user_spacing.push_back(value);
+        if (comma == std::string::npos)
+          break;
+        start = comma + 1;
+      }
+      if (user_spacing.size() != 1 && user_spacing.size() != 3)
+        throw std::invalid_argument("output-spacing");
+    } catch (const std::exception&) {
+      std::cerr << "rotate: output-spacing must be 'input', a positive number S, or three positive numbers X,Y,Z (um)" << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
 
   // print parameters
   if (verbose) {
@@ -179,7 +205,7 @@ int main(int argc, char** argv) {
     std::cout << "Deskew Shift (px/plane) = " << shift << "\n";
     std::cout << "Crop Mode = " << crop_mode << "\n";
     std::cout << "Z Trim (bottom,top slices) = " << z_trim[0] << "," << z_trim[1] << "\n";
-    std::cout << "Isotropic Output = " << isotropic << "\n";
+    std::cout << "Output Spacing = " << (output_spacing_str.empty() ? "xy (cubic)" : output_spacing_str) << "\n";
     std::cout << "Fill Value = " << fill_value << "\n";
     std::cout << "Input Path = " << in_path << "\n";
     std::cout << "Output Path = " << out_path << "\n";
@@ -198,9 +224,20 @@ int main(int argc, char** argv) {
   // xy spacing is one value for both axes; take x unless y was set differently in the file and x was given
   img_spacing[1] = img_spacing[0];
 
+  std::array<double, 3> out_spacing;
+  if (keep_input_spacing) {
+    out_spacing = {img_spacing[0], img_spacing[1], img_spacing[2]};
+  } else if (user_spacing.size() == 1) {
+    out_spacing = {user_spacing[0], user_spacing[0], user_spacing[0]};
+  } else if (user_spacing.size() == 3) {
+    out_spacing = {user_spacing[0], user_spacing[1], user_spacing[2]};
+  } else {
+    out_spacing = {img_spacing[0], img_spacing[0], img_spacing[0]}; // default: cubic at the input xy size
+  }
+
   kImageType::Pointer rotated_img;
   try {
-    rotated_img = Rotate(img, angle, img_spacing[0], img_spacing[2], shift, mode, isotropic,
+    rotated_img = Rotate(img, angle, img_spacing[0], img_spacing[2], shift, mode, out_spacing,
                          (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose, z_trim); // same fill scaling as deskew
   } catch (const std::invalid_argument& e) {
     std::cerr << "rotate: " << e.what() << std::endl;

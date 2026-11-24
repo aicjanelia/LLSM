@@ -149,21 +149,41 @@ class ConfigTests(unittest.TestCase):
     def test_options_become_flags_and_unsupported_keys_are_dropped(self):
         for module in (MOSAIC, LLSM):
             configs, out = self.load(module, deskew=dict(DESKEW), rotate={
-                'angle': -32.45, 'crop-mode': 'strict', 'isotropic': True, 'fill': 1.0, 'bit-depth': 32, 'bogus': 3})
+                'angle': -32.45, 'crop-mode': 'strict', 'output-spacing': 0.2, 'fill': 1.0, 'bit-depth': 32, 'bogus': 3})
             rot = configs['rotate']
             self.assertIn('bogus', out)
             self.assertNotIn('bogus', rot)
             self.assertEqual(rot['crop-mode'], {'flag': '-c', 'arg': 'strict'})
-            self.assertNotIn('isotropic', rot)
+            self.assertEqual(rot['output-spacing']['arg'], '0.2,0.2,0.2')
             self.assertEqual(rot['fill'], {'flag': '-f', 'arg': 1.0})
             self.assertEqual(rot['bit-depth'], {'flag': '-b', 'arg': 32})
             self.assertEqual(rot['executable_path'], 'rotate')
 
-    def test_isotropic_false_adds_preserve_spacing_flag(self):
-        configs, _ = self.load(MOSAIC, deskew=dict(DESKEW), rotate={'isotropic': False})
-        self.assertEqual(configs['rotate']['isotropic'], {'flag': '-p'})
-        configs, _ = self.load(MOSAIC, deskew=dict(DESKEW), rotate={})
-        self.assertNotIn('isotropic', configs['rotate'])
+    def test_output_spacing_becomes_a_flag(self):
+        for module in (MOSAIC, LLSM):
+            for value, arg in (('input', 'input'), (0.2, '0.2,0.2,0.2'), (1, '1.0,1.0,1.0'), ([0.2, 0.2, 0.5], '0.2,0.2,0.5')):
+                with self.subTest(module=module.__name__, value=value):
+                    configs, _ = self.load(module, deskew=dict(DESKEW), rotate={'output-spacing': value})
+                    self.assertEqual(configs['rotate']['output-spacing']['flag'], '--output-spacing')
+                    self.assertEqual(configs['rotate']['output-spacing']['arg'], arg)
+            configs, _ = self.load(module, deskew=dict(DESKEW), rotate={})
+            self.assertNotIn('output-spacing', configs['rotate'])
+
+    def test_isotropic_option_was_removed(self):
+        for module in (MOSAIC, LLSM):
+            configs, out = self.load(module, deskew=dict(DESKEW), rotate={'isotropic': False})
+            self.assertIn('isotropic', out)  # reported as an unsupported option
+            self.assertNotIn('isotropic', configs['rotate'])
+
+    def test_anisotropic_xy_output_is_refused_with_mip(self):
+        for module in (MOSAIC, LLSM):
+            with self.subTest(module=module.__name__):
+                with self.assertRaises(SystemExit) as cm:
+                    self.load(module, deskew=dict(DESKEW), mip=dict(MIP), rotate={'output-spacing': [0.2, 0.3, 0.5]})
+                self.assertIn('mip', str(cm.exception.code))
+                # equal x and y is fine with mip, and any spacing is fine without mip
+                self.load(module, deskew=dict(DESKEW), mip=dict(MIP), rotate={'output-spacing': [0.2, 0.2, 0.5]})
+                self.load(module, deskew=dict(DESKEW), rotate={'output-spacing': [0.2, 0.3, 0.5]})
 
     def test_z_trim_becomes_a_flag(self):
         for module in (MOSAIC, LLSM):
@@ -178,7 +198,8 @@ class ConfigTests(unittest.TestCase):
             self.assertNotIn('z-trim', configs['rotate'])
 
     def test_invalid_values_exit(self):
-        bad = [{'angle': 30}, {'angle': 400.0}, {'crop-mode': 'tight'}, {'isotropic': 'yes'},
+        bad = [{'angle': 30}, {'angle': 400.0}, {'crop-mode': 'tight'}, {'output-spacing': 'iso'}, {'output-spacing': 0}, {'output-spacing': -1.0}, {'output-spacing': True},
+               {'output-spacing': [0.2, 0.2]}, {'output-spacing': [0.2, 0.2, 0.0]}, {'output-spacing': [0.2, 'x', 0.2]},
                {'fill': 1}, {'bit-depth': 12}, {'xy-res': 1},
                {'z-trim': -1}, {'z-trim': 1.5}, {'z-trim': [1]}, {'z-trim': [1, -2]}, {'z-trim': [1, 2, 3]}, {'z-trim': True}]
         for module in (MOSAIC, LLSM):
@@ -344,24 +365,56 @@ class MosaicChainTests(unittest.TestCase):
             ws.commands(MOSAIC, path)
         self.assertIn('objective-scanned', str(cm.exception.code))
 
-    def test_isotropic_option(self):
+    def test_default_output_spacing(self):
         ws = Workspace(self)
         lines = ws.commands(MOSAIC, ws.config(deskew=dict(DESKEW), mip=dict(MIP), rotate={'angle': -32.45}))
         for line in lines:
             flags = rotate_command(line)
-            self.assertNotIn('-p', flags)
+            self.assertNotIn('--output-spacing', flags)
             self.assertEqual(flags['-c'], 'keep-all')
             mip = re.search(r'mip [^&]*mip/rotate_deskew/[^&]*', line).group(0)
+            self.assertIn('-p 0.108', mip)
             self.assertIn('-q 0.108', mip)  # rotated MIPs carry the isotropic z size
 
-    def test_preserve_spacing_option(self):
+    def test_input_output_spacing(self):
         ws = Workspace(self)
-        lines = ws.commands(MOSAIC, ws.config(deskew=dict(DESKEW), mip=dict(MIP), rotate={'angle': -32.45, 'isotropic': False}))
+        lines = ws.commands(MOSAIC, ws.config(deskew=dict(DESKEW), mip=dict(MIP), rotate={'angle': -32.45, 'output-spacing': 'input'}))
         for line in lines:
             flags = rotate_command(line)
-            self.assertIn('-p', flags)
+            self.assertEqual(flags['--output-spacing'], 'input')
             mip = re.search(r'mip [^&]*mip/rotate_deskew/[^&]*', line).group(0)
             self.assertNotIn('-q 0.108', mip)  # rotated MIPs carry the input z size
+            self.assertIn('-q %s' % EXPECTED_Z, mip)
+
+    def test_user_output_spacing_reaches_rotate_and_mip(self):
+        ws = Workspace(self)
+        lines = ws.commands(MOSAIC, ws.config(deskew=dict(DESKEW), mip=dict(MIP),
+                                              rotate={'angle': -32.45, 'output-spacing': [0.2, 0.2, 0.4]}))
+        for line in lines:
+            self.assertEqual(rotate_command(line)['--output-spacing'], '0.2,0.2,0.4')
+            mip = re.search(r'mip [^&]*mip/rotate_deskew/[^&]*', line).group(0)
+            self.assertIn('-p 0.2 ', mip)
+            self.assertIn('-q 0.4 ', mip)
+
+    def test_spacing_warnings_are_printed_once(self):
+        ws = Workspace(self)
+        for module in (MOSAIC,):
+            module.warned_rotate_spacing.clear()
+            path = ws.config(deskew=dict(DESKEW), rotate={'angle': -32.45, 'output-spacing': 0.05})
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                configs = module.load_configs(path)
+                dirs = module.get_dirs(ws.root, [str(ws.root / 'Calibration')])
+                module.process(dirs, configs, dryrun=True)
+            text = out.getvalue()
+            self.assertEqual(text.count('rotate output-spacing x = 0.05 um is finer'), 1)  # two channels, one warning
+            self.assertEqual(text.count('rotate output-spacing z = 0.05 um is finer'), 1)
+            # 0.15 is finer than the input z spacing but not than xy: no warning
+            module.warned_rotate_spacing.clear()
+            path = ws.config(deskew=dict(DESKEW), rotate={'angle': -32.45, 'output-spacing': 0.15})
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                configs = module.load_configs(path)
+                module.process(module.get_dirs(ws.root, [str(ws.root / 'Calibration')]), configs, dryrun=True)
+            self.assertNotIn('finer', out.getvalue())
 
     def test_rotate_directory_and_processed_record(self):
         ws = Workspace(self)

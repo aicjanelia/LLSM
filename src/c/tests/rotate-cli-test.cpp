@@ -75,7 +75,7 @@ int main()
   WritePhantom(in, xy, z);
 
   // --- successful run (preserving spacing): larger output, spacing read back from the file
-  assert(Run("-a -32.45" + common + "-p -o \"" + out + "\" \"" + in + "\"") == 0);
+  assert(Run("-a -32.45" + common + "--output-spacing input -o \"" + out + "\" \"" + in + "\"") == 0);
   {
     TiffStackBlockReader reader(out);
     assert(reader.GetHeight() == 4);
@@ -96,6 +96,19 @@ int main()
     assert(Near(reader.GetSpacing()[2], xy, 1e-4));
   }
 
+  // --- user output spacing: a single value (cubic) or x,y,z
+  {
+    const std::string cubic = (dir / "cubic.tif").string();
+    assert(Run("-a -32.45" + common + "--output-spacing 0.2 -o \"" + cubic + "\" \"" + in + "\"") == 0);
+    TiffStackBlockReader reader(cubic);
+    assert(Near(reader.GetSpacing()[0], 0.2, 1e-4) && Near(reader.GetSpacing()[2], 0.2, 1e-4));
+    const std::string aniso = (dir / "aniso.tif").string();
+    assert(Run("-a -32.45" + common + "--output-spacing 0.2,0.1,0.3 -o \"" + aniso + "\" \"" + in + "\"") == 0);
+    TiffStackBlockReader reader2(aniso);
+    assert(Near(reader2.GetSpacing()[0], 0.2, 1e-4) && Near(reader2.GetSpacing()[1], 0.1, 1e-4) &&
+           Near(reader2.GetSpacing()[2], 0.3, 1e-4));
+  }
+
   // --- other bit depths
   for (const char *bits : {"8", "32"})
   {
@@ -112,6 +125,8 @@ int main()
   assert(Run("-a 20" + common + "-b 12 -o \"" + bad + "\" \"" + in + "\"") != 0);                        // bad bit depth
   assert(Run("-a 400" + common + "-o \"" + bad + "\" \"" + in + "\"") != 0);                             // angle out of range
   assert(Run("-a 20" + common + "-c sideways -o \"" + bad + "\" \"" + in + "\"") != 0);                  // bad crop mode
+  for (const char *spacing : {"0", "-0.2", "abc", "0.2,0.2", "0.2,0.2,0.2,0.2", "0.2,,0.2", "nan", "inf"})
+    assert(Run(std::string("-a 20") + common + "--output-spacing " + spacing + " -o \"" + bad + "\" \"" + in + "\"") != 0); // bad spacing
   assert(Run("-a 20" + common + "-c strict -o \"" + bad + "\" \"" + in + "\"") != 0);                    // strict needs --shift
   assert(!IsFile(bad.c_str()));
   assert(Run("--version") != 0 && Run("--help") != 0); // same convention as the other modules (EXIT_FAILURE)

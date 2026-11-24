@@ -50,7 +50,18 @@ Note that on the MOSAIC the rotation angle is -32.45, not the 147.55 used for de
 
 # Output size and spacing
 
-The rotated volume is resampled once with linear interpolation. By default the output is **isotropic**: cubic voxels the size of the xy pixel (for example 0.108 x 0.108 x 0.108 &#956;m). Because the z spacing of deskewed data is coarser, the decrease in file size from cropping away empty regions of the image is offset by the increase in file size from changing the voxel sizes. Use `--preserve-spacing` (`"isotropic": false` in the configuration file) to keep the voxel size of the input (for example 0.108 x 0.108 x 0.268 &#956;m) instead; this decreases files sizes at the expense of resolution. Output voxel centers sit on a grid of integer multiples of the output spacing, relative to input voxel (0,0,0) and the absolute position of the output is not preserved.
+The rotated volume is resampled once with linear interpolation. By default the output is **isotropic**: cubic voxels the size of the xy pixel (for example 0.108 x 0.108 x 0.108 &#956;m). Because the z spacing of deskewed data is coarser, the decrease in file size from cropping away empty regions of the image is offset by the increase in file size from changing the voxel sizes. Output voxel centers sit on a grid of integer multiples of the output spacing, relative to input voxel (0,0,0) and the absolute position of the output is not preserved.
+
+The output voxel size is set with `--output-spacing` (`"output-spacing"` in the configuration file), in &#956;m:
+
+| Value | Output voxels |
+| ----- | ----- |
+| not given (default) | Cubic, the size of the input xy pixel (e.g., 0.108 x 0.108 x 0.108 &#956;m). |
+| `input` | The voxel size of the input (e.g., 0.108 x 0.108 x 0.268 &#956;m). This decreases file sizes at the expense of resolution. |
+| one number, `S` | Cubic voxels of `S` &#956;m (e.g., `0.15`). |
+| three numbers, `X,Y,Z` | Anisotropic voxels, in x, y, z order (e.g., `0.15,0.15,0.2`). On the command line separate the values with commas without spaces; in the configuration file use a list (`[0.15, 0.15, 0.2]`). |
+
+The y axis is the rotation axis, so the y extent of the image does not change, but it is resampled when the output y spacing differs from the input. The pipeline writes warnings when the output spacing along any axis is finer than the smallest input spacing, normally the xy pixel size (oversampling adds no information and enlarges the file, in proportion to 1/(X&#183;Y&#183;Z)) or coarser than the input z spacing (the coarsest input axis; downsampling by linear interpolation without smoothing can introduce aliasing). The default and `input` never warn. Output spacings with different x and y values cannot be combined with the `mip` section, because the `mip` module uses a single xy pixel size; the pipeline stops with an error in that case.
 
 Two cropping modes are available with `--crop-mode` (`"crop-mode"` in the configuration file):
 
@@ -63,9 +74,7 @@ Both modes need to know where the valid data are. The pipeline passes the deskew
 
 ## Removing edge slices (`z-trim`)
 
-Some experiments show edge effects in the first or last z slices of the rotated volume. `--z-trim` (`"z-trim"` in the configuration file) removes output z slices after the crop mode has been applied, and works with both `keep-all` and `strict`. Give one non-negative integer to remove that many slices from both ends, or two (`bottom,top` on the command line, `[bottom, top]` in the configuration file) to trim each end separately. The default is 0. The trimmed slices are never computed, and every channel and timepoint receives the same trimmed grid. Slices are counted in the output, so with the default isotropic output one slice is one xy pixel in thickness. `rotate` stops with an error if the trim would remove every slice.
-
-Prevoius work used Fiji's BigStitcher plugin for rotation. Small differences from BigStitcher's output (intensities within about +/-1 count, most likely from rounding when converting to the output bit depth, and a thin rim at the boundary of the data) are expected.
+Some experiments show edge effects in the first or last z slices of the rotated volume. `--z-trim` (`"z-trim"` in the configuration file) removes output z slices after the crop mode has been applied, and works with both `keep-all` and `strict`. Give one non-negative integer to remove that many slices from both ends, or two (`bottom,top` on the command line, `[bottom, top]` in the configuration file) to trim each end separately. The default is 0. The trimmed slices are never computed, and every channel and timepoint receives the same trimmed grid. Slices are counted in the output, so their thickness is the output z spacing (one xy pixel with the default output). `rotate` stops with an error if the trim would remove every slice.
 
 # Memory
 
@@ -88,7 +97,7 @@ This is an example portion of a configuration file for a MOSAIC acquisition that
     "stages": ["deskew"],
     "crop-mode": "strict",
     "z-trim": [2, 2],
-    "isotropic": true,
+    "output-spacing": 0.2,
     "fill": 0.0,
     "bit-depth": 16
 }
@@ -102,7 +111,7 @@ The command below rotates a deskewed MOSAIC image into the coverslip frame, keep
 rotate -a -32.45 -x 0.108 -z 0.2683 --shift -3.9068 -c strict -w -o scan_ch00_tile0_t0000_rotate.tif scan_ch00_tile0_t0000_deskew.tif
 ```
 
-### Crop Options
+### Rotate Options
 ```
 rotate: rotates an image stack about the y axis (e.g., from the objective to the coverslip frame)
 usage: rotate [options] path
@@ -127,11 +136,10 @@ Allowed options:
   --z-trim arg (=0)                  output z slices to remove after cropping,
                                      to avoid edge effects: N (both ends) or
                                      bottom,top (e.g. 2,3)
-  -i [ --isotropic ]                 write isotropic output voxels (xy size);
-                                     this is the default
-  -p [ --preserve-spacing ]          preserve the input voxel spacing instead
-                                     of writing isotropic voxels (smaller
-                                     output)
+  --output-spacing arg               output voxel spacing (um): S (cubic
+                                     voxels), X,Y,Z, or 'input' to keep the
+                                     input spacing; default is cubic voxels the
+                                     size of the input xy pixel
   -f [ --fill ] arg (=0)             value used to fill empty regions
   -o [ --output ] arg                output file path
   -b [ --bit-depth ] arg (=16)       bit depth (8, 16, or 32) of output image

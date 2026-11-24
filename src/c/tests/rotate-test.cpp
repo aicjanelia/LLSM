@@ -96,7 +96,14 @@ Image::SizeType SizeOf(Image::Pointer img) { return img->GetLargestPossibleRegio
 Image::Pointer Rot(Image::Pointer img, double angle, double xy, double z, CropMode mode = CropMode::KeepAll,
                    bool isotropic = false, double shift = 0.0, double fill = 0.0)
 {
-  return Rotate(img, angle, xy, z, shift, mode, isotropic, fill);
+  const std::array<double, 3> out = isotropic ? std::array<double, 3>{xy, xy, xy} : std::array<double, 3>{xy, xy, z};
+  return Rotate(img, angle, xy, z, shift, mode, out, fill);
+}
+
+// user-chosen output spacing
+Image::Pointer RotSpacing(Image::Pointer img, double angle, double xy, double z, const std::array<double, 3> &out)
+{
+  return Rotate(img, angle, xy, z, 0.0, CropMode::KeepAll, out, 0.0);
 }
 
 template <class F>
@@ -246,6 +253,15 @@ int main()
     Image::Pointer iso = Rot(img, mosaic, xy, zs, CropMode::KeepAll, true);
     assert(Near(iso->GetSpacing()[2], xy, 1e-12));
     assert(SizeOf(iso)[2] > SizeOf(out)[2]); // z voxels are finer, so more of them
+
+    // user spacing: written spacing matches, y is resampled over the same physical extent,
+    // and the blob's physical centroid is preserved
+    const std::array<double, 3> user = {0.2, 0.05, 0.15};
+    Image::Pointer custom = RotSpacing(img, mosaic, xy, zs, user);
+    assert(Near(custom->GetSpacing()[0], 0.2, 1e-12) && Near(custom->GetSpacing()[1], 0.05, 1e-12) &&
+           Near(custom->GetSpacing()[2], 0.15, 1e-12));
+    const double y_extent = (SizeOf(img)[1] - 1) * xy;
+    assert(SizeOf(custom)[1] == static_cast<unsigned long>(std::floor(y_extent / 0.05 + 1e-6)) + 1);
   }
 
   // --- the valid region predicted for a deskewed volume matches what Deskew() produces

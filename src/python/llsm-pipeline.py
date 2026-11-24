@@ -16,7 +16,7 @@ from pathlib import Path, PurePath
 from sys import exit
 import settings2json
 from time import sleep
-from pipeline_commands import build_job_command
+from pipeline_commands import build_job_command, parse_output_spacing, rotate_output_spacing, rotate_spacing_warnings
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Batch processing script for LLSM images.')
@@ -374,7 +374,7 @@ def load_configs(path):
 
     # sanitize rotate configs
     if 'rotate' in configs:
-        supported_opts = ['angle', 'xy-res', 'stages', 'crop-mode', 'z-trim', 'isotropic', 'fill', 'bit-depth', 'executable_path']
+        supported_opts = ['angle', 'xy-res', 'stages', 'crop-mode', 'z-trim', 'output-spacing', 'fill', 'bit-depth', 'executable_path']
         for key in list(configs['rotate']):
             if key not in supported_opts:
                 print('WARNING: rotate option \'%s\' in config.json is not supported' % key)
@@ -461,13 +461,15 @@ def load_configs(path):
             else:
                 configs['rotate']['z-trim'] = {'flag': '--z-trim', 'arg': zt_arg}
 
-        if 'isotropic' in configs['rotate']:
-            if not type(configs['rotate']['isotropic']) is bool:
-                exit('ERROR: rotate isotropic \'%s\' in config.json is not a true or false' % configs['rotate']['isotropic'])
-            if configs['rotate']['isotropic']:
-                del configs['rotate']['isotropic'] # isotropic output is the default of rotate
-            else:
-                configs['rotate']['isotropic'] = {'flag': '-p'} # preserve the input voxel spacing
+        if 'output-spacing' in configs['rotate']:
+            try:
+                configs['rotate']['output-spacing'] = parse_output_spacing(configs['rotate']['output-spacing'])
+            except ValueError as e:
+                exit('ERROR: rotate %s in config.json' % e)
+            # an anisotropic xy output cannot be represented by the mip module (one xy pixel size)
+            os_values = configs['rotate']['output-spacing']['values']
+            if 'mip' in configs and isinstance(os_values, list) and os_values[0] != os_values[1]:
+                exit('ERROR: rotate output-spacing \'%s\' has different x and y values, which the mip module does not support; use equal x and y or remove the mip section' % configs['rotate']['output-spacing']['arg'])
 
         if 'fill' in configs['rotate']:
             if not type(configs['rotate']['fill']) is float:
@@ -592,6 +594,8 @@ def get_dirs(path, excludes):
 def tag_filename(filename, string):
     f = PurePath(filename)
     return f.stem + string + f.suffix
+
+warned_rotate_spacing = set() # rotate spacing warnings already printed
 
 def params2cmd(params, cmd_name):
     cmd = cmd_name
@@ -1317,6 +1321,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             rotate_z = settings['waveform']['z-pzt']['interval'][ch]
                             shift_arg = ''
 
+                        # warn (once per input spacing) about output spacings that oversample or coarsely downsample
+                        for w in rotate_spacing_warnings(params_rotate, rotate_xy, rotate_z):
+                            if w not in warned_rotate_spacing:
+                                warned_rotate_spacing.add(w)
+                                print('WARNING: ' + w)
+
                         if configs['bdv']['overwrite'] or (not outpath.is_file()):
                             tmp = cmd_rotate + ' -w -x %s -z %s%s -t %s -o %s  %s;' % (rotate_xy, rotate_z, shift_arg, 2*threads, outpath, inpath)
                             cmd.append(tmp)
@@ -1325,8 +1335,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                             if mip:
                                 inpath = outpath
                                 outpath = job['mip_dir'] / tag_filename(out_f, '_' + job['dir'].name + '_mip')
-                                mip_z = rotate_z if 'isotropic' in params_rotate else rotate_xy # 'isotropic' is only kept (as -p) when set to false
-                                tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (rotate_xy, mip_z, 2*threads, outpath, inpath)
+                                mip_xy, _, mip_z = rotate_output_spacing(params_rotate, rotate_xy, rotate_z) # x == y is enforced when the config is loaded
+                                tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (mip_xy, mip_z, 2*threads, outpath, inpath)
                                 cmd.append(tmp)
 
                 if len(cmd) > 2: # > 2 to require at least one module (bsub is already length 2)

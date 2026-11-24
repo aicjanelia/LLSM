@@ -13,7 +13,7 @@
 // so x' = x cos(t) + z sin(t) and z' = -x sin(t) + z cos(t). MOSAIC data use
 // t = -32.45. Coordinates are physical (um) with the pivot at input voxel (0,0,0)
 // and voxel centres at index * spacing. The y axis is the rotation axis, so the
-// output y grid is the input y grid.
+// output y grid covers the input y extent (resampled when the y spacing differs).
 
 #include <algorithm>
 #include <array>
@@ -141,7 +141,8 @@ inline long SnapUp(double value, double spacing) { return static_cast<long>(std:
 // never on pixel content, so every channel/timepoint gets the same grid.
 //   spacing_in : input (x, y, z) spacing in um; x and y must match
 //   shift      : signed deskew shift (px per z plane); 0 treats the array as fully valid
-//   isotropic  : output voxels are xy x xy x xy instead of preserving the input spacing
+//   spacing_out: output (x, y, z) spacing in um; each must be positive and finite. Y is the
+//                rotation axis, so the y extent is resampled to spacing_out[1] independently of x.
 //   z_trim     : output z slices removed from the {bottom, top} ends after the crop mode is applied
 //                (to avoid edge effects); {0, 0} keeps everything
 inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
@@ -149,7 +150,7 @@ inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
                                     double theta_degrees,
                                     double shift,
                                     CropMode mode,
-                                    bool isotropic,
+                                    const std::array<double, 3> &spacing_out,
                                     const std::array<long, 2> &z_trim = {0, 0})
 {
   if (z_trim[0] < 0 || z_trim[1] < 0)
@@ -158,8 +159,14 @@ inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
   if (std::fabs(spacing_in[0] - spacing_in[1]) > 1e-9 * spacing_in[0])
     throw std::invalid_argument("rotate requires equal x and y spacing");
 
-  const double sx = spacing_in[0];
-  const double sz = isotropic ? spacing_in[0] : spacing_in[2];
+  for (const double s : spacing_out)
+    // explicit range instead of isfinite(): the release build uses -ffast-math, which makes NaN/inf checks unreliable
+    if (!(s > 0.0 && s < 1.0e6))
+      throw std::invalid_argument("output spacing must be positive and finite (um)");
+
+  const double sx = spacing_out[0];
+  const double sy = spacing_out[1];
+  const double sz = spacing_out[2];
 
   const Polygon valid = ValidPolygon(size_in[0], size_in[2], spacing_in[0], spacing_in[2], shift);
   const Polygon rot = RotatePolygon(valid, theta_degrees);
@@ -236,9 +243,13 @@ inline OutputGrid ComputeOutputGrid(const std::array<std::size_t, 3> &size_in,
     throw std::invalid_argument("z-trim removes all output z slices");
 
   OutputGrid grid;
-  grid.spacing = {sx, spacing_in[1], sz};
+  // y: same physical extent as the input (voxel centres 0..(ny-1)*in_sy), sampled at sy from voxel 0
+  const double y_extent = static_cast<double>(size_in[1] - 1) * spacing_in[1];
+  const long y_count = static_cast<long>(std::floor(y_extent / sy + kSnapTolerance)) + 1;
+
+  grid.spacing = {sx, sy, sz};
   grid.first = {x0, 0, z0};
-  grid.size = {static_cast<std::size_t>(x1 - x0 + 1), size_in[1], static_cast<std::size_t>(z1 - z0 + 1)};
+  grid.size = {static_cast<std::size_t>(x1 - x0 + 1), static_cast<std::size_t>(y_count), static_cast<std::size_t>(z1 - z0 + 1)};
   grid.origin = {x0 * sx, 0.0, z0 * sz};
   return grid;
 }
