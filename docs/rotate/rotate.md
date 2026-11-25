@@ -83,7 +83,7 @@ Some experiments show edge effects in the first or last z slices of the rotated 
 
 Images are processed as double-precision numbers in memory, so a 2075 x 1500 x 401 stack needs about 10 GB for the input, plus the output (about 2 GB for `strict`, more for `keep-all`). Request enough slots in the `bsub` section of the configuration file (15 GB per slot); the deconvolution memory estimate in [Configuration File](https://aicjanelia.github.io/LLSM/pipeline/config.html#slots) does not apply to `rotate`.
 
-## Usage
+# Usage
 
 ### Pipeline: Configuration File
 This is an example portion of a configuration file for a MOSAIC acquisition that is deskewed and then rotated. The strict crop-mode will remove some of the data, and z-trim will remove 2 z-slices from each size. The data will be samples with isotropic 0.2 &#956;m voxels in the output file.

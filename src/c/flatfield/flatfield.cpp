@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
   float img_zstep = UNSET_FLOAT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
+  bool unit_spacing = UNSET_BOOL;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
       ("xy-rez,x", po::value<float>(&xy_res)->default_value(-1.0f), "x/y resolution (um/px)")
       ("image-spacing,q", po::value<float>(&img_zstep)->default_value(-1.0f),"z-step size of input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
+      ("unit-spacing", po::value<bool>(&unit_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "write 1 x 1 x 1 pixel spacing instead of the real spacing (use for skewed, not yet deskewed, stage-scan data)")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -180,9 +182,9 @@ int main(int argc, char** argv) {
   // flatfield
   kImageType::Pointer corrected_img = FlatfieldCorrection(img, dark, n_img, verbose);
 
-  img_spacing[0] = 1.0;
-  img_spacing[1] = 1.0;
-  img_spacing[2] = 1.0;
+  // real spacing by default; 1 x 1 x 1 pixels only for skewed (not yet deskewed) data
+  if (unit_spacing)
+    img_spacing.Fill(1.0);
   corrected_img->SetSpacing(img_spacing);
 
   // write file

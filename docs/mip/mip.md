@@ -33,6 +33,10 @@ The `mip` module is run together with the other processing modules and will crea
 More complex filtering of imported images is also possible using regular expressions. In ImageJ, `.*` is a wildcard, and the complete regular expression must be enclosed in parentheses. For example, to load in y projections of only channel zero, use `(ch0.*_y)` in the filter dialog. When the filter dialog box is changed, the number of images to be loaded automatically changes (shown in the `Count:` dialog). If the value is `---` or otherwise does not make sense, there is likely a typo in the regular expression.
 
 
+## Output Voxel Size
+
+The volume is resampled to cubic voxels of size `-p` before projecting, so MIPs are written with `-p` microns as the x and y spacing. `--unit-spacing` writes 1 x 1 pixel spacing instead; the pipeline passes it for MIPs of stage-scanned data that has not been deskewed, since those projections are of skewed data.
+
 # Usage
 
 ### Pipeline: Configuration File
@@ -66,6 +70,7 @@ Allowed options:
   -p [ --xy-rez ] arg (=0.104000002) x/y resolution (um/px)
   -q [ --z-rez ] arg (=0.104000002)  z resolution (um/px)
   -o [ --output ] arg                output file path
+  --unit-spacing                     write 1 x 1 pixel spacing instead of the real spacing
   -b [ --bit-depth ] arg (=16)       bit depth (8, 16, or 32) of output image
   -w [ --overwrite ]                 overwrite output if it exists
   -v [ --verbose ]                   display progress and debug information

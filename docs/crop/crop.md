@@ -13,6 +13,10 @@ When used though the pipeline command, the only parameters to be specified are t
 If directly using the crop module on the command line, these cropping values are provided as one list in the input variables. You must manually specify the paths to the input and output files, as well as metadata such as the z-step size.
 
 
+## Output Voxel Size
+
+Output files carry their voxel size in the TIFF metadata (`XResolution`/`YResolution` and the ImageJ `spacing`, in microns). The one exception is data that is still skewed, i.e., stage-scanned images that have not been deskewed yet. Because the stage step is an offset along x, not a z spacing, these images are not on an orthogonal pixel grid and thus the pipeline writes 1 x 1 x 1 pixel spacing for those files (`--unit-spacing`). Objective-scanned data and everything after deskewing are written in microns. The output spacing is built from `-x` (x/y) and `-s` (z), falling back to the input file's spacing. The pipeline passes `--unit-spacing` for stage-scanned data.
+
 # Usage
 
 ### Pipeline: Configuration File
@@ -47,6 +51,7 @@ Allowed options:
   -o [ --output ] arg              output file path
   -x [ --xy-rez ] arg (=-1)        x/y resolution (um/px)
   -s [ --step ] arg (=-1)          step/interval (um)
+  --unit-spacing                   write 1 x 1 x 1 pixel spacing instead of the real spacing
   -b [ --bit-depth ] arg (=16)     bit depth (8, 16, or 32) of output image
   -w [ --overwrite ]               overwrite output if it exists
   -v [ --verbose ]                 display progress and debug information

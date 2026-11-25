@@ -37,6 +37,10 @@ To use, run the `flatfield_inputs.ijm` macro. A GUI will open, as shown in the f
 Hobson, C. M., Guo, M., Vishwasrao, H. D., Wu, Y., Shroff, H. and Chew, T.-L. (2022). Practical considerations for quantitative light sheet fluorescence microscopy. Nat Methods 1-12. [doi:10.1038/s41592-022-01632-x](https://doi.org/10.1038/s41592-022-01632-x)
 
 
+## Output Voxel Size
+
+Output files carry their voxel size in the TIFF metadata (`XResolution`/`YResolution` and the ImageJ `spacing`, in microns). The one exception is data that is still skewed, i.e., stage-scanned images that have not been deskewed yet. Because the stage step is an offset along x, not a z spacing, these images are not on an orthogonal pixel grid and thus the pipeline writes 1 x 1 x 1 pixel spacing for those files (`--unit-spacing`). Objective-scanned data and everything after deskewing are written in microns. The output spacing is built from `-x` (x/y) and `-s` (z), falling back to the input file's spacing. The pipeline passes `--unit-spacing` for stage-scanned data.
+
 # Usage
 
 ### Pipeline: Configuration File
@@ -79,6 +83,7 @@ Allowed options:
   -x [ --xy-rez ] arg (=-1)        x/y resolution (um/px)
   -q [ --image-spacing ] arg (=-1) z-step size of input image
   -o [ --output ] arg              output file path
+  --unit-spacing                   write 1 x 1 x 1 pixel spacing instead of the real spacing
   -b [ --bit-depth ] arg (=16)     bit depth (8, 16, or 32) of output image
   -w [ --overwrite ]               overwrite output if it exists
   -v [ --verbose ]                 display progress and debug information

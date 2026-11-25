@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
   std::uint64_t block_depth = 0;
+  bool unit_spacing = UNSET_BOOL;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -38,6 +39,7 @@ int main(int argc, char** argv) {
       ("image-spacing,q", po::value<float>(&img_zstep)->default_value(-1.0f),"z-step size of input image")
       ("subtract-constant,s", po::value<float>(&subtract_constant)->default_value(0.0f),"constant intensity value to subtract from input image")
       ("output,o", po::value<std::string>()->required(),"output file path")
+      ("unit-spacing", po::value<bool>(&unit_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "write 1 x 1 x 1 pixel spacing instead of the real spacing (use for skewed data that will be deskewed afterward)")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("block-depth", po::value<std::uint64_t>(&block_depth)->default_value(0),"Z core depth per block (0 selects 512, reduced automatically when required)")
@@ -189,8 +191,10 @@ int main(int argc, char** argv) {
       std::cout << "Number of Z Blocks = " << blocks.size() << std::endl;
     }
 
-    kImageType::SpacingType output_spacing;
-    output_spacing.Fill(1.0);
+    // real spacing by default; 1 x 1 x 1 pixels only when the output is still skewed (decon before deskew)
+    kImageType::SpacingType output_spacing = img_spacing;
+    if (unit_spacing)
+      output_spacing.Fill(1.0);
     TiffStackBlockWriter output_writer(
         out_path, input_reader.GetWidth(), input_reader.GetHeight(),
         input_reader.GetDepth(), bit_depth, output_spacing);

@@ -220,9 +220,10 @@ private:
         {
             char description[512];
             snprintf(description, sizeof(description),
-                     "ImageJ=1.53\nimages=%llu\nslices=%llu\nspacing=%.6f\nunit=pixel\nhyperstack=false\nmode=grayscale\nloop=false",
+                     "ImageJ=1.53\nimages=%llu\nslices=%llu\nspacing=%.6f\nunit=%s\nhyperstack=false\nmode=grayscale\nloop=false",
                      static_cast<unsigned long long>(depth_),
-                     static_cast<unsigned long long>(depth_), spacing_[2]);
+                     static_cast<unsigned long long>(depth_), spacing_[2],
+                     (spacing_[0] == 1.0 && spacing_[1] == 1.0 && spacing_[2] == 1.0) ? "pixel" : "micron");
             TIFFSetField(tiff_, TIFFTAG_IMAGEDESCRIPTION, description);
         }
     }
@@ -355,7 +356,8 @@ void SaveImageAsTiff(typename itk::Image<TPixel, VDimension>::Pointer itkImage, 
     // stack fields; ImageJ's TiffDecoder infers nImages=1 from the single IFD.
     char description[128];
     snprintf(description, sizeof(description),
-             "ImageJ=1.53\nimages=1\nslices=1\nunit=pixel\nmode=grayscale");
+             "ImageJ=1.53\nimages=1\nslices=1\nunit=%s\nmode=grayscale",
+             (spacing[0] == 1.0 && spacing[1] == 1.0) ? "pixel" : "micron");
     TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, description);
 
     for (size_t row = 0; row < height; ++row) {
@@ -429,8 +431,9 @@ void Save3DImageAsTiffStackWithResolutions(typename itk::Image<TPixel, VDimensio
         if (slice == 0) { // Add ImageJ metadata to the first slice only
             char description[512];
             snprintf(description, sizeof(description), 
-                     "ImageJ=1.53\nimages=%zu\nslices=%zu\nspacing=%.6f\nunit=pixel\nhyperstack=false\nmode=grayscale\nloop=false", 
-                     depth, depth, spacing[2]);
+                     "ImageJ=1.53\nimages=%zu\nslices=%zu\nspacing=%.6f\nunit=%s\nhyperstack=false\nmode=grayscale\nloop=false", 
+                     depth, depth, spacing[2],
+                     (spacing[0] == 1.0 && spacing[1] == 1.0 && spacing[2] == 1.0) ? "pixel" : "micron");
             TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, description);
         }
 

@@ -16,17 +16,19 @@ int main(int argc, char** argv) {
   float step = UNSET_FLOAT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
+  bool unit_spacing = UNSET_BOOL;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
   // declare the supported options
-  po::options_description visible_opts("usage: deskew [options] path\n\nAllowed options");
+  po::options_description visible_opts("usage: crop [options] path\n\nAllowed options");
   visible_opts.add_options()
       ("help,h", "display this help message")
       ("crop,c", po::value<std::string>()->default_value("0,0,0,0,0,0"),"boundary pixel numbers (top,bottom,left,right,front,back)")
       ("output,o", po::value<std::string>()->required(),"output file path")
       ("xy-rez,x", po::value<float>(&xy_res)->default_value(-1.0f), "x/y resolution (um/px)")
       ("step,s", po::value<float>(&step)->default_value(-1.0f), "step/interval (um)")
+      ("unit-spacing", po::value<bool>(&unit_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "write 1 x 1 x 1 pixel spacing instead of the real spacing (use for skewed, not yet deskewed, stage-scan data)")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -147,9 +149,9 @@ int main(int argc, char** argv) {
     img_spacing[2] = step;
   kImageType::Pointer cropped_img = Crop(img, img_spacing[2], img_spacing[0], crop_params[0], crop_params[1], crop_params[2], crop_params[3], crop_params[4], crop_params[5], verbose);
 
-  img_spacing[0] = 1.0;
-  img_spacing[1] = 1.0;
-  img_spacing[2] = 1.0;
+  // real spacing by default; 1 x 1 x 1 pixels only for skewed (not yet deskewed) data
+  if (unit_spacing)
+    img_spacing.Fill(1.0);
   cropped_img->SetSpacing(img_spacing);
 
   // write file

@@ -78,6 +78,10 @@ Pipeline jobs stop at the first failed module and return its failure status;
 dependent steps such as MIP generation do not run after a failed deconvolution.
 
 
+## Output Voxel Size
+
+Deconvolved images are written with the resolved voxel size (x/y from `-x`, z from `-q`, falling back to the input file) in microns. The option `--unit-spacing` writes 1 x 1 x 1 pixel spacing instead. The pipeline passes it for _decon-first_, because the *decon_before_deskew* files are still skewed and thus are not on an orthogonal pixel grid. If you run `decon` by hand on skewed data that you will deskew afterward, add `--unit-spacing` too. Objective-scanned data and `deskew` then `decon` ordering need no flag.
+
 # Usage
 
 ### Pipeline: Configuration File
@@ -153,6 +157,7 @@ Allowed options:
   -s [ --subtract-constant ] arg (=0) constant intensity value to subtract 
                                       from input image
   -o [ --output ] arg                 output file path
+  --unit-spacing                      write 1 x 1 x 1 pixel spacing instead of the real spacing
   -b [ --bit-depth ] arg (=16)        bit depth (8, 16, or 32) of output image
   --block-depth arg (=0)              Z core depth per block (0 selects 512,
                                       reduced automatically when required)

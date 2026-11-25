@@ -147,7 +147,7 @@ def load_configs(path):
 
             configs['xy-res'] = configs['crop']['xy-res']
             del configs['crop']['xy-res']
-        else:
+        elif 'xy-res' not in configs:
             configs['xy-res'] = 0.108 # 0.108 um/pixel on the MOSAIC
         # configs['crop']['xy-res'] = {'flag': '-x', 'arg': configs['crop']['xy-res']}
         # Don't actually want to crop to use the xy res because that leads to deskew problems.
@@ -777,6 +777,12 @@ def process(dirs, configs, dryrun=False, verbose=False):
         if 'z-motion' not in settings['waveform']:
             exit('ERROR: settings file did not contain a Z motion field')
 
+        # Stage-scanned data is skewed until it is deskewed; its z spacing is not meaningful, so modules that
+        # write skewed data (flatfield, crop, decon-first decon, ...) write 1 x 1 x 1 pixel spacing for it.
+        # Objective-scanned data and everything after deskewing is written with real spacing (um).
+        skewed_scan = settings['waveform']['z-motion'] == 'X stage'
+        unit_flag = ' --unit-spacing' if skewed_scan else ''
+
         # save settings json
         if not dryrun:
             with open(d / 'settings.json', 'w') as path:
@@ -1123,7 +1129,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                 if skewedPSF.is_file():    
                     print('Skewed PSF already exists and will not be overwritten: %s' % (skewedPSF))
                 else:
-                    tmp = configs['decon-first']['deskew']['executable_path'] + ' -a %s -x %s -f %s -b %s -w -s %s -o %s %s "' % (a,x,fill,bitd,step,skewedPSF,psffile)
+                    tmp = configs['decon-first']['deskew']['executable_path'] + ' -a %s -x %s -f %s -b %s -w --unit-spacing -s %s -o %s %s "' % (a,x,fill,bitd,step,skewedPSF,psffile)
                     cmd = bsub_psf + tmp
                     if verbose:
                         print(cmd)
@@ -1205,7 +1211,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                         flatpath = root / configs['paths']['flatfield']['dir']
                         darkpath =  flatpath / configs['paths']['flatfield']['dark']
                         normpath = flatpaths[ch]
-                        tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -t %s -o %s  %s;' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], threads, outpath, inpath)
+                        tmp = cmd_flatfield + ' -w -d %s -n %s -x %s -q %s -t %s -o %s  %s' % (darkpath,normpath,configs['xy-res'],stepFlatfield[ch], threads, outpath, inpath) + unit_flag + ';'
                         cmd.append(tmp)
                         redoMIP = True
 
@@ -1220,7 +1226,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     #         print('Cropped file already exists and will not be overwritten: %s' % (outpath))
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):                  
-                        tmp = cmd_crop + ' -w -s %s -t %s -o %s  %s;' % (stepCrop[ch], 2*threads,outpath, inpath)
+                        tmp = cmd_crop + ' -w -x %s -s %s -t %s -o %s  %s' % (configs['xy-res'], stepCrop[ch], 2*threads,outpath, inpath) + unit_flag + ';'
                         cmd.append(tmp)
                         redoMIP = True
 
@@ -1257,7 +1263,7 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     
                     # now run the command if necessary
                     if rerunMIP:
-                        tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s;' % (xyRes,step, 2*threads,outpath, inpath)
+                        tmp = cmd_mip + ' -p %s -q %s -t %s -o %s %s' % (xyRes,step, 2*threads,outpath, inpath) + unit_flag + ';'
                         cmd.append(tmp)
                     # else:
                     #     if verbose:
@@ -1292,7 +1298,8 @@ def process(dirs, configs, dryrun=False, verbose=False):
                     # else:
                     if configs['bdv']['overwrite'] or (not outpath.is_file()):
                         # ASSUMPTION: the resampled PSF has a spacing equivalent to the image.
-                        tmp = cmd_deconfirst_decon + ' -w -k %s -p %s -q %s -t %s -o %s %s;' % (skewedPSF, step, step, 2*threads, outpath, inpath)
+                        # --unit-spacing: the decon-before-deskew output is still skewed, so it keeps 1 x 1 x 1 pixel spacing
+                        tmp = cmd_deconfirst_decon + ' -w --unit-spacing -k %s -p %s -q %s -t %s -o %s %s;' % (skewedPSF, step, step, 2*threads, outpath, inpath)
                         cmd.append(tmp)
 
                     # Now work on deskewing

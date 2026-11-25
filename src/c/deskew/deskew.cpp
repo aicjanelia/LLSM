@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
   float fill_value = UNSET_FLOAT;
   unsigned int bit_depth = UNSET_UNSIGNED_INT;
   unsigned int threadnum = UNSET_UNSIGNED_INT;
+  bool unit_spacing = UNSET_BOOL;
   bool overwrite = UNSET_BOOL;
   bool verbose = UNSET_BOOL;
 
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
       ("angle,a", po::value<float>(&angle)->default_value(31.8f), "objective angle from stage normal (degrees)")
       ("fill,f", po::value<float>(&fill_value)->default_value(0.0f), "value used to fill empty deskew regions")
       ("output,o", po::value<std::string>()->required(),"output file path")
+      ("unit-spacing", po::value<bool>(&unit_spacing)->default_value(false)->implicit_value(true)->zero_tokens(), "write 1 x 1 x 1 pixel spacing instead of the real spacing (use when the output is still skewed, e.g., skewing a PSF)")
       ("bit-depth,b", po::value<unsigned int>(&bit_depth)->default_value(16),"bit depth (8, 16, or 32) of output image")
       ("thread,t", po::value<unsigned int>(&threadnum)->default_value(1),"number of threads")
       ("overwrite,w", po::value<bool>(&overwrite)->default_value(false)->implicit_value(true)->zero_tokens(), "overwrite output if it exists")
@@ -136,6 +138,12 @@ int main(int argc, char** argv) {
 
   kImageType::Pointer deskew_img = Deskew(img, angle, img_spacing[2], img_spacing[0], (kPixelType) fill_value/std::numeric_limits<unsigned short>::max(), verbose); // TODO: scale fill_value by input type
   
+  if (unit_spacing) {
+    kImageType::SpacingType unit;
+    unit.Fill(1.0);
+    deskew_img->SetSpacing(unit);
+  }
+
   // write file
   if (bit_depth == 8) {
     using PixelTypeOut = unsigned char;

@@ -21,6 +21,10 @@ Make sure that the calculator that you use to calculate sin knows that the angle
 | LLSM | 31.8&#176; | 0.104 |
 | MOSAIC | -32.45&#176; (147.55&#176; for deskewing) | 0.108 |
 
+## Output Voxel Size
+
+The deskewed output is written with real voxel sizes: x/y = the x/y resolution and z = |step x sin(angle)| in microns. The `--unit-spacing` option writes 1 x 1 x 1 pixel spacing instead; the pipeline uses it only when it skews a PSF for _decon-first_ (see the [deconvolution](../decon/decon.html) page), because that file is skewed data.
+
 # Usage
 
 ### Pipeline: Configuration File
@@ -55,6 +59,7 @@ Allowed options:
                                      (degrees)
   -f [ --fill ] arg (=0)             value used to fill empty deskew regions
   -o [ --output ] arg                output file path
+  --unit-spacing                     write 1 x 1 x 1 pixel spacing instead of the real spacing
   -b [ --bit-depth ] arg (=16)       bit depth (8, 16, or 32) of output image
   -w [ --overwrite ]                 overwrite output if it exists
   -v [ --verbose ]                   display progress and debug information

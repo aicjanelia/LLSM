@@ -79,7 +79,7 @@ kImageType::Pointer Deskew(kImageType::Pointer img, float angle, float step, flo
   spacing[1] = xy_res;
   spacing[2] = fabs(step * sin(angle * M_PI/180.0));
 
-  img->SetSpacing(spacing);
+  outimg->SetSpacing(spacing);
 
   if (verbose)
   {
